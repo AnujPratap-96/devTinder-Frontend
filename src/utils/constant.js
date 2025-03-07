@@ -1,1 +1,1 @@
-export const BASE_URL = "https://devtinder-pbon.onrender.com"
+export const BASE_URL = "/api"
