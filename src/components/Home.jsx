@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
+import { BASE_URL } from "../utils/constant";
 
 
 const ImageComponent = ({ src, alt }) => (
@@ -14,6 +15,7 @@ const ImageComponent = ({ src, alt }) => (
 
 const LandingPage = () => {
   const navigate = useNavigate();
+  console.log(BASE_URL);
   return (
     <div className="bg-gray-900  text-white min-h-screen flex flex-col items-center px-6 pb-5">
       {/* Hero Section */}
