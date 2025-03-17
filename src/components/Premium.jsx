@@ -63,7 +63,7 @@ const MembershipCards = () => {
           </p>
         </div>
 
-        <h3 className="text-xl font-semibold mt-4">₹799/month</h3>
+        <h3 className="text-xl font-semibold mt-4">₹33/month</h3>
         <button
           className="mt-4 px-5 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-500 transition"
           onClick={() => handleBuyClick("silver")}
@@ -93,7 +93,7 @@ const MembershipCards = () => {
           </p>
         </div>
 
-        <h3 className="text-xl font-semibold mt-4">₹1499/month</h3>
+        <h3 className="text-xl font-semibold mt-4">₹50/month</h3>
         <button
           className="mt-4 px-5 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-500 transition"
           onClick={() => handleBuyClick("gold")}

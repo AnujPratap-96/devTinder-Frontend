@@ -1,6 +1,7 @@
+/* eslint-disable react/prop-types */
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { BASE_URL } from "../utils/constant";
+
 
 
 const ImageComponent = ({ src, alt }) => (
