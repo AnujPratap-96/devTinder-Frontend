@@ -14,7 +14,7 @@ const Body = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const user = useSelector((store) => store.user);
-  console.log(BASE_URL)
+  
 
   const findUser = async () => {
     if (user) return;

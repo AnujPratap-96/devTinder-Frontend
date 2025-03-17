@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import { TbCardsFilled } from "react-icons/tb";
-import { FaUsers, FaUserEdit } from "react-icons/fa";
+import { FaUsers, FaUserEdit , FaCrown} from "react-icons/fa";
 import { MdOutlineNotifications } from "react-icons/md";
 import { Link, useLocation } from "react-router-dom";
 import { AiOutlineMessage } from "react-icons/ai";
@@ -24,6 +24,7 @@ const Sidebar = ({ isSidebarOpen }) => {
           <SidebarItem to="/requests" icon={<MdOutlineNotifications />} text="Notifications" currentPath={location.pathname} />
           <SidebarItem to="/messages" icon={<AiOutlineMessage />} text="Messages" currentPath={location.pathname} />
           <SidebarItem to="/profile" icon={<FaUserEdit />} text="Profile" currentPath={location.pathname} />
+          <SidebarItem to="/premium" icon={<FaCrown className="text-yellow-500 text-2xl" />} text="Premium" currentPath={location.pathname} />
         </ul>
       </div>
     </>

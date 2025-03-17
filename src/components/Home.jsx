@@ -15,7 +15,7 @@ const ImageComponent = ({ src, alt }) => (
 
 const LandingPage = () => {
   const navigate = useNavigate();
-  console.log(BASE_URL);
+  
   return (
     <div className="bg-gray-900  text-white min-h-screen flex flex-col items-center px-6 pb-5">
       {/* Hero Section */}
