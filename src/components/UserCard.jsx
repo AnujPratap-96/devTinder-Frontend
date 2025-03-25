@@ -6,13 +6,24 @@ import { BASE_URL } from "../utils/constant";
 import axios from "axios";
 import { removeUserFromFeed } from "../store/feedSlice";
 import { useDispatch } from "react-redux";
+import { useEffect } from "react";
 
 const SwipeCard = ({ user }) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
   const dispatch = useDispatch();
   const { _id, firstName, lastName, about, photoUrl, age, gender, skills } =
     user || {};
   const truncatedSkills = user.skills ? user.skills.slice(0, 3) : [];
   const [swipe, setSwipe] = useState(null);
+
+  useEffect(() => {
+    if (photoUrl.length > 1) {
+      const interval = setInterval(() => {
+        setCurrentIndex((prev) => (prev + 1) % photoUrl.length);
+      }, 3000);
+      return () => clearInterval(interval);
+    }
+  }, [photoUrl.length]);
 
   const sendConnectionRequest = async (status, userId) => {
     try {
@@ -63,25 +74,33 @@ const SwipeCard = ({ user }) => {
         {/* 🔥 Neon Border Animation */}
         <div className="absolute inset-0 rounded-2xl border-2 border-transparent animate-glow"></div>
 
-        {/* 🎨 Background Image with Gradient Overlay */}
-        <img
-          src={photoUrl}
-          alt={`${firstName} ${lastName}`}
-          className="absolute top-0 left-0 w-full h-full object-cover"
-        />
+        {/* Background Image Slider */}
+        <div className="absolute top-0 left-0 w-full h-full overflow-hidden">
+          {photoUrl.map((img, index) => (
+            <img
+              key={index}
+              src={img || "https://via.placeholder.com/150"}
+              alt="User background"
+              className={`absolute top-0 left-0 w-full h-full object-cover transition-opacity duration-1000 ${
+                index === currentIndex ? "opacity-100" : "opacity-0"
+              }`}
+            />
+          ))}
+        </div>
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-gray-900/40 to-gray-900/80"></div>
 
         {/* 📌 User Info Container - Moved to Bottom */}
         <div className="absolute bottom-1 left-0 right-0 p-5 bg-gray-900/80 backdrop-blur-md rounded-2xl shadow-md ml-1 mr-1">
           {/* 🏷️ Name with Gradient */}
           <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400">
-            {firstName} {lastName} 
+            {firstName} {lastName}
           </h2>
 
           {/* 📋 Additional Details */}
           <p className="text-gray-300 text-sm flex items-center gap-2">
             🎂 <span className="font-medium">{age} years old</span>
-            📌 <span className="font-medium ">
+            📌{" "}
+            <span className="font-medium ">
               {gender == "male" ? "🧔‍♂️ male" : "🙍‍♀️ female"}
             </span>
           </p>

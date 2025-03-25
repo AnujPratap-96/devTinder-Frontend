@@ -10,6 +10,9 @@ import Connections from "./components/Connections";
 import Feed from "./components/Feed";
 import Requests from "./components/Requests";
 import Premium from "./components/Premium";
+import ChatBox from "./components/ChatBox";
+import Messages from "./components/Messages";
+
 const App = () => {
   return (
     <Provider store={appStore}>
@@ -28,6 +31,8 @@ const App = () => {
             <Route path="/connections" element={<Connections />} />
             <Route path="/requests" element={<Requests />} />
             <Route path="/premium" element={<Premium/>} />
+            <Route path="/messages" element={<Messages/>}/>
+            <Route path="/chat/:targetUserId" element={<ChatBox/>}/>
           </Route>
         </Routes>
       </BrowserRouter>

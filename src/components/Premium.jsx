@@ -1,3 +1,4 @@
+/* eslint-disable react/no-unescaped-entities */
 import axios from "axios";
 import {
   FaCrown,
@@ -6,41 +7,102 @@ import {
   FaClock,
   FaUserPlus,
 } from "react-icons/fa";
+import { useEffect } from "react";
 import { BASE_URL } from "../utils/constant";
+import { useSelector, useDispatch } from "react-redux";
+import { addUser } from "../store/userSlice";
 
 const MembershipCards = () => {
-  const handleBuyClick = async (type) => {
-    const order = await axios.post(
-      BASE_URL + "/payment/create",
-      {
-        membershipType: type,
-      },
-      {
+  const user = useSelector((store) => store.user);
+  const dispatch = useDispatch();
+
+  useEffect(() => {
+    verifyPremiumUser();
+  }, []);
+
+  const verifyPremiumUser = async () => {
+    try {
+      const res = await axios.get(BASE_URL + "/premium/verify", {
         withCredentials: true,
+      });
+      if (res.data.isPremium) {
+        dispatch(addUser(res.data.user));
       }
-    );
-    console.log(order);
-    //open razorpay dialog box here
-    const {amount , keyId , currency , orderId , notes} = order.data;
-    const options = {
-      key: keyId, 
-      amount: amount, 
-      currency: currency,
-      name: "Devs Tinder Site",
-      description: "Connect to other devs",
-      order_id: orderId, 
-      prefill: {
-        name: notes.firstName + " " + notes.lastName,
-        email: notes.emailId,
-        contact: "9876543214",
-      },
-      theme: {
-        color: "#F37254",
-      },
-    };
-    const rzp = new window.Razorpay(options);
-    rzp.open();
+    } catch (error) {
+      console.error("Error verifying premium status:", error);
+    }
   };
+
+  const handleBuyClick = async (type) => {
+    try {
+      const order = await axios.post(
+        BASE_URL + "/payment/create",
+        { membershipType: type },
+        { withCredentials: true }
+      );
+
+      const { amount, keyId, currency, orderId, notes } = order.data;
+      const options = {
+        key: keyId,
+        amount: amount,
+        currency: currency,
+        name: "Devs Tinder Site",
+        description: "Connect to other devs",
+        order_id: orderId,
+        prefill: {
+          name: notes.firstName + " " + notes.lastName,
+          email: notes.emailId,
+          contact: "9876543214",
+        },
+        theme: {
+          color: "#F37254",
+        },
+        handler: verifyPremiumUser,
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.open();
+    } catch (error) {
+      console.error("Payment error:", error);
+    }
+  };
+
+  // Extract user details
+  const isPremium = user?.isPremium || false;
+  const membershipType = user?.membershipType || "";
+
+  if (isPremium) {
+    return (
+      <div className="flex flex-col items-center gap-6 p-6">
+        <div className="bg-green-800 border border-green-600 text-white rounded-2xl shadow-lg p-6 w-full sm:w-96 text-center">
+          <FaCrown className="text-yellow-400 text-5xl mx-auto" />
+          <h2 className="text-2xl font-bold mt-4">
+            {membershipType.charAt(0).toUpperCase() + membershipType.slice(1)}{" "}
+            Membership
+          </h2>
+          <p className="mt-2 text-lg">You're a premium user!</p>
+
+          <div className="mt-4 space-y-2 text-left">
+            <p className="flex items-center gap-2">
+              <FaComments className="text-green-400" /> Unlimited Chat
+            </p>
+            <p className="flex items-center gap-2">
+              <FaCheckCircle className="text-blue-500" /> Verified Badge
+            </p>
+            <p className="flex items-center gap-2">
+              <FaUserPlus className="text-green-400" /> Unlimited Connection
+            </p>
+            <p className="flex items-center gap-2">
+              <FaClock className="text-green-400" /> Extended Membership Access
+            </p>
+          </div>
+
+          <h3 className="text-xl font-semibold mt-4">Enjoy Your Benefits!</h3>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col sm:flex-row justify-center items-center gap-6 p-6">
       {/* Silver Membership */}

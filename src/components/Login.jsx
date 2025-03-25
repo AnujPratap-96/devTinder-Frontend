@@ -55,7 +55,7 @@ const Login = () => {
         },
         { withCredentials: true }
       );
-      navigate("/profile");
+      navigate("/feed");
       setIsLogin(true);
     } catch (err) {
       setErrorMessage(err?.response?.data?.message || "Something went wrong!");

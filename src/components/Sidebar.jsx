@@ -1,12 +1,29 @@
 /* eslint-disable react/prop-types */
 import { TbCardsFilled } from "react-icons/tb";
-import { FaUsers, FaUserEdit , FaCrown} from "react-icons/fa";
+import { FaUsers, FaUserEdit, FaCrown } from "react-icons/fa";
 import { MdOutlineNotifications } from "react-icons/md";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { AiOutlineMessage } from "react-icons/ai";
+import { FiLogOut } from "react-icons/fi";
+import { useDispatch } from "react-redux";
+import { removeUser } from "../store/userSlice";
+import axios from "axios";
+import { BASE_URL } from "../utils/constant";
 
 const Sidebar = ({ isSidebarOpen }) => {
   const location = useLocation(); // Get the current route
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      await axios.post(BASE_URL + "/logout", {}, { withCredentials: true });
+      dispatch(removeUser());
+      navigate("/");
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   return (
     <>
@@ -19,12 +36,48 @@ const Sidebar = ({ isSidebarOpen }) => {
         <h2 className="text-2xl font-bold text-center mb-6">Dashboard</h2>
 
         <ul className="space-y-4">
-          <SidebarItem to="/feed" icon={<TbCardsFilled />} text="Explore" currentPath={location.pathname} />
-          <SidebarItem to="/connections" icon={<FaUsers />} text="Connections" currentPath={location.pathname} />
-          <SidebarItem to="/requests" icon={<MdOutlineNotifications />} text="Notifications" currentPath={location.pathname} />
-          <SidebarItem to="/messages" icon={<AiOutlineMessage />} text="Messages" currentPath={location.pathname} />
-          <SidebarItem to="/profile" icon={<FaUserEdit />} text="Profile" currentPath={location.pathname} />
-          <SidebarItem to="/premium" icon={<FaCrown className="text-yellow-500 text-2xl" />} text="Premium" currentPath={location.pathname} />
+          <SidebarItem
+            to="/feed"
+            icon={<TbCardsFilled />}
+            text="Explore"
+            currentPath={location.pathname}
+          />
+          <SidebarItem
+            to="/connections"
+            icon={<FaUsers />}
+            text="Connections"
+            currentPath={location.pathname}
+          />
+          <SidebarItem
+            to="/requests"
+            icon={<MdOutlineNotifications />}
+            text="Notifications"
+            currentPath={location.pathname}
+          />
+          <SidebarItem
+            to="/messages"
+            icon={<AiOutlineMessage />}
+            text="Messages"
+            currentPath={location.pathname}
+          />
+          <SidebarItem
+            to="/profile"
+            icon={<FaUserEdit />}
+            text="Profile"
+            currentPath={location.pathname}
+          />
+          <SidebarItem
+            to="/premium"
+            icon={<FaCrown className="text-yellow-500 text-2xl" />}
+            text="Premium"
+            currentPath={location.pathname}
+          />
+          <button
+            onClick={handleLogout}
+            className={` w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-300 hover:bg-gray-700 hover:text-yellow-300`}
+          >
+            <FiLogOut /> Logout{" "}
+          </button>
         </ul>
       </div>
     </>

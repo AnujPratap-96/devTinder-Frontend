@@ -1,27 +1,8 @@
-import { useEffect } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import axios from "axios";
-import { BASE_URL } from "../utils/constant";
-import { addConnections } from "../store/connectionSlice";
+import useConnectionList from "../hooks/useConnectionList";
 
 const Connections = () => {
-  const dispatch = useDispatch();
-  const connections = useSelector((store) => store.connections);
 
-  const fetchConnections = async () => {
-    try {
-      const res = await axios.get(BASE_URL + "/user/connections", {
-        withCredentials: true,
-      });
-      dispatch(addConnections(res.data.data));
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  useEffect(() => {
-    fetchConnections();
-  }, []);
+  const connections = useConnectionList();
 
   return (
     <div className="w-full flex flex-col items-center p-6 bg-gray-900 min-h-screen text-white">
