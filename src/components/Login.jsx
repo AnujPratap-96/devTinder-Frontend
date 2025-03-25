@@ -107,7 +107,7 @@ const Login = () => {
             type="email"
             placeholder="Email"
             ref={emailRef}
-            defaultValue="sachinpratap@gmail.com"
+            defaultValue=""
             className="p-2 w-full rounded bg-gray-700 mt-3"
           />
           <div className="relative mt-3">
@@ -115,7 +115,7 @@ const Login = () => {
               type={showPassword ? "text" : "password"}
               placeholder="Password"
               ref={passwordRef}
-              defaultValue="Spratap@00"
+              defaultValue=""
               className="p-2 w-full rounded bg-gray-700"
             />
             <button
