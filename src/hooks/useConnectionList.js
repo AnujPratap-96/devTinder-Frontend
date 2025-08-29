@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import axios from "axios";
 import { BASE_URL } from "../utils/constant";
 import { addConnections } from "../store/connectionSlice";
+import { toast } from "react-hot-toast";
 
 const useConnectionList = () => {
   const dispatch = useDispatch();
@@ -16,15 +17,14 @@ const useConnectionList = () => {
       });
       dispatch(addConnections(res.data.data));
     } catch (err) {
-      console.error(err);
+      toast.error(err?.response?.data?.message || "Failed to fetch connections");
     }
   }, [dispatch]);
 
   useEffect(() => {
-    if (!connections || connections.length === 0) {
       fetchConnections();
-    }
-  }, [connections, fetchConnections]);
+  
+  }, []);
 
   return connections;
 };

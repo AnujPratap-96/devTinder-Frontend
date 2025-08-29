@@ -8,6 +8,7 @@ import { addUser } from "../store/userSlice";
 import Navbar from "./Navbar";
 import Sidebar from "./Sidebar";
 import Footer from "./Footer";
+import {toast } from "react-hot-toast";
 
 const Body = () => {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
@@ -27,10 +28,10 @@ const Body = () => {
         navigate("/feed");
       }
     } catch (err) {
+      toast.error(err?.response?.data?.message || "Something went wrong!");
       if (err.status === 401) {
         navigate("/");
       }
-      console.log(err);
     }
   };
 

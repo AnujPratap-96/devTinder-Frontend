@@ -6,12 +6,19 @@ import { useNavigate } from "react-router-dom";
 
 const ImageComponent = ({ src, alt }) => (
   <motion.img
-    className="w-36 h-36 rounded-full shadow-xl border-4 border-blue-400 transition-transform duration-300 hover:shadow-2xl object-contain object-center"
+    className="
+      w-24 h-24 sm:w-28 sm:h-28 md:w-36 md:h-36
+      rounded-full shadow-xl border-4 border-blue-400
+      transition-transform duration-300 hover:shadow-2xl
+      object-cover md:object-contain
+      object-center
+    "
     src={src}
     alt={alt}
     whileHover={{ scale: 1.2, rotate: 5 }}
   />
 );
+
 
 
 const LandingPage = () => {
@@ -50,7 +57,7 @@ const LandingPage = () => {
 
         {/* Image Section */}
         <div className="md:w-1/2 flex justify-center mt-12 md:mt-0">
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-3 gap-4 sm:gap-3">
             {/* Six defined images */}
             <ImageComponent
               src="https://pbs.twimg.com/media/GWs0Mhab0AA8Ocr?format=jpg&name=large"
@@ -72,7 +79,7 @@ const LandingPage = () => {
             />
             {/* Custom image */}
             <ImageComponent
-              src="https://yt3.googleusercontent.com/vLLYSMUqgq8v8lNVFodiBTrvDZJvTPYkDATk0LxPcYQcZVCqHvca499gj2ZkdroX3LfJtWg5=s900-c-k-c0x00ffffff-no-rj"
+              src="https://pbs.twimg.com/profile_images/1828452192107253760/LgHYdkkd_400x400.jpg"
               alt="Shradha Khapra"
             />
           </div>

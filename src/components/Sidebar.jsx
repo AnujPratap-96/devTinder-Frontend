@@ -9,6 +9,7 @@ import { useDispatch } from "react-redux";
 import { removeUser } from "../store/userSlice";
 import axios from "axios";
 import { BASE_URL } from "../utils/constant";
+import toast from "react-hot-toast";
 
 const Sidebar = ({ isSidebarOpen }) => {
   const location = useLocation(); // Get the current route
@@ -21,7 +22,7 @@ const Sidebar = ({ isSidebarOpen }) => {
       dispatch(removeUser());
       navigate("/");
     } catch (err) {
-      console.error(err);
+      toast.error("Error logging out. Please try again later.");
     }
   };
 

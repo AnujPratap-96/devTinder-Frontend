@@ -5,6 +5,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { AiOutlineArrowLeft } from "react-icons/ai"; // Import arrow icon
 import { BASE_URL, createSocketConnection } from "../utils/constant";
 import axios from "axios";
+import { toast } from "react-hot-toast";
 
 const ChatBox = () => {
   const { targetUserId } = useParams();
@@ -75,6 +76,7 @@ const ChatBox = () => {
     setInput("");
 
     socket.emit("sendMessage", { userId, targetUserId, text: input });
+    toast.success("Message sent");
   };
 
   // If there is an error, show the error message instead of the chat box

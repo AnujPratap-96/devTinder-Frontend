@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { addRequests, removeRequest } from "../store/requestsSlice";
 import axios from "axios";
 import { BASE_URL } from "../utils/constant";
+import { toast } from "react-hot-toast";
 
 const Requests = () => {
   const dispatch = useDispatch();
@@ -14,7 +15,7 @@ const Requests = () => {
       const res = await axios.get(BASE_URL + "/user/requests/received", { withCredentials: true });
       dispatch(addRequests(res?.data?.requests));
     } catch (error) {
-      console.error("Error fetching requests:", error);
+     toast.error("Error fetching requests. Please try again later.");
     }
   };
 
@@ -24,20 +25,24 @@ const Requests = () => {
       await axios.post(BASE_URL + "/request/review/" + status + "/" + _id, {}, { withCredentials: true });
       dispatch(removeRequest(_id));
     } catch (error) {
-      console.error("Error updating request status:", error);
+      toast.error( error.message ||"Error updating request status. Please try again later.");
     }
   };
+
 
   useEffect(() => {
     connectionRequest();
   }, []);
+
+
 
   return (
     <div className="flex flex-col gap-8 p-6 items-center bg-gray-900 min-h-screen text-white">
       <h1 className="text-3xl font-extrabold mb-8 text-center">Pending Connection Requests</h1>
       {requests?.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full max-w-6xl">
-          {requests.map((request) => {
+          {requests?.map((request) => {
+            if (!request.fromUserId) return null; // Skip if fromUserId is not populated
             const { firstName, lastName, photoUrl, age, gender, about, skills } = request.fromUserId;
             return (
               <div
@@ -48,7 +53,7 @@ const Requests = () => {
                 <img
                   alt="Profile"
                   className="w-24 h-24 rounded-full border-4 border-blue-500 shadow-lg object-cover mb-3"
-                  src={photoUrl || "https://via.placeholder.com/150"}
+                  src={photoUrl[0] || "https://via.placeholder.com/150"}
                 />
 
                 {/* User Info */}

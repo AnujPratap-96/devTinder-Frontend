@@ -11,6 +11,7 @@ import { useEffect } from "react";
 import { BASE_URL } from "../utils/constant";
 import { useSelector, useDispatch } from "react-redux";
 import { addUser } from "../store/userSlice";
+import { toast } from "react-hot-toast";
 
 const MembershipCards = () => {
   const user = useSelector((store) => store.user);
@@ -29,7 +30,7 @@ const MembershipCards = () => {
         dispatch(addUser(res.data.user));
       }
     } catch (error) {
-      console.error("Error verifying premium status:", error);
+      toast.error("Error verifying premium status. Please try again later.");
     }
   };
 

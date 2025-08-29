@@ -12,6 +12,10 @@ import Requests from "./components/Requests";
 import Premium from "./components/Premium";
 import ChatBox from "./components/ChatBox";
 import Messages from "./components/Messages";
+import Register from "./components/Register";
+import Signup from "./components/Signup";
+import OtpVerify from "./components/Otp";
+import { Toaster } from "react-hot-toast";
 
 const App = () => {
   return (
@@ -20,9 +24,14 @@ const App = () => {
         <Routes>
           {/* Routes WITHOUT sidebar */}
           <Route path="/" element={<LandingPage />} >
-          <Route path="/" element= {<Home/>} />
+          <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/verify-otp" element={<OtpVerify />} />
+          <Route path= "/complete-signup" element={<Signup />} />
           </Route>
+
+
 
           {/* Routes WITH sidebar wrapped inside Body */}
           <Route element={<Body />}>
@@ -30,11 +39,12 @@ const App = () => {
             <Route path="/profile" element={<Profile />} />
             <Route path="/connections" element={<Connections />} />
             <Route path="/requests" element={<Requests />} />
-            <Route path="/premium" element={<Premium/>} />
-            <Route path="/messages" element={<Messages/>}/>
-            <Route path="/chat/:targetUserId" element={<ChatBox/>}/>
+            <Route path="/premium" element={<Premium />} />
+            <Route path="/messages" element={<Messages />} />
+            <Route path="/chat/:targetUserId" element={<ChatBox />} />
           </Route>
         </Routes>
+                <Toaster position="top-right" reverseOrder={false} />
       </BrowserRouter>
     </Provider>
   );

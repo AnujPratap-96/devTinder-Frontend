@@ -2,7 +2,9 @@ import { Outlet } from "react-router-dom";
 import Navbar from "./Navbar";
 import Footer from "./Footer";
 
+
 const Layout = () => {
+
   return (
     <div className="flex flex-col w-full min-h-screen bg-gray-900">
       {/* Navbar at the top */}

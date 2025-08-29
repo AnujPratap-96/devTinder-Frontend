@@ -1,167 +1,174 @@
-/* eslint-disable no-unused-vars */
 /* eslint-disable react/prop-types */
-import { motion } from "framer-motion";
-import { useState } from "react";
+import { motion, useMotionValue, useTransform } from "framer-motion";
+import { useState, useEffect } from "react";
 import { BASE_URL } from "../utils/constant";
 import axios from "axios";
 import { removeUserFromFeed } from "../store/feedSlice";
 import { useDispatch } from "react-redux";
-import { useEffect } from "react";
+import { toast } from "react-hot-toast";
 
 const SwipeCard = ({ user }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [swipe, setSwipe] = useState("center");
   const dispatch = useDispatch();
+
   const { _id, firstName, lastName, about, photoUrl, age, gender, skills } =
     user || {};
-  const truncatedSkills = user.skills ? user.skills.slice(0, 3) : [];
-  const [swipe, setSwipe] = useState(null);
+  const truncatedSkills = user?.skills ? user.skills.slice(0, 3) : [];
 
+  // Motion values
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+
+  // Tilt effect
+  const rotate = useTransform(x, [-200, 200], [-15, 15]);
+
+  // Auto image slideshow
   useEffect(() => {
-    if (photoUrl.length > 1) {
+    if (photoUrl?.length > 1) {
       const interval = setInterval(() => {
         setCurrentIndex((prev) => (prev + 1) % photoUrl.length);
-      }, 3000);
+      }, 4000);
       return () => clearInterval(interval);
     }
-  }, [photoUrl.length]);
+  }, [photoUrl?.length]);
 
-  const sendConnectionRequest = async (status, userId) => {
+  // Send request + animate out
+  const sendConnectionRequest = async (status, userId, direction) => {
     try {
-      const res = await axios.post(
-        BASE_URL + "/request/send/" + status + "/" + userId,
+      await axios.post(
+        `${BASE_URL}/request/send/${status}/${userId}`,
         {},
         { withCredentials: true }
       );
-      dispatch(removeUserFromFeed(userId));
+
+      setSwipe(direction);
+      toast.success(`Marked as ${status}`);
+
+      setTimeout(() => {
+        dispatch(removeUserFromFeed(userId));
+      }, 350);
     } catch (err) {
-      console.error(err);
+      toast.error("Error sending connection request");
+      setSwipe("center");
     }
   };
 
-  const swipeVariants = {
-    left: { x: -300, opacity: 0, rotate: -15, scale: 0.9 },
-    right: { x: 300, opacity: 0, rotate: 15, scale: 0.9 },
-    center: { x: 0, opacity: 1, rotate: 0, scale: 1 },
-  };
-
+  // Handle drag release
   const handleDragEnd = (_, info) => {
-    if (info.offset.x > 100) {
-      setSwipe("right");
-      sendConnectionRequest("interested", _id);
-    } else if (info.offset.x < -100) {
-      setSwipe("left");
-      sendConnectionRequest("ignored", _id);
+    if (info.offset.x > 120) {
+      sendConnectionRequest("interested", _id, "right");
+    } else if (info.offset.x < -120) {
+      sendConnectionRequest("ignored", _id, "left");
     } else {
       setSwipe("center");
     }
   };
 
+  // Swipe animations
+  const swipeVariants = {
+    center: { x: 0, y: 0, opacity: 1, scale: 1, rotate: 0 },
+    right: { x: 100, y: 50, opacity: 0, rotate: 25, scale: 0.95 },
+    left: { x: -100, y: 50, opacity: 0, rotate: -25, scale: 0.95 },
+  };
+
   return user ? (
-    <div className="flex justify-center  bg-gray-900 ">
+    <div className="relative flex justify-center items-center bg-gray-900 py-6 overflow-hidden w-full">
+      {/* Card */}
       <motion.div
-        className="relative w-80 h-[75vh] rounded-2xl overflow-hidden shadow-lg cursor-grab bg-gray-800 border border-transparent transition-all"
-        drag="x"
-        dragConstraints={{ left: 0, right: 0 }}
+        className="relative w-80 h-[75vh] rounded-3xl overflow-hidden shadow-2xl cursor-grab bg-gray-800"
+        drag
+        style={{ x, y, rotate }}
+        dragElastic={0.4}
+        dragMomentum={true}
         onDragEnd={handleDragEnd}
         variants={swipeVariants}
-        animate={swipe || "center"}
-        transition={{ type: "spring", stiffness: 260, damping: 25 }}
-        whileHover={{
-          scale: 1.05,
-          boxShadow: "0px 0px 20px rgba(0, 255, 255, 0.5)",
-        }} // 🟢 Hover Effect
+        animate={swipe}
+        transition={{ type: "tween", duration: 0.2, ease: "easeIn" }}
       >
-        {/* 🔥 Neon Border Animation */}
-        <div className="absolute inset-0 rounded-2xl border-2 border-transparent animate-glow"></div>
-
-        {/* Background Image Slider */}
-        <div className="absolute top-0 left-0 w-full h-full overflow-hidden">
-          {photoUrl.map((img, index) => (
+        {/* Image slider */}
+        <div className="absolute inset-0">
+          {photoUrl?.map((img, index) => (
             <img
               key={index}
-              src={img || "https://via.placeholder.com/150"}
-              alt="User background"
-              className={`absolute top-0 left-0 w-full h-full object-cover transition-opacity duration-1000 ${
+              src={
+                img ||
+                "https://i.pinimg.com/474x/18/b9/ff/18b9ffb2a8a791d50213a9d595c4dd52.jpg"
+              }
+              alt="User"
+              className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${
                 index === currentIndex ? "opacity-100" : "opacity-0"
               }`}
             />
           ))}
         </div>
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-gray-900/40 to-gray-900/80"></div>
 
-        {/* 📌 User Info Container - Moved to Bottom */}
-        <div className="absolute bottom-1 left-0 right-0 p-5 bg-gray-900/80 backdrop-blur-md rounded-2xl shadow-md ml-1 mr-1">
-          {/* 🏷️ Name with Gradient */}
-          <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400">
-            {firstName} {lastName}
+        {/* Dark gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/30 to-black/80"></div>
+
+        {/* Slider dots */}
+        {photoUrl?.length > 1 && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 flex space-x-1">
+            {photoUrl.map((_, idx) => (
+              <span
+                key={idx}
+                className={`w-2.5 h-2.5 rounded-full transition-all ${
+                  idx === currentIndex ? "bg-white" : "bg-white/40"
+                }`}
+              ></span>
+            ))}
+          </div>
+        )}
+
+        {/* User info */}
+        <div className="absolute bottom-0 p-5 w-full bg-gradient-to-t from-black/70 via-black/50 to-transparent">
+          <h2 className="text-2xl font-bold text-cyan-300 drop-shadow-md">
+            {firstName} {lastName},{" "}
+            <span className="font-medium text-pink-400">{age}</span>
           </h2>
-
-          {/* 📋 Additional Details */}
-          <p className="text-gray-300 text-sm flex items-center gap-2">
-            🎂 <span className="font-medium">{age} years old</span>
-            📌{" "}
-            <span className="font-medium ">
-              {gender == "male" ? "🧔‍♂️ male" : "🙍‍♀️ female"}
-            </span>
+          <p className="text-purple-300 text-sm mt-1">
+            {gender === "male" ? "🧔 Male" : "🙍 Female"}
           </p>
-
-          <p className="text-gray-300 text-sm flex items-start gap-2 line-clamp-2">
-            👩‍💻 <span className="italic">{about}</span>
+          <p className="text-gray-300 text-sm italic line-clamp-2 mt-2">
+            {about}
           </p>
-          {skills && (
-            <p className="text-gray-300 text-sm">
-              🚀 Skills: {truncatedSkills.join(", ")}
-            </p>
+          {skills?.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {truncatedSkills.map((skill, idx) => (
+                <span
+                  key={idx}
+                  className="px-2 py-1 bg-cyan-500/20 text-cyan-300 text-xs rounded-full"
+                >
+                  {skill}
+                </span>
+              ))}
+            </div>
           )}
         </div>
-
-        {/* ✅ Like & ❌ Nope Effects */}
-        {swipe === "right" && (
-          <motion.div
-            className="absolute top-8 right-8 text-green-400 text-6xl font-bold animate-wiggle drop-shadow-lg"
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ type: "spring", stiffness: 300 }}
-          >
-            💚 LIKE!
-          </motion.div>
-        )}
-        {swipe === "left" && (
-          <motion.div
-            className="absolute top-8 left-8 text-red-400 text-6xl font-bold animate-wiggle drop-shadow-lg"
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ type: "spring", stiffness: 300 }}
-          >
-            ❌ NOPE!
-          </motion.div>
-        )}
       </motion.div>
 
-      {/* 🔥 CSS Animations */}
-      <style>
-        {`
-          @keyframes glow {
-            0% { border-color: rgba(0, 255, 255, 0.5); }
-            50% { border-color: rgba(255, 0, 255, 0.5); }
-            100% { border-color: rgba(0, 255, 255, 0.5); }
-          }
+      {/* LIKE / NOPE badges stay centered */}
+      {swipe === "right" && (
+        <motion.div
+          className="absolute text-green-400 font-extrabold text-5xl drop-shadow-lg"
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.2 }}
+        >
+          LIKE
+        </motion.div>
+      )}
 
-          .animate-glow {
-            animation: glow 3s infinite alternate ease-in-out;
-          }
-
-          @keyframes wiggle {
-            0%, 100% { transform: rotate(0deg); }
-            25% { transform: rotate(-5deg); }
-            75% { transform: rotate(5deg); }
-          }
-
-          .animate-wiggle {
-            animation: wiggle 0.5s ease-in-out infinite;
-          }
-        `}
-      </style>
+      {swipe === "left" && (
+        <motion.div
+          className="absolute text-red-400 font-extrabold text-5xl drop-shadow-lg"
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.2 }}
+        >
+          NOPE
+        </motion.div>
+      )}
     </div>
   ) : (
     <div className="text-center text-cyan-400 text-lg">

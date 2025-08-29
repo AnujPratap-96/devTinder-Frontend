@@ -22,7 +22,7 @@ const Connections = () => {
                 <img
                   alt="profile"
                   className="w-20 h-20 rounded-full border-4 border-blue-500 shadow-md object-cover mb-3"
-                  src={photoUrl || "https://via.placeholder.com/150"}
+                  src={photoUrl[0] || "https://via.placeholder.com/150"}
                 />
 
                 {/* Name */}
