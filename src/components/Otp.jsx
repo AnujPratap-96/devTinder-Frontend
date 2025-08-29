@@ -2,8 +2,10 @@ import { useRef, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { BASE_URL } from "../utils/constant";
-import { toast } from "react-hot-toast";
+
+import { useToast } from "../context/ToastProvider";
 const OtpVerify = () => {
+  const {addToast} = useToast();
   const navigate = useNavigate();
   const otpRefs = useRef([]); // single ref storing all input elements
 
@@ -58,11 +60,12 @@ const OtpVerify = () => {
       );
 
       if (res.status === 200) {
-        toast.success(" OTP verified successfully! ✅");
+        addToast(" OTP verified successfully! ✅" , "success")
+       
         navigate("/complete-signup");
       }
     } catch (err) {
-      toast.error(err?.response?.data?.error || "❌ Invalid OTP");
+      addToast(err?.response?.data?.error || "❌ Invalid OTP", "error");
       console.error(err);
     }
   };

@@ -6,9 +6,11 @@ import { addUser } from "../store/userSlice";
 import { BASE_URL } from "../utils/constant";
 import { motion } from "framer-motion";
 import { FaCheckCircle } from "react-icons/fa";
-import { toast } from "react-hot-toast";
+import { useToast } from "../context/ToastProvider";
+
 
 const EditProfile = ({ user }) => {
+  const {addToast} = useToast();
   const firstNameRef = useRef(user.firstName);
   const lastNameRef = useRef(user.lastName);
   const ageRef = useRef(user.age || "");
@@ -41,9 +43,9 @@ const EditProfile = ({ user }) => {
       });
 
       dispatch(addUser(res?.data?.user));
-      toast.success("Profile updated successfully! ✅");
+      addToast("Profile Updated Successfully" , "success")
     } catch (err) {
-      toast.error(err.response?.data?.message || "Something went wrong!");
+      addToast(err.data.message || "Something went wrong" , "error")
     }
   };
 
@@ -68,7 +70,7 @@ const EditProfile = ({ user }) => {
       if (res.status === 200 && res.data.secure_url) {
         photoUrlRef.current[selectedIndex] = res.data.secure_url;
         dispatch(addUser({ ...user, photoUrl: photoUrlRef.current }));
-        toast.success("Image uploaded ✅");
+       addToast("Image Uploaded" , "success")
 
         // Close modal only after success
         setOpenModal(false);
@@ -76,7 +78,8 @@ const EditProfile = ({ user }) => {
         setSelectedIndex(null);
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || "Image upload failed ❌");
+      addToast(err.response?.data?.message ||"Image upload failed ❌" , "error" )
+     
     } finally {
       setLoading(false);
     }

@@ -2,11 +2,11 @@ import { useRef } from "react";
 import axios from "axios";
 import { BASE_URL } from "../utils/constant";
 import { useNavigate } from "react-router-dom";
-import { toast } from "react-hot-toast";
 
+import { useToast } from "../context/ToastProvider";
 const Signup = () => {
   const emailRef = useRef();
- 
+ const {addToast} = useToast();
   const navigate = useNavigate();
 
   const handleSendOtp = async (e) => {
@@ -19,14 +19,15 @@ const Signup = () => {
         },
         { withCredentials: true }
       );
-      toast.success("OTP sent successfully!");
+      addToast("OTP sent successfully!" , "success")
+     
       localStorage.setItem("signup_token", res.data.token);
       navigate("/verify-otp");
    
-      console.log(res.data);
+      
     } catch (err) {
-      toast.error(err?.response?.data?.message || "Failed to send OTP");
-      console.error(err);
+      addToast(err?.response?.data?.message || "Failed to send OTP" , "error")
+   
     }
   };
 

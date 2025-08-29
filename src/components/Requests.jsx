@@ -3,19 +3,20 @@ import { useDispatch, useSelector } from "react-redux";
 import { addRequests, removeRequest } from "../store/requestsSlice";
 import axios from "axios";
 import { BASE_URL } from "../utils/constant";
-import { toast } from "react-hot-toast";
+import { useToast } from "../context/ToastProvider";
 
 const Requests = () => {
   const dispatch = useDispatch();
   const requests = useSelector((store) => store.requests);
-
+const {addToast} = useToast();
   // Fetch connection requests
   const connectionRequest = async () => {
     try {
       const res = await axios.get(BASE_URL + "/user/requests/received", { withCredentials: true });
       dispatch(addRequests(res?.data?.requests));
     } catch (error) {
-     toast.error("Error fetching requests. Please try again later.");
+      addToast(error?.response?.data?.message || "Error fetching requests. Please try again later.")
+
     }
   };
 
@@ -25,7 +26,8 @@ const Requests = () => {
       await axios.post(BASE_URL + "/request/review/" + status + "/" + _id, {}, { withCredentials: true });
       dispatch(removeRequest(_id));
     } catch (error) {
-      toast.error( error.message ||"Error updating request status. Please try again later.");
+      addToast(error?.response?.data?.message ||"Error updating request status. Please try again later." , "error")
+
     }
   };
 

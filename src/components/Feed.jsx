@@ -4,9 +4,11 @@ import { useDispatch, useSelector } from "react-redux";
 import { useEffect } from "react";
 import { addFeed } from "../store/feedSlice";
 import UserCard from "./UserCard";
-import {toast } from "react-hot-toast";
+
+import { useToast } from "../context/ToastProvider";
 
 const Feed = () => {
+  const {addToast} = useToast();
   const dispatch = useDispatch();
   const feed = useSelector((store) => store.feed);
 
@@ -16,7 +18,7 @@ const Feed = () => {
       const res = await axios.get(BASE_URL + "/user/feed", { withCredentials: true });
       dispatch(addFeed(res?.data?.users || [])); // Ensure data is valid
     } catch (err) {
-      toast.error( err.message ||"Error fetching feed. Please try again later.");
+      addToast(err.message || "Error fetching feed. Please try again later.", "error");
     }
   };
 

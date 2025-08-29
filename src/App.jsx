@@ -15,11 +15,12 @@ import Messages from "./components/Messages";
 import Register from "./components/Register";
 import Signup from "./components/Signup";
 import OtpVerify from "./components/Otp";
-import { Toaster } from "react-hot-toast";
+import {ToastProvider} from "./context/ToastProvider"
 
 const App = () => {
   return (
     <Provider store={appStore}>
+      <ToastProvider>
       <BrowserRouter>
         <Routes>
           {/* Routes WITHOUT sidebar */}
@@ -44,8 +45,9 @@ const App = () => {
             <Route path="/chat/:targetUserId" element={<ChatBox />} />
           </Route>
         </Routes>
-                <Toaster position="top-right" reverseOrder={false} />
+              
       </BrowserRouter>
+      </ToastProvider>
     </Provider>
   );
 };

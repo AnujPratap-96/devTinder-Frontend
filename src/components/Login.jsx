@@ -4,9 +4,11 @@ import { useDispatch } from "react-redux";
 import { addUser } from "../store/userSlice";
 import { useNavigate } from "react-router-dom";
 import { BASE_URL } from "../utils/constant";
-import { toast } from "react-hot-toast";
+
+import { useToast } from "../context/ToastProvider";
 
 const Login = () => {
+  const {addToast} = useToast();
   const [showPassword, setShowPassword] = useState(false);
 
 
@@ -29,10 +31,11 @@ const Login = () => {
         { withCredentials: true }
       );
       dispatch(addUser(res.data.user));
-      toast.success("Login successful!");
+      addToast("Login successful!" , "success")
+      
       navigate("/feed");
     } catch (err) {
-      toast.error(err?.response?.data?.ERROR || "Something went wrong!");
+      addToast(err?.response?.data?.ERROR || "Something went wrong!", "error");
     }
   };
 
@@ -79,7 +82,7 @@ const Login = () => {
 
           {/* Redirect to signup */}
           <p className="mt-4 text-center text-gray-400">
-            Don't have an account?{" "}
+            Don&apos;t have an account?{" "}
             <span
               onClick={() => navigate("/register")}
               className="text-blue-400 cursor-pointer"

@@ -3,13 +3,14 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { BASE_URL } from "../utils/constant";
 import { useEffect } from "react";
-import { toast } from "react-hot-toast";
+import { useToast } from "../context/ToastProvider";
+
 
 
 const Signup = () => {
   const [showPassword, setShowPassword] = useState(false);
   
-  
+  const {addToast} = useToast();
 
   const navigate = useNavigate();
 
@@ -41,14 +42,16 @@ const Signup = () => {
         { withCredentials: true }
       );
       if(res.status === 200){
-        toast.success("Signup successful!");
+        addToast("Signup successful!" , "success")
+        
         localStorage.removeItem("signup_token");
 
         navigate("/login");
       }
     } catch (err) {
-      toast.error(err?.response?.data?.message || "Something went wrong!");
-      console.error(err);
+      addToast(err?.response?.data?.message || "Something went wrong!", "error")
+   
+      
     }
   };
 

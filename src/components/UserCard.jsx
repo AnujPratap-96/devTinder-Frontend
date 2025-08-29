@@ -5,9 +5,11 @@ import { BASE_URL } from "../utils/constant";
 import axios from "axios";
 import { removeUserFromFeed } from "../store/feedSlice";
 import { useDispatch } from "react-redux";
-import { toast } from "react-hot-toast";
+import { useToast } from "../context/ToastProvider";
+
 
 const SwipeCard = ({ user }) => {
+  const {addToast} = useToast();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [swipe, setSwipe] = useState("center");
   const dispatch = useDispatch();
@@ -43,13 +45,14 @@ const SwipeCard = ({ user }) => {
       );
 
       setSwipe(direction);
-      toast.success(`Marked as ${status}`);
+      addToast(`Marked as ${status}` , "success")
+      
 
       setTimeout(() => {
         dispatch(removeUserFromFeed(userId));
       }, 350);
     } catch (err) {
-      toast.error("Error sending connection request");
+      addToast(err.response.data.message || "Something went wrong")
       setSwipe("center");
     }
   };

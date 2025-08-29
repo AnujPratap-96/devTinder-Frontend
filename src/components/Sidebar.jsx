@@ -9,9 +9,10 @@ import { useDispatch } from "react-redux";
 import { removeUser } from "../store/userSlice";
 import axios from "axios";
 import { BASE_URL } from "../utils/constant";
-import toast from "react-hot-toast";
+import { useToast } from "../context/ToastProvider";
 
 const Sidebar = ({ isSidebarOpen }) => {
+  const {addToast} = useToast();
   const location = useLocation(); // Get the current route
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -20,9 +21,10 @@ const Sidebar = ({ isSidebarOpen }) => {
     try {
       await axios.post(BASE_URL + "/logout", {}, { withCredentials: true });
       dispatch(removeUser());
+      addToast("Logiut Successfully" , "success")
       navigate("/");
     } catch (err) {
-      toast.error("Error logging out. Please try again later.");
+      addToast( err?.response?.data?.message ||"Error logging out. Please try again later.", "error")
     }
   };
 

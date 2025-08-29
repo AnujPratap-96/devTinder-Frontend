@@ -8,14 +8,14 @@ import { addUser } from "../store/userSlice";
 import Navbar from "./Navbar";
 import Sidebar from "./Sidebar";
 import Footer from "./Footer";
-import {toast } from "react-hot-toast";
+import { useToast } from "../context/ToastProvider"; 
 
 const Body = () => {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const user = useSelector((store) => store.user);
-  
+  const { addToast } = useToast();
 
   const findUser = async () => {
     if (user) return;
@@ -28,7 +28,7 @@ const Body = () => {
         navigate("/feed");
       }
     } catch (err) {
-      toast.error(err?.response?.data?.message || "Something went wrong!");
+      addToast(err?.response?.data?.message || "Something went wrong!", "error");
       if (err.status === 401) {
         navigate("/");
       }

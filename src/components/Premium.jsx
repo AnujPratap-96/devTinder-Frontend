@@ -11,9 +11,11 @@ import { useEffect } from "react";
 import { BASE_URL } from "../utils/constant";
 import { useSelector, useDispatch } from "react-redux";
 import { addUser } from "../store/userSlice";
-import { toast } from "react-hot-toast";
+import { useToast } from "../context/ToastProvider";
+
 
 const MembershipCards = () => {
+  const {addToast} = useToast();
   const user = useSelector((store) => store.user);
   const dispatch = useDispatch();
 
@@ -30,7 +32,7 @@ const MembershipCards = () => {
         dispatch(addUser(res.data.user));
       }
     } catch (error) {
-      toast.error("Error verifying premium status. Please try again later.");
+      addToast( error.response.data.message || "Error verifying premium status. Please try again later.", "error");
     }
   };
 
