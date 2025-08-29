@@ -3,9 +3,10 @@ import { useDispatch, useSelector } from "react-redux";
 import axios from "axios";
 import { BASE_URL } from "../utils/constant";
 import { addConnections } from "../store/connectionSlice";
-import { toast } from "react-hot-toast";
+import {useToast} from '../context/ToastProvider';
 
 const useConnectionList = () => {
+  const {addToast} = useToast();
   const dispatch = useDispatch();
   const connections = useSelector((store) => store.connections);
 
@@ -17,7 +18,7 @@ const useConnectionList = () => {
       });
       dispatch(addConnections(res.data.data));
     } catch (err) {
-      toast.error(err?.response?.data?.message || "Failed to fetch connections");
+      addToast(err?.response?.data?.message || "Failed to fetch connections", "error");
     }
   }, [dispatch]);
 
