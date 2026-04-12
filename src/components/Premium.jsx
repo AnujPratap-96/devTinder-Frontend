@@ -1,21 +1,16 @@
 /* eslint-disable react/no-unescaped-entities */
 import axios from "axios";
-import {
-  FaCrown,
-  FaComments,
-  FaCheckCircle,
-  FaClock,
-  FaUserPlus,
-} from "react-icons/fa";
+import { FaCrown, FaComments, FaCheckCircle, FaClock, FaUserPlus } from "react-icons/fa";
 import { useEffect } from "react";
 import { BASE_URL } from "../utils/constant";
 import { useSelector, useDispatch } from "react-redux";
 import { addUser } from "../store/userSlice";
 import { useToast } from "../context/ToastProvider";
-
+import { motion } from "framer-motion";
+import { HiSparkles } from "react-icons/hi";
 
 const MembershipCards = () => {
-  const {addToast} = useToast();
+  const { addToast } = useToast();
   const user = useSelector((store) => store.user);
   const dispatch = useDispatch();
 
@@ -25,14 +20,12 @@ const MembershipCards = () => {
 
   const verifyPremiumUser = async () => {
     try {
-      const res = await axios.get(BASE_URL + "/premium/verify", {
-        withCredentials: true,
-      });
+      const res = await axios.get(BASE_URL + "/premium/verify", { withCredentials: true });
       if (res.data.isPremium) {
         dispatch(addUser(res.data.user));
       }
     } catch (error) {
-      addToast( error.response.data.message || "Error verifying premium status. Please try again later.", "error");
+      addToast(error.response?.data?.message || "Error verifying premium status.", "error");
     }
   };
 
@@ -43,12 +36,11 @@ const MembershipCards = () => {
         { membershipType: type },
         { withCredentials: true }
       );
-
       const { amount, keyId, currency, orderId, notes } = order.data;
       const options = {
         key: keyId,
-        amount: amount,
-        currency: currency,
+        amount,
+        currency,
         name: "Devs Tinder Site",
         description: "Connect to other devs",
         order_id: orderId,
@@ -57,12 +49,9 @@ const MembershipCards = () => {
           email: notes.emailId,
           contact: "9876543214",
         },
-        theme: {
-          color: "#F37254",
-        },
+        theme: { color: "#6366f1" },
         handler: verifyPremiumUser,
       };
-
       const rzp = new window.Razorpay(options);
       rzp.open();
     } catch (error) {
@@ -70,101 +59,170 @@ const MembershipCards = () => {
     }
   };
 
-  // Extract user details
   const isPremium = user?.isPremium || false;
   const membershipType = user?.membershipType || "";
 
   if (isPremium) {
     return (
-      <div className="flex flex-col items-center gap-6 p-6">
-        <div className="bg-green-800 border border-green-600 text-white rounded-2xl shadow-lg p-6 w-full sm:w-96 text-center">
-          <FaCrown className="text-yellow-400 text-5xl mx-auto" />
-          <h2 className="text-2xl font-bold mt-4">
-            {membershipType.charAt(0).toUpperCase() + membershipType.slice(1)}{" "}
-            Membership
-          </h2>
-          <p className="mt-2 text-lg">You're a premium user!</p>
-
-          <div className="mt-4 space-y-2 text-left">
-            <p className="flex items-center gap-2">
-              <FaComments className="text-green-400" /> Unlimited Chat
-            </p>
-            <p className="flex items-center gap-2">
-              <FaCheckCircle className="text-blue-500" /> Verified Badge
-            </p>
-            <p className="flex items-center gap-2">
-              <FaUserPlus className="text-green-400" /> Unlimited Connection
-            </p>
-            <p className="flex items-center gap-2">
-              <FaClock className="text-green-400" /> Extended Membership Access
-            </p>
-          </div>
-
-          <h3 className="text-xl font-semibold mt-4">Enjoy Your Benefits!</h3>
+      <div className="w-full">
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold mb-1" style={{ color: "#e0e7ff" }}>Premium</h1>
+          <p className="text-sm" style={{ color: "#475569" }}>Your active membership</p>
         </div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="max-w-md p-8 rounded-2xl text-center"
+          style={{
+            background: "linear-gradient(135deg, rgba(245,158,11,0.1), rgba(234,179,8,0.05))",
+            border: "1px solid rgba(245,158,11,0.25)",
+            boxShadow: "0 8px 30px rgba(245,158,11,0.1)",
+          }}
+        >
+          <div
+            className="w-20 h-20 rounded-2xl flex items-center justify-center text-4xl mx-auto mb-5"
+            style={{ background: "rgba(245,158,11,0.15)", border: "1px solid rgba(245,158,11,0.3)" }}
+          >
+            <FaCrown style={{ color: "#fbbf24" }} />
+          </div>
+          <div className="premium-badge mx-auto mb-3">
+            <HiSparkles /> Active Member
+          </div>
+          <h2 className="text-2xl font-bold mt-2" style={{ color: "#fbbf24" }}>
+            {membershipType.charAt(0).toUpperCase() + membershipType.slice(1)} Membership
+          </h2>
+          <p className="mt-1 text-sm" style={{ color: "#94a3b8" }}>You're enjoying premium benefits!</p>
+
+          <div className="mt-6 space-y-3 text-left">
+            {[
+              { icon: <FaComments style={{ color: "#34d399" }} />, text: "Unlimited Chat with Connections" },
+              { icon: <FaCheckCircle style={{ color: "#60a5fa" }} />, text: "Verified Blue Badge on Profile" },
+              { icon: <FaUserPlus style={{ color: "#a78bfa" }} />, text: "Unlimited Connection Requests" },
+              { icon: <FaClock style={{ color: "#fbbf24" }} />, text: "Extended Membership Access" },
+            ].map(({ icon, text }, i) => (
+              <div key={i} className="flex items-center gap-3 p-3 rounded-xl" style={{ background: "rgba(255,255,255,0.04)" }}>
+                <span className="text-lg">{icon}</span>
+                <span className="text-sm font-medium" style={{ color: "#c7d2fe" }}>{text}</span>
+              </div>
+            ))}
+          </div>
+        </motion.div>
       </div>
     );
   }
 
+  const plans = [
+    {
+      type: "silver",
+      label: "Silver",
+      price: "₹33",
+      period: "/month",
+      icon: <FaCrown className="text-4xl" style={{ color: "#94a3b8" }} />,
+      tagColor: { bg: "rgba(148,163,184,0.1)", border: "rgba(148,163,184,0.2)", text: "#94a3b8" },
+      cardBg: "rgba(17,24,39,0.8)",
+      cardBorder: "rgba(148,163,184,0.15)",
+      btnBg: "rgba(148,163,184,0.15)",
+      btnBorder: "rgba(148,163,184,0.3)",
+      btnColor: "#94a3b8",
+      features: [
+        { icon: <FaComments style={{ color: "#94a3b8" }} />, text: "Chat with connections" },
+        { icon: <FaCheckCircle style={{ color: "#60a5fa" }} />, text: "Verified Blue Badge" },
+        { icon: <FaClock style={{ color: "#94a3b8" }} />, text: "3 months access" },
+        { icon: <FaUserPlus style={{ color: "#94a3b8" }} />, text: "100 requests/day" },
+      ],
+    },
+    {
+      type: "gold",
+      label: "Gold",
+      price: "₹50",
+      period: "/month",
+      popular: true,
+      icon: <FaCrown className="text-4xl" style={{ color: "#f59e0b" }} />,
+      tagColor: { bg: "rgba(245,158,11,0.1)", border: "rgba(245,158,11,0.2)", text: "#fbbf24" },
+      cardBg: "rgba(17,24,39,0.9)",
+      cardBorder: "rgba(245,158,11,0.25)",
+      btnBg: "linear-gradient(135deg, #f59e0b, #d97706)",
+      btnColor: "white",
+      features: [
+        { icon: <FaComments style={{ color: "#fbbf24" }} />, text: "Unlimited chat" },
+        { icon: <FaCheckCircle style={{ color: "#60a5fa" }} />, text: "Verified Blue Badge" },
+        { icon: <FaClock style={{ color: "#fbbf24" }} />, text: "6 months access" },
+        { icon: <FaUserPlus style={{ color: "#fbbf24" }} />, text: "500 requests/day" },
+      ],
+    },
+  ];
+
   return (
-    <div className="flex flex-col sm:flex-row justify-center items-center gap-6 p-6">
-      {/* Silver Membership */}
-      <div className="bg-gray-800 border border-gray-600 text-white rounded-2xl shadow-lg p-6 w-full sm:w-80 text-center hover:shadow-2xl hover:scale-105 transition-transform duration-300 hover:border-gray-500">
-        <FaCrown className="text-gray-400 text-5xl mx-auto" />
-        <h2 className="text-2xl font-bold mt-4">Silver Membership</h2>
-
-        <div className="mt-4 space-y-2 text-left">
-          <p className="flex items-center gap-2">
-            <FaComments className="text-gray-400" /> Chat with people
-          </p>
-          <p className="flex items-center gap-2">
-            <FaCheckCircle className="text-blue-500" /> Blue Tick
-          </p>
-          <p className="flex items-center gap-2">
-            <FaClock className="text-gray-400" /> 3 Months
-          </p>
-          <p className="flex items-center gap-2">
-            <FaUserPlus className="text-gray-400" /> 100 Connection Requests/day
-          </p>
-        </div>
-
-        <h3 className="text-xl font-semibold mt-4">₹33/month</h3>
-        <button
-          className="mt-4 px-5 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-500 transition"
-          onClick={() => handleBuyClick("silver")}
-        >
-          Get Silver
-        </button>
+    <div className="w-full">
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold mb-1" style={{ color: "#e0e7ff" }}>Upgrade to Premium</h1>
+        <p className="text-sm" style={{ color: "#475569" }}>Unlock the full DevTinder experience</p>
       </div>
 
-      {/* Gold Membership */}
-      <div className="bg-yellow-900 border border-yellow-700 text-white rounded-2xl shadow-lg p-6 w-full sm:w-80 text-center hover:shadow-2xl hover:scale-105 transition-transform duration-300 hover:border-yellow-500">
-        <FaCrown className="text-yellow-500 text-5xl mx-auto" />
-        <h2 className="text-2xl font-bold mt-4">Gold Membership</h2>
+      <div className="flex flex-col sm:flex-row gap-5 max-w-2xl">
+        {plans.map((plan, i) => (
+          <motion.div
+            key={plan.type}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: i * 0.1 }}
+            whileHover={{ y: -5 }}
+            className="flex-1 p-6 rounded-2xl relative"
+            style={{
+              background: plan.cardBg,
+              border: `1px solid ${plan.cardBorder}`,
+              boxShadow: plan.popular ? "0 8px 30px rgba(245,158,11,0.1)" : "0 4px 20px rgba(0,0,0,0.3)",
+            }}
+          >
+            {plan.popular && (
+              <div
+                className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-xs font-bold"
+                style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)", color: "white", letterSpacing: "0.05em" }}
+              >
+                MOST POPULAR
+              </div>
+            )}
 
-        <div className="mt-4 space-y-2 text-left">
-          <p className="flex items-center gap-2">
-            <FaComments className="text-yellow-400" /> Chat with people
-          </p>
-          <p className="flex items-center gap-2">
-            <FaCheckCircle className="text-blue-500" /> Blue Tick
-          </p>
-          <p className="flex items-center gap-2">
-            <FaClock className="text-yellow-400" /> 6 Months
-          </p>
-          <p className="flex items-center gap-2">
-            <FaUserPlus className="text-yellow-400" /> 500 Connection
-            Requests/day
-          </p>
-        </div>
+            <div className="text-center mb-5">
+              <div
+                className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-3"
+                style={{ background: plan.tagColor.bg, border: `1px solid ${plan.tagColor.border}` }}
+              >
+                {plan.icon}
+              </div>
+              <h2 className="text-xl font-bold" style={{ color: "#e0e7ff" }}>{plan.label} Plan</h2>
+              <div className="mt-2">
+                <span className="text-3xl font-extrabold" style={{ color: plan.tagColor.text }}>{plan.price}</span>
+                <span className="text-sm" style={{ color: "#64748b" }}>{plan.period}</span>
+              </div>
+            </div>
 
-        <h3 className="text-xl font-semibold mt-4">₹50/month</h3>
-        <button
-          className="mt-4 px-5 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-500 transition"
-          onClick={() => handleBuyClick("gold")}
-        >
-          Get Gold
-        </button>
+            <div className="space-y-2.5 mb-6">
+              {plan.features.map(({ icon, text }, idx) => (
+                <div key={idx} className="flex items-center gap-2.5">
+                  <span className="text-base flex-shrink-0">{icon}</span>
+                  <span className="text-sm" style={{ color: "#94a3b8" }}>{text}</span>
+                </div>
+              ))}
+            </div>
+
+            <motion.button
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={() => handleBuyClick(plan.type)}
+              className="w-full py-3 rounded-xl font-bold text-sm"
+              style={{
+                background: plan.btnBg,
+                border: plan.btnBorder ? `1.5px solid ${plan.btnBorder}` : "none",
+                color: plan.btnColor,
+                cursor: "pointer",
+              }}
+            >
+              Get {plan.label}
+            </motion.button>
+          </motion.div>
+        ))}
       </div>
     </div>
   );

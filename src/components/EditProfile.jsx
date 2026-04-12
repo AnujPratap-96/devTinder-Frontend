@@ -1,271 +1,599 @@
 /* eslint-disable react/prop-types */
-import { useRef, useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { useDispatch } from "react-redux";
+import { motion, AnimatePresence } from "framer-motion";
+import { HiUpload, HiX, HiCode, HiSave, HiCamera } from "react-icons/hi";
+import { FaCheckCircle } from "react-icons/fa";
 import { addUser } from "../store/userSlice";
 import { BASE_URL } from "../utils/constant";
-import { motion } from "framer-motion";
-import { FaCheckCircle } from "react-icons/fa";
 import { useToast } from "../context/ToastProvider";
+import Button from "./ui/Button";
 
+const roleOptions = [
+  "frontend",
+  "backend",
+  "fullstack",
+  "mobile",
+  "design",
+  "product",
+  "data",
+  "devops",
+  "other",
+];
+
+const availabilityOptions = [
+  { value: "open", label: "Open to opportunities" },
+  { value: "busy", label: "Currently busy" },
+  { value: "not_looking", label: "Not looking" },
+];
 
 const EditProfile = ({ user }) => {
-  const {addToast} = useToast();
-  const firstNameRef = useRef(user.firstName);
-  const lastNameRef = useRef(user.lastName);
-  const ageRef = useRef(user.age || "");
-  const genderRef = useRef(user.gender || "");
-  const aboutRef = useRef(user.about || "");
-  const skillsRef = useRef(user.skills ? user.skills.join(", ") : "");
-  const photoUrlRef = useRef([...user.photoUrl]); // keep old urls
+  const dispatch = useDispatch();
+  const { addToast } = useToast();
 
+  const [formData, setFormData] = useState({
+    firstName: user.firstName || "",
+    lastName: user.lastName || "",
+    age: user.age || "",
+    gender: user.gender || "",
+    about: user.about || "",
+    role: user.role || "",
+    experienceYears: user.experienceYears ?? 0,
+    availability: user.availability || "open",
+  });
+  const [skills, setSkills] = useState(user.skills || []);
+  const [gallery, setGallery] = useState([...(user.photoUrl || [])]);
   const [openModal, setOpenModal] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [updatingLocation, setUpdatingLocation] = useState(false);
+  const [githubToken, setGithubToken] = useState("");
+  const [syncingGithub, setSyncingGithub] = useState(false);
 
-  const dispatch = useDispatch();
+  useEffect(() => {
+    setFormData({
+      firstName: user.firstName || "",
+      lastName: user.lastName || "",
+      age: user.age || "",
+      gender: user.gender || "",
+      about: user.about || "",
+      role: user.role || "",
+      experienceYears: user.experienceYears ?? 0,
+      availability: user.availability || "open",
+    });
+    setSkills(user.skills || []);
+    setGallery([...(user.photoUrl || [])]);
+  }, [user]);
+
+  const handleChange = (key) => (event) => {
+    setFormData((prev) => ({
+      ...prev,
+      [key]: key === "experienceYears" || key === "age" ? event.target.value.replace(/[^0-9]/g, "") : event.target.value,
+    }));
+  };
+
+  const refreshUser = async () => {
+    const res = await axios.get(`${BASE_URL}/profile/view`, {
+      withCredentials: true,
+    });
+    dispatch(addUser(res?.data?.user));
+  };
 
   const saveProfile = async () => {
+    setIsSaving(true);
     try {
-      const body = {
-        firstName: firstNameRef.current.value,
-        lastName: lastNameRef.current.value,
-        age: ageRef.current.value,
-        gender: genderRef.current.value,
-        about: aboutRef.current.value,
-        skills: skillsRef.current.value.split(",").map((s) => s.trim()),
-        // photoUrl: photoUrlRef.current, // include updated photos
+      const payload = {
+        ...formData,
+        age: formData.age ? Number(formData.age) : undefined,
+        experienceYears: formData.experienceYears ? Number(formData.experienceYears) : 0,
+        skills,
       };
-
-      const res = await axios.patch(BASE_URL + "/profile/edit", body, {
+      const res = await axios.patch(`${BASE_URL}/profile/edit`, payload, {
         withCredentials: true,
       });
-
       dispatch(addUser(res?.data?.user));
-      addToast("Profile Updated Successfully" , "success")
-    } catch (err) {
-      addToast(err.data.message || "Something went wrong" , "error")
+      addToast("Profile updated", "success");
+    } catch (error) {
+      addToast(error?.response?.data?.message || "Unable to update profile", "error");
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const uploadImage = async () => {
-    if (!selectedFile || selectedIndex === null) return;
+    if (selectedIndex === null || !selectedFile) return;
+    setIsUploading(true);
     try {
-      setLoading(true);
-
-      const formData = new FormData();
-      formData.append("image", selectedFile);
-      formData.append("index", selectedIndex);
-
-      const res = await axios.patch(
-        BASE_URL + "/profile/upload-image",
-        formData,
-        {
-          withCredentials: true,
-          headers: { "Content-Type": "multipart/form-data" },
-        }
-      );
-
-      if (res.status === 200 && res.data.secure_url) {
-        photoUrlRef.current[selectedIndex] = res.data.secure_url;
-        dispatch(addUser({ ...user, photoUrl: photoUrlRef.current }));
-       addToast("Image Uploaded" , "success")
-
-        // Close modal only after success
+      const form = new FormData();
+      form.append("image", selectedFile);
+      form.append("index", selectedIndex);
+      const res = await axios.patch(`${BASE_URL}/profile/upload-image`, form, {
+        withCredentials: true,
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      if (res.status === 200) {
+        const updatedGallery = [...gallery];
+        updatedGallery[selectedIndex] = res.data.secure_url;
+        setGallery(updatedGallery);
+        dispatch(addUser({ ...user, photoUrl: updatedGallery }));
+        addToast("Image uploaded", "success");
         setOpenModal(false);
         setSelectedFile(null);
         setSelectedIndex(null);
       }
-    } catch (err) {
-      addToast(err.response?.data?.message ||"Image upload failed ❌" , "error" )
-     
+    } catch (error) {
+      addToast(error?.response?.data?.message || "Image upload failed", "error");
     } finally {
-      setLoading(false);
+      setIsUploading(false);
     }
   };
 
+  const handleLocationUpdate = () => {
+    if (!("geolocation" in navigator)) {
+      addToast("Geolocation not supported", "error");
+      return;
+    }
+    setUpdatingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          await axios.patch(
+            `${BASE_URL}/profile/location`,
+            {
+              lat: position.coords.latitude,
+              lng: position.coords.longitude,
+            },
+            { withCredentials: true }
+          );
+          await refreshUser();
+          addToast("Location updated", "success");
+        } catch (error) {
+          addToast(error?.response?.data?.message || "Unable to update location", "error");
+        } finally {
+          setUpdatingLocation(false);
+        }
+      },
+      (error) => {
+        addToast(error.message || "Location permission denied", "error");
+        setUpdatingLocation(false);
+      },
+      { enableHighAccuracy: true }
+    );
+  };
+
+  const handleGithubSync = async () => {
+    if (!githubToken.trim()) {
+      addToast("Provide a GitHub personal access token", "info");
+      return;
+    }
+    setSyncingGithub(true);
+    try {
+      await axios.post(
+        `${BASE_URL}/github/sync`,
+        { accessToken: githubToken.trim() },
+        { withCredentials: true }
+      );
+      await refreshUser();
+      addToast("GitHub profile synced", "success");
+      setGithubToken("");
+    } catch (error) {
+      addToast(error?.response?.data?.message || "GitHub sync failed", "error");
+    } finally {
+      setSyncingGithub(false);
+    }
+  };
+
+  const missingSkills = useMemo(() => skills.length === 0, [skills.length]);
+
   return (
-    <div className="flex flex-col md:flex-row items-center justify-center w-full min-h-screen bg-gray-900 px-6 text-white">
-      <div className="bg-gray-800 p-6 rounded-lg shadow-lg w-full md:w-1/2 max-w-3xl">
-        <h2 className="text-2xl font-semibold text-cyan-400 text-center mb-4">
-          Edit Profile ✍️
-        </h2>
+    <div className="w-full">
+      <div className="mb-8 pl-1">
+        <h1 className="mb-2 text-3xl font-bold tracking-tight text-neutral-50">Edit Profile</h1>
+        <p className="text-sm text-neutral-400">Refine your developer identity and surface the best parts of your story.</p>
+      </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <InputField label="First Name" inputRef={firstNameRef} />
-          <InputField label="Last Name" inputRef={lastNameRef} />
-          <InputField label="Age" inputRef={ageRef} />
-          <InputField label="Gender" inputRef={genderRef} />
-          <InputField label="About" inputRef={aboutRef} fullWidth />
-          <InputField
-            label="Skills (comma separated)"
-            inputRef={skillsRef}
-            fullWidth
-          />
+      <div className="flex flex-col gap-8 xl:flex-row">
+        <div className="flex-1 rounded-3xl border border-white/5 bg-surface-900 p-6 sm:p-8 shadow-soft">
+          <h2 className="mb-6 flex items-center gap-3 text-lg font-semibold text-brand-100">
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-500/20 text-brand-400">
+              <HiCode className="text-lg" />
+            </span>
+            Profile Information
+          </h2>
 
-          {/* Profile Images */}
-          <div className="md:col-span-2">
-            <p className="text-sm font-medium text-gray-300 mb-1">
-              Profile Images
-            </p>
-            <div className="flex flex-wrap items-center gap-3">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+            <InputField label="First Name" value={formData.firstName} onChange={handleChange("firstName")} />
+            <InputField label="Last Name" value={formData.lastName} onChange={handleChange("lastName")} />
+            <InputField label="Age" value={formData.age} onChange={handleChange("age")} type="number" />
+
+            <SelectField
+              label="Gender"
+              value={formData.gender}
+              onChange={handleChange("gender")}
+              options={[
+                { value: "", label: "Select Gender" },
+                { value: "male", label: "Male" },
+                { value: "female", label: "Female" },
+                { value: "other", label: "Other" },
+              ]}
+            />
+
+            <SelectField
+              label="Role"
+              value={formData.role}
+              onChange={handleChange("role")}
+              options={[{ value: "", label: "Select Role" }, ...roleOptions.map((role) => ({ value: role, label: role }))]}
+            />
+
+            <InputField
+              label="Experience (years)"
+              value={formData.experienceYears}
+              onChange={handleChange("experienceYears")}
+              type="number"
+            />
+
+            <SelectField
+              label="Availability"
+              value={formData.availability}
+              onChange={handleChange("availability")}
+              options={availabilityOptions}
+            />
+
+            <InputField
+              label="Short Bio / About"
+              value={formData.about}
+              onChange={handleChange("about")}
+              placeholder="I build highly resilient platforms for millions of users..."
+              fullWidth
+            />
+
+            <div className="sm:col-span-2">
+              <label className="mb-1.5 block text-[0.65rem] font-bold uppercase tracking-[0.1em] text-neutral-400">
+                Skills
+              </label>
+              <div className="flex min-h-[46px] flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 transition focus-within:ring-2 focus-within:ring-brand-500/50 hover:bg-white/10">
+                {skills.map((skill) => (
+                  <span
+                    key={skill}
+                    className="flex items-center gap-1.5 rounded-full border border-brand-400/20 bg-brand-500/20 px-2.5 py-1 text-xs font-semibold text-brand-200"
+                  >
+                    {skill}
+                    <button
+                      type="button"
+                      onClick={() => setSkills((prev) => prev.filter((item) => item !== skill))}
+                      className="text-brand-300 transition-colors hover:text-brand-100"
+                    >
+                      <HiX className="text-[12px]" />
+                    </button>
+                  </span>
+                ))}
+                <input
+                  type="text"
+                  placeholder={missingSkills ? "Add a skill & hit enter..." : "Add more skills"}
+                  className="min-w-[140px] flex-1 border-none bg-transparent text-sm text-neutral-50 outline-none"
+                  onKeyDown={(event) => {
+                    if ((event.key === "Enter" || event.key === ",") && event.currentTarget.value.trim()) {
+                      event.preventDefault();
+                      const value = event.currentTarget.value.trim();
+                      if (!skills.includes(value)) {
+                        setSkills((prev) => [...prev, value]);
+                      }
+                      event.currentTarget.value = "";
+                    }
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-8 border-t border-white/5 pt-8">
+            <div className="mb-4 flex items-center justify-between">
+              <label className="text-[0.65rem] font-bold uppercase tracking-[0.1em] text-neutral-400">
+                Profile Gallery
+              </label>
+              {!user.isPremium && (
+                <span className="rounded-full bg-accent-orange/10 px-2.5 py-1 text-xs font-semibold text-accent-orange">
+                  Premium: 3 photos limit
+                </span>
+              )}
+            </div>
+
+            <div className="flex flex-wrap gap-4">
               {[...Array(user.isPremium ? 3 : 1)].map((_, index) => (
-                <div
+                <motion.div
                   key={index}
-                  className="cursor-pointer"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.96 }}
                   onClick={() => {
                     setSelectedIndex(index);
                     setOpenModal(true);
                   }}
+                  className="group relative cursor-pointer"
                 >
                   <img
-                    src={
-                      photoUrlRef.current[index] ||
-                      "https://via.placeholder.com/150"
-                    } // placeholder
-                    alt="preview"
-                    className="w-24 h-24 object-cover rounded-lg border border-gray-600"
+                    src={gallery[index] || "https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.webp"}
+                    alt="profile"
+                    className="h-28 w-28 rounded-2xl border-2 border-transparent object-cover transition-colors group-hover:border-brand-400"
                   />
-                </div>
+                  <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
+                    <div className="rounded-full bg-brand-500/90 p-2 text-white">
+                      <HiCamera className="text-xl" />
+                    </div>
+                  </div>
+                  {index === 0 && (
+                    <span className="absolute -top-3 -right-3 rounded-full border-2 border-surface-900 bg-brand-500 px-2.5 py-0.5 text-[0.65rem] font-bold text-white shadow-brand-glow">
+                      MAIN
+                    </span>
+                  )}
+                </motion.div>
               ))}
             </div>
           </div>
-        </div>
 
-        <div className="flex justify-center mt-4">
-          <button
-            className="bg-cyan-500 hover:bg-cyan-600 text-white px-5 py-2 rounded-lg transition-all duration-200 shadow-md"
-            onClick={saveProfile}
-          >
-            Save Profile
-          </button>
-        </div>
-      </div>
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <Button variant="ghost" onClick={handleLocationUpdate} disabled={updatingLocation}>
+              {updatingLocation ? <span className="loading loading-spinner loading-sm" /> : "Use Current Location"}
+            </Button>
+            <Button
+              variant="primary"
+              onClick={saveProfile}
+              disabled={isSaving}
+              className="w-full px-8 sm:w-auto"
+            >
+              {isSaving ? (
+                <>
+                  <span className="loading loading-spinner loading-sm" /> Saving...
+                </>
+              ) : (
+                <>
+                  <HiSave className="text-lg" /> Save Changes
+                </>
+              )}
+            </Button>
+          </div>
 
-      {/* Preview Card */}
-      <div className="w-full md:w-1/2 flex justify-center mt-6 md:mt-0">
-        <UserCard user={{ ...user, photoUrl: photoUrlRef.current }} />
-      </div>
-
-      {/* Modal for Upload */}
-      {openModal && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-70 z-50">
-          <div className="bg-gray-800 p-6 rounded-lg w-96">
-            <h2 className="text-xl mb-4">Upload Image</h2>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(e) => setSelectedFile(e.target.files[0])}
-              disabled={loading}
-            />
-
-            {selectedFile && (
-              <img
-                src={URL.createObjectURL(selectedFile)}
-                alt="preview"
-                className="w-40 h-40 object-cover rounded-lg mt-3"
-              />
-            )}
-
-            <div className="flex justify-end gap-3 mt-4">
-              <button
-                className="px-4 py-2 bg-gray-600 rounded-lg disabled:opacity-50"
-                onClick={() => setOpenModal(false)}
-                disabled={loading}
-              >
-                Cancel
-              </button>
-
-              <button
-                className="px-4 py-2 bg-cyan-500 hover:bg-cyan-600 rounded-lg flex items-center gap-2 disabled:opacity-50"
-                onClick={uploadImage}
-                disabled={loading}
-              >
-                {loading ? (
-                  <>
-                    <span className="loader border-2 border-white border-t-transparent rounded-full w-4 h-4 animate-spin"></span>
-                    Uploading...
-                  </>
-                ) : (
-                  "Upload"
-                )}
-              </button>
+          <div className="mt-10 rounded-2xl border border-white/5 bg-white/5 p-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-neutral-100">GitHub Integration</p>
+                <p className="text-xs text-neutral-400">
+                  Paste a personal access token with <span className="font-semibold text-neutral-200">read:user</span> and <span className="font-semibold text-neutral-200">repo</span> scopes to import repositories.
+                </p>
+              </div>
+              <div className="flex w-full flex-col gap-2 sm:w-80">
+                <input
+                  type="password"
+                  value={githubToken}
+                  onChange={(event) => setGithubToken(event.target.value)}
+                  placeholder="ghp_xxxxxxxxx"
+                  className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-neutral-100 placeholder:text-neutral-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400"
+                />
+                <Button
+                  variant="secondary"
+                  onClick={handleGithubSync}
+                  disabled={syncingGithub}
+                  className="justify-center"
+                >
+                  {syncingGithub ? <span className="loading loading-spinner loading-sm" /> : "Sync GitHub"}
+                </Button>
+              </div>
             </div>
+
+            {user.githubProfile?.username && (
+              <div className="mt-4 rounded-xl border border-white/5 bg-surface-950/60 p-4 text-xs text-neutral-300">
+                <p className="text-sm font-semibold text-neutral-100">{user.githubProfile.username}</p>
+                <div className="mt-2 flex flex-wrap gap-3">
+                  <span>Total Stars: {user.githubProfile.stats?.totalStars ?? 0}</span>
+                  <span>Followers: {user.githubProfile.stats?.followers ?? 0}</span>
+                </div>
+                {user.githubProfile.stats?.topLanguages?.length > 0 && (
+                  <div className="mt-2 text-[11px] text-neutral-400">
+                    Top Languages: {user.githubProfile.stats.topLanguages.join(", ")}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
-      )}
+
+        <div className="flex shrink-0 flex-col pt-2 xl:w-[320px] xl:pt-0">
+          <div className="mb-4 self-center text-xs font-semibold uppercase tracking-widest text-neutral-500 xl:self-start xl:pl-2">
+            Live Preview
+          </div>
+          <div className="self-center xl:self-start">
+            <UserCardPreview user={{ ...user, ...formData, skills, photoUrl: gallery }} />
+          </div>
+        </div>
+      </div>
+
+      <AnimatePresence>
+        {openModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 cursor-pointer bg-neutral-950/80 backdrop-blur-sm"
+              onClick={() => !isUploading && setOpenModal(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative z-10 w-full max-w-sm rounded-3xl border border-white/10 bg-surface-900 p-6 shadow-brand-strong"
+            >
+              <div className="mb-6 flex items-center justify-between">
+                <h2 className="text-xl font-bold text-neutral-50">Upload Photo</h2>
+                <button
+                  type="button"
+                  onClick={() => setOpenModal(false)}
+                  disabled={isUploading}
+                  className="flex h-8 w-8 items-center justify-center rounded-full bg-white/5 text-neutral-400 transition hover:bg-white/10"
+                >
+                  <HiX className="text-lg" />
+                </button>
+              </div>
+
+              <label className="flex h-36 w-full cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-brand-400/30 bg-brand-500/5 transition-colors hover:border-brand-400 hover:bg-brand-500/10">
+                <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-brand-500/20 text-brand-400">
+                  <HiUpload className="text-2xl" />
+                </div>
+                <span className="text-sm font-medium text-brand-300">Click to choose image</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)}
+                />
+              </label>
+
+              {selectedFile && (
+                <div className="mt-5 overflow-hidden rounded-2xl border border-white/10 bg-black/40">
+                  <img src={URL.createObjectURL(selectedFile)} alt="preview" className="h-48 w-full object-cover" />
+                  <div className="flex items-center justify-center bg-black/60 p-3 text-xs text-white/80">
+                    {selectedFile.name}
+                  </div>
+                </div>
+              )}
+
+              <div className="mt-6 flex gap-3">
+                <Button
+                  variant="secondary"
+                  className="flex-1 justify-center"
+                  onClick={() => setOpenModal(false)}
+                  disabled={isUploading}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="primary"
+                  className="flex-1 justify-center"
+                  onClick={uploadImage}
+                  disabled={isUploading || !selectedFile}
+                >
+                  {isUploading ? (
+                    <>
+                      <span className="loading loading-spinner loading-sm" /> Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <HiUpload /> Upload
+                    </>
+                  )}
+                </Button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
 
-const InputField = ({ label, inputRef, fullWidth }) => (
-  <div className={`flex flex-col w-full ${fullWidth ? "md:col-span-2" : ""}`}>
-    <label className="text-sm font-medium text-gray-300">{label}:</label>
+const InputField = ({ label, value, onChange, type = "text", placeholder = "", fullWidth }) => (
+  <div className={`flex flex-col ${fullWidth ? "sm:col-span-2" : ""}`}>
+    <label className="mb-1.5 block text-[0.65rem] font-bold uppercase tracking-[0.1em] text-neutral-400">
+      {label}
+    </label>
     <input
-      type="text"
-      defaultValue={inputRef.current}
-      ref={inputRef}
-      className="mt-1 p-2 bg-gray-700 text-white rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-cyan-400"
+      type={type}
+      value={value}
+      onChange={onChange}
+      placeholder={placeholder}
+      className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-neutral-50 outline-none transition placeholder:text-neutral-600 focus-visible:ring-2 focus-visible:ring-brand-500/50 hover:bg-white/10"
     />
   </div>
 );
 
-const UserCard = ({ user }) => {
-  const images = user.photoUrl;
+const SelectField = ({ label, value, onChange, options }) => (
+  <div className="flex flex-col">
+    <label className="mb-1.5 block text-[0.65rem] font-bold uppercase tracking-[0.1em] text-neutral-400">
+      {label}
+    </label>
+    <select
+      value={value}
+      onChange={onChange}
+      className="w-full cursor-pointer appearance-none rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-neutral-50 outline-none transition focus-visible:ring-2 focus-visible:ring-brand-500/50 hover:bg-white/10"
+    >
+      {options.map((option) => (
+        <option key={option.value} value={option.value} className="bg-surface-900">
+          {option.label}
+        </option>
+      ))}
+    </select>
+  </div>
+);
+
+const UserCardPreview = ({ user }) => {
+  const images = user.photoUrl || [];
   const [currentIndex, setCurrentIndex] = useState(0);
 
   useEffect(() => {
     if (images.length > 1) {
-      const interval = setInterval(
-        () => setCurrentIndex((prev) => (prev + 1) % images.length),
-        3000
-      );
-      return () => clearInterval(interval);
+      const timer = setInterval(() => setCurrentIndex((prev) => (prev + 1) % images.length), 3000);
+      return () => clearInterval(timer);
     }
   }, [images.length]);
 
-  const truncatedSkills = user.isPremium
-    ? user.skills.slice(0, 5)
-    : user.skills.slice(0, 3);
+  const truncatedSkills = user.skills ? user.skills.slice(0, user.isPremium ? 5 : 3) : [];
 
   return (
     <motion.div
-      className="relative w-full max-w-xs md:w-80 h-[75vh] rounded-2xl overflow-hidden shadow-lg bg-gray-800 border border-transparent"
-      whileHover={{
-        scale: 1.05,
-        boxShadow: "0px 0px 20px rgba(0, 255, 255, 0.5)",
-      }}
+      className="relative h-[400px] w-[280px] overflow-hidden rounded-3xl border border-white/10 bg-surface-950 shadow-brand-glow"
+      whileHover={{ y: -4, scale: 1.01 }}
+      transition={{ duration: 0.3 }}
     >
-      {/* Background Image Slider */}
-      <div className="absolute top-0 left-0 w-full h-full overflow-hidden">
-        {images.map((img, index) => (
+      <div className="absolute inset-0">
+        {images.length > 0 ? (
+          images.map((img, index) => (
+            <img
+              key={index}
+              src={img || "https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.webp"}
+              alt="preview"
+              className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 ${index === currentIndex ? "opacity-100" : "opacity-0"}`}
+            />
+          ))
+        ) : (
           <img
-            key={index}
-            src={img || "https://via.placeholder.com/150"}
-            alt="User background"
-            className={`absolute top-0 left-0 w-full h-full object-cover transition-opacity duration-1000 ${
-              index === currentIndex ? "opacity-100" : "opacity-0"
-            }`}
+            src="https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.webp"
+            className="absolute inset-0 h-full w-full object-cover opacity-50"
+            alt="placeholder"
           />
-        ))}
+        )}
       </div>
+      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
 
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-gray-900/40 to-gray-900/80"></div>
-      <div className="absolute bottom-2 left-4 right-4 p-2 bg-gray-900/60 backdrop-blur-md rounded-xl shadow-md">
-        <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400 flex items-center">
-          {user.firstName} {user.lastName}{" "}
-          {user.isPremium && <FaCheckCircle className="text-blue-500 ml-2" />}
+      <div className="absolute bottom-0 left-0 right-0 p-5">
+        <h2 className="mb-1 flex items-center gap-2 text-xl font-bold text-white">
+          {user.firstName || "Developer"} {user.lastName || ""}
+          {user.isPremium && <FaCheckCircle className="text-sm text-brand-400" />}
         </h2>
-        <p className="text-gray-300 text-sm">
-          🎂 {user.age || "N/A"} years old
+        <div className="mb-3 text-xs font-medium uppercase tracking-wider text-brand-200">
+          {user.age && <span>{user.age} yrs</span>}
+          {user.age && user.gender && <span className="mx-1.5">•</span>}
+          {user.gender && <span>{user.gender}</span>}
+          {user.role && (
+            <>
+              {(user.gender || user.age) && <span className="mx-1.5">•</span>}
+              <span>{user.role}</span>
+            </>
+          )}
+        </div>
+        <p className="mb-4 line-clamp-2 text-sm text-neutral-300">
+          {user.about || "Let's build something ambitious together."}
         </p>
-        <p className="text-gray-300 text-sm">
-          👩‍💻 {user.about || "No bio available"}
-        </p>
-        <p className="text-gray-300 text-sm">
-          🚀 Skills: {truncatedSkills.join(", ")}
-        </p>
+        {truncatedSkills.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {truncatedSkills.map((skill) => (
+              <span key={skill} className="rounded-full border border-brand-400/20 bg-brand-500/20 px-3 py-1 text-[10px] font-semibold text-brand-200">
+                {skill}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
     </motion.div>
   );

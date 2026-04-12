@@ -2,12 +2,28 @@ export const BASE_URL = location.hostname === "localhost" ? "http://localhost:30
 
 import io from "socket.io-client";
 
-export const createSocketConnection = () => {
-    if(location.hostname === "localhost"){
+let socketInstance;
 
-        return io(BASE_URL);
-    }
-    else{
-        return io("/" , {path : "/api/socket.io"})
-    }
+export const createSocketConnection = (userId) => {
+  if (!socketInstance) {
+    const isLocal = location.hostname === "localhost";
+    const connectionOptions = {
+      withCredentials: true,
+      transports: ["websocket"],
+      path: isLocal ? "/socket.io" : "/api/socket.io",
+    };
+    socketInstance = io(isLocal ? BASE_URL : "/", connectionOptions);
+  }
+
+  if (userId) {
+    socketInstance.emit("session:register", { userId });
+  }
+
+  return socketInstance;
+};
+
+export const closeSocketConnection = () => {
+  if (!socketInstance) return;
+  socketInstance.disconnect();
+  socketInstance = undefined;
 };

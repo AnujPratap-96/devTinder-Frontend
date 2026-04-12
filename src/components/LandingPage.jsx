@@ -2,25 +2,18 @@ import { Outlet } from "react-router-dom";
 import Navbar from "./Navbar";
 import Footer from "./Footer";
 
-
 const Layout = () => {
-
   return (
-    <div className="flex flex-col w-full min-h-screen bg-gray-900">
-      {/* Navbar at the top */}
+    <div className="layout-shell bg-mesh">
       <Navbar />
-
-      {/* Main Content Area */}
-      <div className="flex-1 p-5 flex justify-center">
-        <div className="w-full max-w-6xl">
+      <main className="flex flex-1 flex-col">
+        <div className="content-container w-full py-10 lg:py-16">
           <Outlet />
         </div>
-      </div>
-
-      {/* Footer at the bottom */}
+      </main>
       <Footer />
     </div>
   );
-}
+};
 
 export default Layout;
