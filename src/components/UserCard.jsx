@@ -6,38 +6,60 @@ import axios from "axios";
 import { removeUserFromFeed } from "../store/feedSlice";
 import { useDispatch } from "react-redux";
 import { useToast } from "../context/ToastProvider";
-import { HiHeart, HiX, HiCode, HiLightningBolt, HiLocationMarker, HiBan, HiFlag, HiBookmark } from "react-icons/hi";
+import { HiHeart, HiX, HiCode, HiLightningBolt, HiLocationMarker, HiBan, HiFlag, HiBookmark, HiCheck, HiArrowLeft } from "react-icons/hi";
+import AIMatchExplainer from "./AIMatchExplainer";
+import Button from "./ui/Button";
+import { highlightText } from "../utils/textUtils.jsx";
 
-const SwipeCard = ({ user }) => {
+const SwipeCard = ({ user, searchQuery = "" }) => {
   const { addToast } = useToast();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [swipe, setSwipe] = useState("center");
   const [bookmarked, setBookmarked] = useState(Boolean(user?.isBookmarked));
   const dispatch = useDispatch();
 
+  if (!user || !user._id) {
+    console.warn("SwipeCard received invalid user object:", user);
+    return null;
+  }
+
   const {
     _id,
-    firstName,
-    lastName,
-    about,
-    photoUrl,
+    firstName = "",
+    lastName = "",
+    about = "",
+    photoUrl: incomingPhotoUrl,
     age,
     gender,
-    skills,
-    role,
+    skills = [],
+    role = "Developer",
     experienceYears,
     availability,
     distanceKm,
     recommended,
     matchScore,
-  } = user || {};
-  const truncatedSkills = user?.skills ? user.skills.slice(0, 4) : [];
+    relationshipStatus = "none",
+  } = user;
+
+  const photoUrl = Array.isArray(incomingPhotoUrl) 
+    ? incomingPhotoUrl 
+    : (incomingPhotoUrl ? [incomingPhotoUrl] : []);
+
+  const truncatedSkills = Array.isArray(skills) ? skills.slice(0, 4) : [];
 
   const x = useMotionValue(0);
   const y = useMotionValue(0);
-  const rotate = useTransform(x, [-200, 200], [-15, 15]);
+  const rotate = useTransform(x, [-200, 200], [-25, 25]);
   const likeOpacity = useTransform(x, [20, 120], [0, 1]);
   const nopeOpacity = useTransform(x, [-120, -20], [1, 0]);
+
+  // Record view on mount
+  useEffect(() => {
+    if (_id) {
+      axios.post(`${BASE_URL}/profile/view/${_id}`, {}, { withCredentials: true })
+        .catch(err => console.error("Error recording profile view:", err));
+    }
+  }, [_id]);
 
   useEffect(() => {
     if (photoUrl?.length > 1) {
@@ -63,6 +85,21 @@ const SwipeCard = ({ user }) => {
     } catch (err) {
       addToast(err.response?.data?.message || "Something went wrong", "error");
       setSwipe("center");
+    }
+  };
+
+  const respondToRequest = async (status, userId) => {
+    try {
+      const action = status === "accepted" ? "interested" : "ignored";
+      await axios.post(
+        `${BASE_URL}/request/send/${action}/${userId}`,
+        {},
+        { withCredentials: true }
+      );
+      addToast(status === "accepted" ? "Connection Accepted!" : "Ignored", "success");
+      dispatch(removeUserFromFeed(userId));
+    } catch (err) {
+      addToast(err.response?.data?.message || "Unable to respond", "error");
     }
   };
 
@@ -108,6 +145,7 @@ const SwipeCard = ({ user }) => {
   };
 
   const handleDragEnd = (_, info) => {
+    if (relationshipStatus !== "none") return setSwipe("center");
     if (info.offset.x > 120) {
       sendConnectionRequest("interested", _id, "right");
     } else if (info.offset.x < -120) {
@@ -121,6 +159,93 @@ const SwipeCard = ({ user }) => {
     center: { x: 0, y: 0, opacity: 1, scale: 1, rotate: 0 },
     right: { x: 200, y: 50, opacity: 0, rotate: 25, scale: 0.9 },
     left: { x: -200, y: 50, opacity: 0, rotate: -25, scale: 0.9 },
+  };
+
+  const renderActions = () => {
+    switch (relationshipStatus) {
+      case "connected":
+        return (
+          <div className="flex h-14 items-center gap-2 rounded-2xl bg-success-500/10 px-6 font-semibold text-success-300 border border-success-500/30">
+            <HiCheck className="text-xl" /> Connected
+          </div>
+        );
+      case "pending_sent":
+        return (
+          <div className="flex h-14 items-center gap-2 rounded-2xl bg-warning-500/10 px-6 font-semibold text-warning-300 border border-warning-500/30">
+            ⏳ Request Pending
+          </div>
+        );
+      case "pending_received":
+        return (
+          <div className="flex gap-4">
+            <Button
+              variant="secondary"
+              onClick={() => respondToRequest("ignored", _id)}
+              className="px-6 py-4 rounded-xl border-error-500/40 text-error-400 hover:bg-error-500/10"
+            >
+              Reject
+            </Button>
+            <Button
+              variant="primary"
+              onClick={() => respondToRequest("accepted", _id)}
+              className="px-8 py-4 rounded-xl shadow-brand-glow"
+            >
+              Accept
+            </Button>
+          </div>
+        );
+      default:
+        return (
+          <>
+            <motion.button
+              whileHover={{ scale: 1.12, boxShadow: "0 0 25px rgba(239,68,68,0.4)" }}
+              whileTap={{ scale: 0.92 }}
+              onClick={() => sendConnectionRequest("ignored", _id, "left")}
+              className="swipe-btn-nope"
+              style={{
+                width: "58px",
+                height: "58px",
+                borderRadius: "50%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: "rgba(239,68,68,0.1)",
+                border: "2px solid rgba(239,68,68,0.4)",
+                color: "#f87171",
+                fontSize: "1.4rem",
+                cursor: "pointer",
+                boxShadow: "0 4px 15px rgba(239,68,68,0.15)",
+                transition: "all 0.25s ease",
+              }}
+            >
+              <HiX />
+            </motion.button>
+
+            <motion.button
+              whileHover={{ scale: 1.12, boxShadow: "0 8px 35px rgba(16,185,129,0.35)" }}
+              whileTap={{ scale: 0.92 }}
+              onClick={() => sendConnectionRequest("interested", _id, "right")}
+              style={{
+                width: "68px",
+                height: "68px",
+                borderRadius: "50%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: "linear-gradient(135deg, rgba(16,185,129,0.25), rgba(52,211,153,0.2))",
+                border: "2px solid rgba(16,185,129,0.5)",
+                color: "#34d399",
+                fontSize: "1.6rem",
+                cursor: "pointer",
+                boxShadow: "0 8px 25px rgba(16,185,129,0.25)",
+                transition: "all 0.25s ease",
+              }}
+            >
+              <HiHeart />
+            </motion.button>
+          </>
+        );
+    }
   };
 
   return user ? (
@@ -138,7 +263,7 @@ const SwipeCard = ({ user }) => {
           y,
           rotate,
         }}
-        drag
+        drag={relationshipStatus === "none"}
         dragElastic={0.4}
         dragMomentum={true}
         onDragEnd={handleDragEnd}
@@ -237,14 +362,14 @@ const SwipeCard = ({ user }) => {
         {/* User Info */}
         <div className="absolute bottom-0 left-0 right-0 p-5">
           <h2 className="text-2xl font-bold text-white leading-tight">
-            {firstName} {lastName}
+            {highlightText(firstName, searchQuery)} {highlightText(lastName, searchQuery)}
             {age && <span className="font-normal text-xl ml-2" style={{ color: "#c7d2fe" }}>{age}</span>}
           </h2>
 
           <div className="mt-1 flex flex-wrap items-center gap-2 text-xs font-medium text-slate-200/90">
             {role && (
               <span className="rounded-full border border-white/20 bg-white/10 px-2 py-1 uppercase tracking-wide">
-                {role}
+                {highlightText(role, searchQuery)}
               </span>
             )}
             {typeof experienceYears === "number" && (
@@ -280,7 +405,7 @@ const SwipeCard = ({ user }) => {
 
           {about && (
             <p className="mt-2 text-sm line-clamp-2 leading-relaxed" style={{ color: "#cbd5e1" }}>
-              {about}
+              {highlightText(about, searchQuery)}
             </p>
           )}
 
@@ -297,7 +422,8 @@ const SwipeCard = ({ user }) => {
                     backdropFilter: "blur(8px)",
                   }}
                 >
-                  <HiCode className="inline mr-1 text-xs" />{skill}
+                  <HiCode className="inline mr-1 text-xs" />
+                  {highlightText(skill, searchQuery)}
                 </span>
               ))}
               {skills.length > 4 && (
@@ -307,61 +433,20 @@ const SwipeCard = ({ user }) => {
               )}
             </div>
           )}
+          {/* AI Match Explainer */}
+          <div className="mt-3">
+            <AIMatchExplainer targetUserId={_id} targetName={firstName} />
+          </div>
         </div>
       </motion.div>
 
       {/* Action buttons */}
       <div className="flex items-center gap-6 mt-7">
-        <motion.button
-          whileHover={{ scale: 1.12, boxShadow: "0 0 25px rgba(239,68,68,0.4)" }}
-          whileTap={{ scale: 0.92 }}
-          onClick={() => sendConnectionRequest("ignored", _id, "left")}
-          className="swipe-btn-nope"
-          style={{
-            width: "58px",
-            height: "58px",
-            borderRadius: "50%",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            background: "rgba(239,68,68,0.1)",
-            border: "2px solid rgba(239,68,68,0.4)",
-            color: "#f87171",
-            fontSize: "1.4rem",
-            cursor: "pointer",
-            boxShadow: "0 4px 15px rgba(239,68,68,0.15)",
-            transition: "all 0.25s ease",
-          }}
-        >
-          <HiX />
-        </motion.button>
-
-        <motion.button
-          whileHover={{ scale: 1.12, boxShadow: "0 8px 35px rgba(16,185,129,0.35)" }}
-          whileTap={{ scale: 0.92 }}
-          onClick={() => sendConnectionRequest("interested", _id, "right")}
-          style={{
-            width: "68px",
-            height: "68px",
-            borderRadius: "50%",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            background: "linear-gradient(135deg, rgba(16,185,129,0.25), rgba(52,211,153,0.2))",
-            border: "2px solid rgba(16,185,129,0.5)",
-            color: "#34d399",
-            fontSize: "1.6rem",
-            cursor: "pointer",
-            boxShadow: "0 8px 25px rgba(16,185,129,0.25)",
-            transition: "all 0.25s ease",
-          }}
-        >
-          <HiHeart />
-        </motion.button>
+        {renderActions()}
       </div>
 
       <p className="mt-4 text-xs" style={{ color: "#475569" }}>
-        Drag the card or use buttons to connect
+        {relationshipStatus === "none" ? "Drag the card or use buttons to connect" : "Current relationship status shown above"}
       </p>
     </div>
   ) : (

@@ -4,11 +4,13 @@ import axios from "axios";
 import { useDispatch } from "react-redux";
 import { motion, AnimatePresence } from "framer-motion";
 import { HiUpload, HiX, HiCode, HiSave, HiCamera } from "react-icons/hi";
-import { FaCheckCircle } from "react-icons/fa";
+import { FaCheckCircle, FaGithub, FaLinkedin, FaGlobe } from "react-icons/fa";
 import { addUser } from "../store/userSlice";
 import { BASE_URL } from "../utils/constant";
 import { useToast } from "../context/ToastProvider";
 import Button from "./ui/Button";
+import AIPanel from "./AIPanel";
+import ProfileViews from "./ProfileViews";
 
 const roleOptions = [
   "frontend",
@@ -41,6 +43,11 @@ const EditProfile = ({ user }) => {
     role: user.role || "",
     experienceYears: user.experienceYears ?? 0,
     availability: user.availability || "open",
+    socialLinks: {
+      github: user.socialLinks?.github || "",
+      linkedin: user.socialLinks?.linkedin || "",
+      portfolio: user.socialLinks?.portfolio || "",
+    },
   });
   const [skills, setSkills] = useState(user.skills || []);
   const [gallery, setGallery] = useState([...(user.photoUrl || [])]);
@@ -63,16 +70,31 @@ const EditProfile = ({ user }) => {
       role: user.role || "",
       experienceYears: user.experienceYears ?? 0,
       availability: user.availability || "open",
+      socialLinks: {
+        github: user.socialLinks?.github || "",
+        linkedin: user.socialLinks?.linkedin || "",
+        portfolio: user.socialLinks?.portfolio || "",
+      },
     });
     setSkills(user.skills || []);
     setGallery([...(user.photoUrl || [])]);
   }, [user]);
 
-  const handleChange = (key) => (event) => {
-    setFormData((prev) => ({
-      ...prev,
-      [key]: key === "experienceYears" || key === "age" ? event.target.value.replace(/[^0-9]/g, "") : event.target.value,
-    }));
+  const handleChange = (key, nestedKey) => (event) => {
+    if (nestedKey) {
+      setFormData((prev) => ({
+        ...prev,
+        [key]: {
+          ...prev[key],
+          [nestedKey]: event.target.value,
+        },
+      }));
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        [key]: key === "experienceYears" || key === "age" ? event.target.value.replace(/[^0-9]/g, "") : event.target.value,
+      }));
+    }
   };
 
   const refreshUser = async () => {
@@ -90,6 +112,7 @@ const EditProfile = ({ user }) => {
         age: formData.age ? Number(formData.age) : undefined,
         experienceYears: formData.experienceYears ? Number(formData.experienceYears) : 0,
         skills,
+        socialLinks: formData.socialLinks,
       };
       const res = await axios.patch(`${BASE_URL}/profile/edit`, payload, {
         withCredentials: true,
@@ -290,6 +313,45 @@ const EditProfile = ({ user }) => {
           </div>
 
           <div className="mt-8 border-t border-white/5 pt-8">
+            <h2 className="mb-6 flex items-center gap-3 text-lg font-semibold text-brand-100">
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-500/20 text-brand-400">
+                <HiCode className="text-lg" />
+              </span>
+              Social Links
+            </h2>
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+              <InputField 
+                label="GitHub URL" 
+                value={formData.socialLinks.github} 
+                onChange={handleChange("socialLinks", "github")} 
+                placeholder="https://github.com/username" 
+              />
+              <InputField 
+                label="LinkedIn URL" 
+                value={formData.socialLinks.linkedin} 
+                onChange={handleChange("socialLinks", "linkedin")} 
+                placeholder="https://linkedin.com/in/username" 
+              />
+              <InputField 
+                label="Portfolio URL" 
+                value={formData.socialLinks.portfolio} 
+                onChange={handleChange("socialLinks", "portfolio")} 
+                placeholder="https://yourportfolio.com" 
+                fullWidth
+              />
+            </div>
+          </div>
+
+          {/* ── AI Assistant Panel ── */}
+          <AIPanel
+            user={user}
+            skills={skills}
+            formData={formData}
+            onBioGenerated={(bio) => setFormData((prev) => ({ ...prev, about: bio }))}
+            onSkillsAccepted={(newSkills) => setSkills(newSkills)}
+          />
+
+          <div className="mt-8 border-t border-white/5 pt-8">
             <div className="mb-4 flex items-center justify-between">
               <label className="text-[0.65rem] font-bold uppercase tracking-[0.1em] text-neutral-400">
                 Profile Gallery
@@ -405,6 +467,13 @@ const EditProfile = ({ user }) => {
           </div>
           <div className="self-center xl:self-start">
             <UserCardPreview user={{ ...user, ...formData, skills, photoUrl: gallery }} />
+          </div>
+
+          <div className="mt-8">
+            <div className="mb-4 pl-2 text-xs font-semibold uppercase tracking-widest text-neutral-500">
+              Engagement
+            </div>
+            <ProfileViews />
           </div>
         </div>
       </div>
@@ -592,6 +661,13 @@ const UserCardPreview = ({ user }) => {
                 {skill}
               </span>
             ))}
+          </div>
+        )}
+        {user.socialLinks && (Object.values(user.socialLinks).some(v => v)) && (
+          <div className="mt-4 flex gap-3 text-neutral-300">
+            {user.socialLinks.github && <FaGithub className="text-lg opacity-60 hover:opacity-100 transition-opacity" title="GitHub" />}
+            {user.socialLinks.linkedin && <FaLinkedin className="text-lg opacity-60 hover:opacity-100 transition-opacity" title="LinkedIn" />}
+            {user.socialLinks.portfolio && <FaGlobe className="text-lg opacity-60 hover:opacity-100 transition-opacity" title="Portfolio" />}
           </div>
         )}
       </div>

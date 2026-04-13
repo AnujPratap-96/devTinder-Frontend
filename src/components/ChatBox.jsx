@@ -4,7 +4,7 @@ import { useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
 import { Virtuoso } from "react-virtuoso";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   HiArrowLeft,
   HiPaperAirplane,
@@ -17,6 +17,7 @@ import {
 import { BASE_URL, createSocketConnection } from "../utils/constant";
 import { useToast } from "../context/ToastProvider";
 import { getOnlineStatus, formatTimeAgo } from "../utils/timeUtils";
+import { generateIcebreaker } from "../utils/aiApi";
 
 const MESSAGE_LIMIT = 30;
 
@@ -28,10 +29,10 @@ const generateClientId = () =>
 const getStatusLabel = (message, isMine) => {
   if (!isMine) return null;
   if (message.seen) {
-    return <span className="text-brand-300">✔✔</span>;
+    return <span className="text-brand-300 font-medium">Seen</span>;
   }
   if (message.delivered) {
-    return <span className="text-neutral-400">✔✔</span>;
+    return <span className="text-neutral-400">Delivered</span>;
   }
   if (message.status === "failed") {
     return <HiOutlineExclamation className="text-error-400" />;
@@ -39,7 +40,7 @@ const getStatusLabel = (message, isMine) => {
   if (message.status === "pending") {
     return <span className="text-neutral-500">…</span>;
   }
-  return <HiCheck className="text-neutral-500" />;
+  return <span className="text-neutral-400">Sent</span>;
 };
 
 const decorateMessage = (payload, userId, targetUserId) => ({
@@ -72,6 +73,8 @@ const ChatBox = () => {
   const [error, setError] = useState(null);
   const [typingUsers, setTypingUsers] = useState(new Set());
   const [showMenu, setShowMenu] = useState(false);
+  const [icebreaker, setIcebreaker] = useState("");
+  const [icebreakerLoading, setIcebreakerLoading] = useState(false);
   const { addToast } = useToast();
 
   const blockUser = async () => {
@@ -132,9 +135,28 @@ const ChatBox = () => {
       setPage(1);
       setHasMore((data.messages ?? []).length === MESSAGE_LIMIT);
       setError(null);
+
+      // Fetch icebreaker only on a fresh/empty chat
+      if ((data.messages ?? []).length === 0 && targetUserId) {
+        fetchIcebreaker();
+      }
     } catch (err) {
       setError(err.response?.data?.message || "Unable to load messages");
       addToast(err.response?.data?.message || "Unable to load messages", "error");
+    }
+  };
+
+  const fetchIcebreaker = async () => {
+    setIcebreakerLoading(true);
+    try {
+      const result = await generateIcebreaker(targetUserId);
+      if (result.success) {
+        setIcebreaker(result.data.message);
+      }
+    } catch {
+      // silently fail — icebreaker is optional
+    } finally {
+      setIcebreakerLoading(false);
     }
   };
 
@@ -390,8 +412,38 @@ const ChatBox = () => {
     );
   }
 
+  // ── empty state (no messages yet) ──────────────────────────
+  const EmptyChat = () => (
+    <div className="flex h-full flex-col items-center justify-center gap-4 px-6 text-center">
+      <div className="relative flex h-20 w-20 items-center justify-center">
+        {/* pulsing glow ring */}
+        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-500/20" />
+        <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl border border-brand-400/20 bg-brand-500/10">
+          {otherUser?.photoUrl?.[0] ? (
+            <img
+              src={otherUser.photoUrl[0]}
+              alt={otherUser.firstName}
+              className="h-full w-full rounded-2xl object-cover"
+            />
+          ) : (
+            <span className="text-2xl">💬</span>
+          )}
+        </div>
+      </div>
+      <div>
+        <p className="text-base font-bold text-neutral-100">
+          Start a conversation with{" "}
+          <span className="text-brand-300">{otherUser?.firstName ?? "this developer"}</span>
+        </p>
+        <p className="mt-1 text-xs text-neutral-500">
+          Send the first message — or use the AI icebreaker below ✨
+        </p>
+      </div>
+    </div>
+  );
+
   return (
-    <div className="flex h-[calc(100vh-160px)] min-h-[520px] w-full flex-col overflow-hidden rounded-2xl border border-white/10 bg-surface-900/80 backdrop-blur-xl">
+    <div className="flex h-[calc(100svh-theme(spacing.48))] min-h-[500px] w-full flex-col overflow-hidden rounded-2xl border border-white/10 bg-surface-900/80 backdrop-blur-xl">
       <div className="flex items-center gap-3 border-b border-white/5 px-5 py-4">
         <button
           onClick={() => navigate("/messages")}
@@ -448,23 +500,32 @@ const ChatBox = () => {
         )}
       </div>
 
-      <div className="flex-1">
+      {/* Message list OR empty state */}
+      <div className="relative min-h-0 flex-1 overflow-hidden">
+        {sortedMessages.length === 0 ? (
+          <EmptyChat />
+        ) : (
         <Virtuoso
           ref={virtuosoRef}
           data={sortedMessages}
           followOutput="smooth"
           startReached={handleLoadOlder}
           overscan={200}
-          className="h-full px-5 py-4"
+          style={{ height: "100%", overflowX: "hidden" }}
+          className="px-0 py-4"
+          components={{
+            Header: () => <div className="h-8" />,
+          }}
+          
           itemContent={(index, message) => {
             const showAvatar = !message.isOwn && (index === 0 || sortedMessages[index - 1]?.senderId !== message.senderId);
             return (
               <motion.div
                 layout
-                className={`mb-3 flex w-full items-end gap-2 ${message.isOwn ? "justify-end" : "justify-start"}`}
+                className={`mb-4 flex w-full gap-3 px-6 ${message.isOwn ? "justify-end" : "justify-start text-left"}`}
               >
                 {!message.isOwn && (
-                  <div className={`h-8 w-8 overflow-hidden rounded-lg border border-white/5 transition ${showAvatar ? "opacity-100" : "opacity-0"}`}>
+                  <div className={`mt-auto h-8 w-8 shrink-0 overflow-hidden rounded-lg border border-white/5 transition ${showAvatar ? "opacity-100" : "opacity-0"}`}>
                     <img
                       src={otherUser?.photoUrl?.[0] || "https://via.placeholder.com/32"}
                       alt="avatar"
@@ -472,32 +533,96 @@ const ChatBox = () => {
                     />
                   </div>
                 )}
-                <div className={`max-w-xs rounded-2xl px-4 py-2 text-sm leading-relaxed sm:max-w-md ${message.isOwn ? "bg-gradient-to-br from-brand-500 to-brand-400 text-white" : "border border-white/10 bg-white/10 text-neutral-100"}`}>
-                  <p>{message.message}</p>
-                  <div className="mt-1 flex items-center justify-end gap-2 text-xs text-neutral-300">
+                <div 
+                  className={`relative flex max-w-[75%] flex-col rounded-2xl px-4 py-2.5 text-sm shadow-sm transition-all sm:max-w-[70%] ${
+                    message.isOwn 
+                      ? "bg-brand-500 text-white rounded-br-none" 
+                      : "bg-surface-800 text-neutral-100 border border-white/5 rounded-bl-none"
+                  }`}
+                >
+                  <p className="break-words whitespace-pre-wrap leading-relaxed">
+                    {message.message}
+                  </p>
+                  <div className={`mt-1 flex items-center gap-1.5 text-[10px] tabular-nums ${message.isOwn ? "justify-end text-white/70" : "text-neutral-400"}`}>
                     <span>{formatMessageTime(message.createdAt)}</span>
-                    <span>{getStatusLabel(message, message.isOwn)}</span>
-                    {message.status === "failed" && (
-                      <button
-                        type="button"
-                        onClick={() => handleRetry(message)}
-                        className="rounded-md border border-white/20 px-2 py-0.5 text-[11px] text-white/90 hover:bg-white/10"
-                      >
-                        Retry
-                      </button>
+                    {message.isOwn && (
+                      <>
+                        <span className="opacity-40">•</span>
+                        <span>{getStatusLabel(message, true)}</span>
+                      </>
                     )}
                   </div>
+                  {message.status === "failed" && (
+                     <button
+                       type="button"
+                       onClick={() => handleRetry(message)}
+                       className="mt-1 self-end rounded-md bg-white/10 px-2 py-0.5 text-[10px] text-white hover:bg-white/20"
+                     >
+                       Retry
+                     </button>
+                  )}
                 </div>
               </motion.div>
             );
           }}
         />
+      )}
       </div>
 
       <div className="flex flex-col gap-2 border-t border-white/5 px-4 py-3">
         {typingUsers.size > 0 && (
           <p className="text-xs text-brand-200">Someone is typing…</p>
         )}
+
+        {/* AI Icebreaker suggestion — only shown when input is empty */}
+        <AnimatePresence>
+          {(icebreaker || icebreakerLoading) && !input.trim() && messages.length === 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 6 }}
+              className="flex items-start gap-2 rounded-xl border border-violet-500/20 bg-violet-950/30 px-3 py-2"
+            >
+              <span className="mt-0.5 shrink-0 text-violet-400 text-xs">✨</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-violet-500 mb-1">AI Icebreaker</p>
+                {icebreakerLoading ? (
+                  <div className="flex items-center gap-1.5">
+                    {[0,1,2].map((i) => (
+                      <motion.span
+                        key={i}
+                        className="block h-1 w-1 rounded-full bg-violet-400"
+                        animate={{ y: [0, -4, 0] }}
+                        transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.15 }}
+                      />
+                    ))}
+                    <span className="text-xs text-violet-500">Crafting opener…</span>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => { setInput(icebreaker); setIcebreaker(""); }}
+                    className="text-left text-xs text-violet-200 hover:text-violet-100 transition leading-relaxed"
+                    title="Click to use this icebreaker"
+                  >
+                    {icebreaker}
+                    <span className="ml-2 text-[10px] text-violet-500">(tap to use)</span>
+                  </button>
+                )}
+              </div>
+              {!icebreakerLoading && (
+                <button
+                  type="button"
+                  onClick={() => setIcebreaker("")}
+                  className="shrink-0 text-violet-600 hover:text-violet-400 text-lg leading-none"
+                  title="Dismiss"
+                >
+                  ×
+                </button>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
         <div className="flex items-end gap-3">
           <div className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-2">
             <textarea

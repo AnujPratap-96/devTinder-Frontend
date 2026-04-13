@@ -75,7 +75,7 @@ const Messages = () => {
                         className="h-full w-full object-cover"
                       />
                     </div>
-                    <span className={`absolute -bottom-0.5 -right-0.5 block h-3 w-3 rounded-full border-2 border-neutral-950 ${conn.isOnline ? "bg-success-500" : "bg-neutral-500"}`} />
+                    <span className={`absolute -bottom-0.5 -right-0.5 block h-3 w-3 rounded-full border-2 border-neutral-950 ${conn.isOnline ? "bg-success-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]" : "bg-neutral-600"}`} />
                   </div>
 
                   <div className="min-w-0 flex-1">
@@ -83,12 +83,26 @@ const Messages = () => {
                       <p className="truncate text-body-sm font-semibold text-neutral-50">
                         {conn.firstName} {conn.lastName}
                       </p>
-                      <HiChat className="text-base text-neutral-500" />
+                      <div className="flex items-center gap-2 text-[10px] text-neutral-500">
+                        {conn.isOnline ? (
+                          <span className="text-success-500 font-medium">Active now</span>
+                        ) : conn.lastSeenAt ? (
+                          <span>Seen {new Date(conn.lastSeenAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        ) : null}
+                      </div>
                     </div>
                     <p className="mt-1 truncate text-body-xs text-neutral-400">
                       {conn.about || "Click to start chatting..."}
                     </p>
                   </div>
+                  
+                  {conn.unreadCount > 0 && (
+                    <div className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-brand-500 px-1.5 text-[10px] font-bold text-white shadow-brand-glow animate-pulse">
+                      {conn.unreadCount}
+                    </div>
+                  )}
+                  
+                  <HiChat className="text-base text-neutral-700" />
                 </motion.button>
               </li>
             ))}

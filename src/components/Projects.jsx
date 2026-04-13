@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import axios from "axios";
 import {
   HiCollection,
@@ -11,12 +11,81 @@ import {
   HiPaperAirplane,
   HiUsers,
   HiGlobeAlt,
+  HiPencilAlt,
+  HiTrash,
 } from "react-icons/hi";
 import { motion, AnimatePresence } from "framer-motion";
 import { BASE_URL } from "../utils/constant";
 import Card from "./ui/Card";
 import Button from "./ui/Button";
 import { useToast } from "../context/ToastProvider";
+import { addProjects, removeProject, updateProject } from "../store/projectSlice";
+
+const EditProjectModal = ({ project, onClose, onSave }) => {
+  const [form, setForm] = useState({
+    title: project.title,
+    description: project.description,
+    techStack: project.techStack,
+    status: project.status,
+  });
+
+  const handleSave = () => {
+    onSave(project._id, form);
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ scale: 0.9 }}
+        animate={{ scale: 1 }}
+        exit={{ scale: 0.9 }}
+        className="w-full max-w-lg"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <Card tone="glass" className="space-y-4 p-6">
+          <h3 className="text-xl font-bold text-neutral-100">Edit Project</h3>
+          <div className="space-y-3">
+            <input
+              value={form.title}
+              onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
+              placeholder="Title"
+              className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-neutral-100 outline-none focus:ring-2 focus:ring-brand-500"
+            />
+            <TechInput
+              value={form.techStack}
+              onChange={(ts) => setForm((p) => ({ ...p, techStack: ts }))}
+            />
+            <textarea
+              value={form.description}
+              onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
+              placeholder="Description"
+              className="w-full min-h-[120px] rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-neutral-100 outline-none resize-none focus:ring-2 focus:ring-brand-500"
+            />
+            <select
+              value={form.status}
+              onChange={(e) => setForm((p) => ({ ...p, status: e.target.value }))}
+              className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-neutral-100 outline-none focus:ring-2 focus:ring-brand-500 [&>option]:bg-neutral-900"
+            >
+              <option value="open">Open</option>
+              <option value="in_progress">In Progress</option>
+              <option value="completed">Completed</option>
+            </select>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="ghost" onClick={onClose}>Cancel</Button>
+            <Button variant="primary" onClick={handleSave}>Save Changes</Button>
+          </div>
+        </Card>
+      </motion.div>
+    </motion.div>
+  );
+};
 
 const MembersModal = ({ project, currentUserId, onClose, onRemove }) => {
   const getUserId = (m) => m.userId?._id || m.userId;
@@ -143,25 +212,24 @@ const TechInput = ({ value, onChange }) => {
   );
 };
 
-const ProjectCard = ({ project, currentUserId, onJoin, onView, onRespond, onRemove, onShowMembers }) => {
+const ProjectCard = ({ project, currentUserId, onJoin, onView, onRespond, onRemove, onShowMembers, onEdit, onDelete }) => {
   const getUserId = (m) => m.userId?._id || m.userId;
   const ownerId = project.ownerId?._id || project.ownerId;
   const ownerFullName = project.ownerId?.firstName || "Unknown";
   const isMember = project.members?.some(
-    (m) => getUserId(m) === currentUserId || getUserId(m) === currentUserId
+    (m) => getUserId(m) === currentUserId
   );
   const isOwner = ownerId === currentUserId;
   const userRole = project.members?.find(
     (m) => getUserId(m) === currentUserId
   )?.role;
-  const canManage =
-    isOwner || userRole === "admin" || userRole === "owner";
+  const canManage = isOwner || userRole === "admin" || userRole === "owner";
   const hasPendingRequest = project.joinRequests?.some(
     (r) => r.user?._id === currentUserId && r.status === "pending"
   );
 
   return (
-    <Card tone="glass" className="space-y-3 p-5">
+    <Card tone="glass" className="relative space-y-3 p-5">
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <div className="flex items-center gap-2 flex-wrap">
@@ -194,11 +262,23 @@ const ProjectCard = ({ project, currentUserId, onJoin, onView, onRespond, onRemo
             <span className="text-xs text-brand-200">{ownerFullName}</span>
           </div>
         </div>
-        {isMember && (
-          <Button variant="ghost" size="sm" onClick={() => onView(project)}>
-            <HiChat className="text-lg" /> Chat
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {canManage && (
+            <>
+              <Button variant="ghost" size="sm" onClick={() => onEdit(project)}>
+                <HiPencilAlt className="text-lg text-brand-300" />
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => onDelete(project._id)}>
+                <HiTrash className="text-lg text-error-400" />
+              </Button>
+            </>
+          )}
+          {isMember && (
+            <Button variant="ghost" size="sm" onClick={() => onView(project)}>
+              <HiChat className="text-lg" /> Chat
+            </Button>
+          )}
+        </div>
       </div>
 
       <p className="text-sm text-neutral-300 line-clamp-4 min-h-[3.5rem]">
@@ -367,28 +447,10 @@ const ProjectChat = ({ project, currentUserId, onClose }) => {
     if (!senderId) return "Unknown";
     const senderIdStr = String(senderId?._id || senderId);
     const ownerId = String(project.ownerId?._id || project.ownerId);
-    
-    if (senderIdStr === ownerId) {
-      return project.ownerId?.firstName || "Owner";
-    }
-    
-    const member = project.members?.find((m) => {
-      const mid = String(m.userId?._id || m.userId);
-      return mid === senderIdStr;
-    });
-    
-    if (member?.userId) {
-      const user = member.userId;
-      const firstName = user?.firstName || "Unknown";
-      const lastName = user?.lastName ? ` ${user.lastName}` : "";
-      return `${firstName}${lastName}`;
-    }
-    
-    if (senderId?.firstName) {
-      const lastName = senderId?.lastName ? ` ${senderId.lastName}` : "";
-      return `${senderId.firstName}${lastName}`;
-    }
-    
+    if (senderIdStr === ownerId) return project.ownerId?.firstName || "Owner";
+    const member = project.members?.find((m) => String(m.userId?._id || m.userId) === senderIdStr);
+    if (member?.userId) return `${member.userId.firstName} ${member.userId.lastName || ""}`;
+    if (senderId?.firstName) return `${senderId.firstName} ${senderId.lastName || ""}`;
     return senderIdStr === currentUserId ? "You" : "Unknown";
   };
 
@@ -396,22 +458,10 @@ const ProjectChat = ({ project, currentUserId, onClose }) => {
     if (!senderId) return "https://ui-avatars.com/api/?name=User&background=random";
     const senderIdStr = String(senderId?._id || senderId);
     const ownerId = String(project.ownerId?._id || project.ownerId);
-    
-    if (senderIdStr === ownerId) {
-      return project.ownerId?.photoUrl?.[0] || "https://ui-avatars.com/api/?name=Owner&background=random";
-    }
-    
-    const member = project.members?.find((m) => {
-      const mid = String(m.userId?._id || m.userId);
-      return mid === senderIdStr;
-    });
-    
-    if (member?.userId?.photoUrl?.[0]) {
-      return member.userId.photoUrl[0];
-    }
-    if (senderId?.photoUrl?.[0]) {
-      return senderId.photoUrl[0];
-    }
+    if (senderIdStr === ownerId) return project.ownerId?.photoUrl?.[0] || "https://ui-avatars.com/api/?name=Owner&background=random";
+    const member = project.members?.find((m) => String(m.userId?._id || m.userId) === senderIdStr);
+    if (member?.userId?.photoUrl?.[0]) return member.userId.photoUrl[0];
+    if (senderId?.photoUrl?.[0]) return senderId.photoUrl[0];
     return "https://ui-avatars.com/api/?name=User&background=random";
   };
 
@@ -450,8 +500,7 @@ const ProjectChat = ({ project, currentUserId, onClose }) => {
           ) : (
             messages.map((msg) => {
               const senderIdStr = String(msg.senderId?._id || msg.senderId);
-              const currentUserIdStr = String(currentUserId);
-              const isOwn = senderIdStr === currentUserIdStr;
+              const isOwn = senderIdStr === currentUserId;
               return (
                 <div key={msg._id} className={`flex ${isOwn ? "justify-end" : "justify-start"}`}>
                   {!isOwn && (
@@ -486,7 +535,7 @@ const ProjectChat = ({ project, currentUserId, onClose }) => {
               onChange={(e) => setNewMessage(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage()}
               placeholder="Type a message..."
-              className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-neutral-100 outline-none placeholder:text-neutral-500 focus-visible:ring-2 focus-visible:ring-brand-400"
+              className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-neutral-100 outline-none focus-visible:ring-2 focus-visible:ring-brand-400"
             />
             <Button variant="primary" onClick={sendMessage} disabled={sending || !newMessage.trim()}>
               <HiPaperAirplane className="text-lg" />
@@ -499,24 +548,43 @@ const ProjectChat = ({ project, currentUserId, onClose }) => {
 };
 
 const Projects = () => {
-  const [projects, setProjects] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const dispatch = useDispatch();
+  const projects = useSelector((store) => store.projects) || [];
+  const [loading, setLoading] = useState(!projects.length);
   const [creating, setCreating] = useState(false);
   const [chatProject, setChatProject] = useState(null);
   const [showCreate, setShowCreate] = useState(false);
   const [activeTab, setActiveTab] = useState("my");
   const [membersProject, setMembersProject] = useState(null);
+  const [editingProject, setEditingProject] = useState(null);
   const [form, setForm] = useState({ title: "", description: "", techStack: [] });
   const { addToast } = useToast();
   const user = useSelector((store) => store.user);
   const currentUserId = user?._id;
 
-  const getUserId = (m) => String(m.userId?._id || m.userId || "");
+  const loadProjects = async () => {
+    try {
+      const { data } = await axios.get(`${BASE_URL}/projects`, {
+        withCredentials: true,
+      });
+      dispatch(addProjects(data.projects ?? []));
+    } catch (error) {
+      addToast(error?.response?.data?.message || "Unable to load projects", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadProjects();
+  }, [dispatch]);
+
   const currentUserIdStr = String(currentUserId || "");
+  const getUserId = (m) => String(m.userId?._id || m.userId || "");
+  
   const myProjects = projects.filter((p) => {
     const ownerIdStr = String(p.ownerId?._id || p.ownerId || "");
-    return ownerIdStr === currentUserIdStr ||
-    p.members?.some((m) => getUserId(m) === currentUserIdStr);
+    return ownerIdStr === currentUserIdStr || p.members?.some((m) => getUserId(m) === currentUserIdStr);
   });
   
   const exploreProjects = projects.filter((p) => {
@@ -526,39 +594,13 @@ const Projects = () => {
   });
   
   const displayProjects = activeTab === "my" ? myProjects : exploreProjects;
-  const displayTitle = activeTab === "my" 
-    ? "My Projects" 
-    : "Explore Projects";
-  const displaySubtitle = activeTab === "my"
-    ? "Projects you've joined or created"
-    : "Find projects to join and collaborate";
-
-  const loadProjects = async () => {
-    try {
-      const { data } = await axios.get(`${BASE_URL}/projects`, {
-        withCredentials: true,
-      });
-      setProjects(data.projects ?? []);
-    } catch (error) {
-      addToast(
-        error?.response?.data?.message || "Unable to load projects",
-        "error"
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadProjects();
-  }, []);
+  const displayTitle = activeTab === "my" ? "My Projects" : "Explore Projects";
+  const displaySubtitle = activeTab === "my" ? "Projects you've joined or created" : "Find projects to join and collaborate";
 
   const removeMember = async (projectId, memberId) => {
     try {
-      await axios.delete(`${BASE_URL}/project/${projectId}/member/${memberId}`, {
-        withCredentials: true,
-      });
-      await loadProjects();
+      await axios.delete(`${BASE_URL}/project/${projectId}/member/${memberId}`, { withCredentials: true });
+      loadProjects();
       addToast("Member removed", "success");
     } catch (error) {
       addToast(error?.response?.data?.message || "Unable to remove member", "error");
@@ -572,65 +614,58 @@ const Projects = () => {
     }
     setCreating(true);
     try {
-      await axios.post(
-        `${BASE_URL}/project`,
-        {
-          title: form.title,
-          description: form.description,
-          techStack: form.techStack,
-        },
-        { withCredentials: true }
-      );
+      const { data } = await axios.post(`${BASE_URL}/project`, form, { withCredentials: true });
+      dispatch(addProjects([data.project, ...projects]));
       setForm({ title: "", description: "", techStack: [] });
-      await loadProjects();
+      setShowCreate(false);
       addToast("Project created", "success");
     } catch (error) {
-      addToast(
-        error?.response?.data?.message || "Unable to create project",
-        "error"
-      );
+      addToast(error?.response?.data?.message || "Unable to create project", "error");
     } finally {
       setCreating(false);
     }
   };
 
+  const handleEditSave = async (projectId, updatedData) => {
+    try {
+      const { data } = await axios.patch(`${BASE_URL}/project/${projectId}`, updatedData, { withCredentials: true });
+      dispatch(updateProject(data.project));
+      setEditingProject(null);
+      addToast("Project updated", "success");
+    } catch (error) {
+      addToast(error?.response?.data?.message || "Unable to update project", "error");
+    }
+  };
+
+  const handleDelete = async (projectId) => {
+    if (!window.confirm("Are you sure you want to delete this project?")) return;
+    try {
+      await axios.delete(`${BASE_URL}/project/${projectId}`, { withCredentials: true });
+      dispatch(removeProject(projectId));
+      addToast("Project deleted", "success");
+    } catch (error) {
+      addToast(error?.response?.data?.message || "Unable to delete project", "error");
+    }
+  };
+
   const requestJoin = async (projectId) => {
     try {
-      await axios.post(
-        `${BASE_URL}/project/request`,
-        { projectId },
-        { withCredentials: true }
-      );
-      await loadProjects();
+      await axios.post(`${BASE_URL}/project/request`, { projectId }, { withCredentials: true });
+      loadProjects();
       addToast("Join request sent", "success");
     } catch (error) {
-      addToast(
-        error?.response?.data?.message || "Unable to send request",
-        "error"
-      );
+      addToast(error?.response?.data?.message || "Unable to send request", "error");
     }
   };
 
   const respondToRequest = async (projectId, requestId, action) => {
     try {
-      await axios.post(
-        `${BASE_URL}/project/request/respond`,
-        { projectId, requestId, action },
-        { withCredentials: true }
-      );
-      await loadProjects();
+      const { data } = await axios.post(`${BASE_URL}/project/request/respond`, { projectId, requestId, action }, { withCredentials: true });
+      dispatch(updateProject(data.project));
       addToast(`Request ${action}ed`, "success");
     } catch (error) {
       addToast(error?.response?.data?.message || "Unable to respond", "error");
     }
-  };
-
-  const handleView = (project) => {
-    setChatProject(project);
-  };
-
-  const handleShowMembers = (project) => {
-    setMembersProject(project);
   };
 
   return (
@@ -639,28 +674,18 @@ const Projects = () => {
         <>
           <div className="flex items-center justify-between">
             <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setActiveTab("my")}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                  activeTab === "my"
-                    ? "bg-brand-500 text-white"
-                    : "text-neutral-400 hover:text-neutral-200"
-                }`}
-              >
-                My Projects
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab("explore")}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                  activeTab === "explore"
-                    ? "bg-brand-500 text-white"
-                    : "text-neutral-400 hover:text-neutral-200"
-                }`}
-              >
-                Explore
-              </button>
+              {["my", "explore"].map(tab => (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setActiveTab(tab)}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                    activeTab === tab ? "bg-brand-500 text-white" : "text-neutral-400 hover:text-neutral-200"
+                  }`}
+                >
+                  {tab === "my" ? "My Projects" : "Explore"}
+                </button>
+              ))}
             </div>
             <Button variant="primary" onClick={() => setShowCreate(true)}>
               <HiPlus className="text-lg" /> Create
@@ -673,24 +698,10 @@ const Projects = () => {
             </Card>
           ) : displayProjects.length === 0 ? (
             <Card tone="translucent" className="flex flex-col items-center gap-4 p-8 text-center">
-              {activeTab === "my" ? (
-                <HiCollection className="text-3xl text-brand-300" />
-              ) : (
-                <HiGlobeAlt className="text-3xl text-brand-300" />
-              )}
-              <h3 className="text-lg font-semibold text-neutral-100">
-                {activeTab === "my" ? "No projects yet" : "No projects to explore"}
-              </h3>
-              <p className="text-sm text-neutral-400">
-                {activeTab === "my" 
-                  ? "Create a project to start collaborating." 
-                  : "All projects are either private or you've already joined."}
-              </p>
-              {activeTab === "my" && (
-                <Button variant="primary" onClick={() => setShowCreate(true)}>
-                  <HiPlus className="text-lg" /> Create Project
-                </Button>
-              )}
+              {activeTab === "my" ? <HiCollection className="text-3xl text-brand-300" /> : <HiGlobeAlt className="text-3xl text-brand-300" />}
+              <h3 className="text-lg font-semibold text-neutral-100">{activeTab === "my" ? "No projects yet" : "No projects to explore"}</h3>
+              <p className="text-sm text-neutral-400">{activeTab === "my" ? "Create a project to start collaborating." : "All projects are either private or you've already joined."}</p>
+              {activeTab === "my" && <Button variant="primary" onClick={() => setShowCreate(true)}><HiPlus className="text-lg" /> Create Project</Button>}
             </Card>
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
@@ -700,10 +711,12 @@ const Projects = () => {
                   project={project}
                   currentUserId={currentUserId}
                   onJoin={requestJoin}
-                  onView={handleView}
+                  onView={setChatProject}
                   onRespond={respondToRequest}
                   onRemove={removeMember}
-                  onShowMembers={handleShowMembers}
+                  onShowMembers={setMembersProject}
+                  onEdit={setEditingProject}
+                  onDelete={handleDelete}
                 />
               ))}
             </div>
@@ -711,71 +724,29 @@ const Projects = () => {
         </>
       ) : (
         <Card tone="translucent" className="space-y-4 p-6">
-<div className="flex items-center justify-between">
+          <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-semibold text-neutral-100">{displayTitle}</h2>
-              <p className="text-xs text-neutral-400">
-                {displaySubtitle}
-              </p>
+              <h2 className="text-lg font-semibold text-neutral-100">Create Project</h2>
+              <p className="text-xs text-neutral-400">Share your vision and find teammates.</p>
             </div>
-            <Button variant="ghost" onClick={() => setShowCreate(false)}>
-              <HiX className="text-xl" />
-            </Button>
+            <Button variant="ghost" onClick={() => setShowCreate(false)}><HiX className="text-xl" /></Button>
           </div>
           <div className="grid gap-3">
-            <input
-              value={form.title}
-              onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
-              placeholder="Project title"
-              className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-neutral-100 outline-none placeholder:text-neutral-500 focus-visible:ring-2 focus-visible:ring-brand-400"
-            />
-            <TechInput
-              value={form.techStack}
-              onChange={(techStack) => setForm((p) => ({ ...p, techStack }))}
-            />
+            <input value={form.title} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} placeholder="Title" className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-neutral-100 outline-none" />
+            <TechInput value={form.techStack} onChange={(techStack) => setForm((p) => ({ ...p, techStack }))} />
           </div>
-          <textarea
-            value={form.description}
-            onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
-            placeholder="What are you building? Describe the project goals, vision, and what kind of help you need."
-            className="min-h-[150px] w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-neutral-100 outline-none placeholder:text-neutral-500 focus-visible:ring-2 focus-visible:ring-brand-400 resize-y"
-          />
+          <textarea value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} placeholder="Description..." className="min-h-[150px] w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-neutral-100 outline-none resize-y" />
           <div className="flex justify-end gap-2">
-            <Button variant="ghost" onClick={() => setShowCreate(false)}>
-              Cancel
-            </Button>
-            <Button variant="primary" onClick={createProject} disabled={creating}>
-              {creating ? (
-                <span className="loading loading-spinner loading-sm" />
-              ) : (
-                <>
-                  <HiPlus className="text-lg" /> Create Project
-                </>
-              )}
-            </Button>
+            <Button variant="ghost" onClick={() => setShowCreate(false)}>Cancel</Button>
+            <Button variant="primary" onClick={createProject} disabled={creating}>{creating ? <span className="loading loading-spinner loading-sm" /> : <><HiPlus className="text-lg" /> Create Project</>}</Button>
           </div>
         </Card>
       )}
 
       <AnimatePresence>
-        {chatProject && (
-          <ProjectChat
-            project={chatProject}
-            currentUserId={currentUserId}
-            onClose={() => setChatProject(null)}
-          />
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {membersProject && (
-          <MembersModal
-            project={membersProject}
-            currentUserId={currentUserId}
-            onClose={() => setMembersProject(null)}
-            onRemove={removeMember}
-          />
-        )}
+        {editingProject && <EditProjectModal project={editingProject} onClose={() => setEditingProject(null)} onSave={handleEditSave} />}
+        {chatProject && <ProjectChat project={chatProject} currentUserId={currentUserId} onClose={() => setChatProject(null)} />}
+        {membersProject && <MembersModal project={membersProject} currentUserId={currentUserId} onClose={() => setMembersProject(null)} onRemove={removeMember} />}
       </AnimatePresence>
     </div>
   );
