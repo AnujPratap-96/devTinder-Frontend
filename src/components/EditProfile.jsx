@@ -11,6 +11,7 @@ import { useToast } from "../context/ToastProvider";
 import Button from "./ui/Button";
 import AIPanel from "./AIPanel";
 import ProfileViews from "./ProfileViews";
+import { syncGitHubData } from "../utils/aiApi";
 
 const roleOptions = [
   "frontend",
@@ -30,6 +31,75 @@ const availabilityOptions = [
   { value: "not_looking", label: "Not looking" },
 ];
 
+const themeOptions = [
+  { value: "default", label: "Default" },
+  { value: "glassmorphism", label: "Glassmorphism" },
+  { value: "matrix", label: "Matrix Hacker" },
+  { value: "neon", label: "Neon Synthwave" },
+  { value: "cyberpunk", label: "Cyberpunk" },
+  { value: "minimal", label: "Minimalist" },
+  { value: "hacker", label: "Terminal Hacker" }
+];
+
+const themeStyles = {
+  default: {
+    shadow: "0 20px 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.06)",
+    gradient: "linear-gradient(to bottom, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.1) 40%, rgba(0,0,0,0.85) 100%)",
+    font: "sans",
+    badgeBg: "rgba(99,102,241,0.2)",
+    badgeColor: "#c7d2fe",
+    badgeBorder: "rgba(99,102,241,0.3)"
+  },
+  matrix: {
+    shadow: "0 20px 60px rgba(0,40,0,0.9), 0 0 0 2px rgba(34,197,94,0.4)",
+    gradient: "linear-gradient(to bottom, rgba(0,25,0,0.2) 0%, rgba(0,0,0,0.4) 40%, rgba(0,0,0,0.95) 100%)",
+    font: "mono text-green-400 font-mono",
+    badgeBg: "rgba(34,197,94,0.2)",
+    badgeColor: "#86efac",
+    badgeBorder: "rgba(34,197,94,0.4)"
+  },
+  hacker: {
+    shadow: "0 20px 60px rgba(0,0,0,0.9), 0 0 0 1px rgba(74,222,128,0.5)",
+    gradient: "linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.6) 40%, rgba(0,0,0,0.95) 100%)",
+    font: "mono text-green-500 font-mono",
+    badgeBg: "black",
+    badgeColor: "#22c55e",
+    badgeBorder: "rgba(34,197,94,0.5)"
+  },
+  neon: {
+    shadow: "0 20px 60px rgba(236,72,153,0.3), 0 0 20px rgba(139,92,246,0.4), 0 0 0 1px #ec4899",
+    gradient: "linear-gradient(to bottom, rgba(40,0,40,0.1) 0%, rgba(20,0,40,0.3) 40%, rgba(0,0,0,0.9) 100%)",
+    font: "sans",
+    badgeBg: "rgba(236,72,153,0.2)",
+    badgeColor: "#fbcfe8",
+    badgeBorder: "rgba(236,72,153,0.5)"
+  },
+  cyberpunk: {
+    shadow: "0 20px 60px rgba(234,179,8,0.2), 8px 8px 0px rgba(59,130,246,0.5), 0 0 0 2px #eab308",
+    gradient: "linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, rgba(30,30,0,0.3) 40%, rgba(10,10,20,0.95) 100%)",
+    font: "sans uppercase tracking-wide",
+    badgeBg: "rgba(234,179,8,0.2)",
+    badgeColor: "#fef08a",
+    badgeBorder: "rgba(234,179,8,0.8)"
+  },
+  glassmorphism: {
+    shadow: "0 20px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.2)",
+    gradient: "linear-gradient(to bottom, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 40%, rgba(0,0,0,0.8) 100%)",
+    font: "sans tracking-tight",
+    badgeBg: "rgba(255,255,255,0.1)",
+    badgeColor: "white",
+    badgeBorder: "rgba(255,255,255,0.3)"
+  },
+  minimal: {
+    shadow: "0 10px 40px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.03)",
+    gradient: "linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 50%, rgba(0,0,0,0.9) 100%)",
+    font: "sans font-light tracking-wide",
+    badgeBg: "rgba(38,38,38,0.5)",
+    badgeColor: "#d4d4d8",
+    badgeBorder: "rgba(63,63,70,1)"
+  }
+};
+
 const EditProfile = ({ user }) => {
   const dispatch = useDispatch();
   const { addToast } = useToast();
@@ -43,6 +113,7 @@ const EditProfile = ({ user }) => {
     role: user.role || "",
     experienceYears: user.experienceYears ?? 0,
     availability: user.availability || "open",
+    theme: user.theme || "default",
     socialLinks: {
       github: user.socialLinks?.github || "",
       linkedin: user.socialLinks?.linkedin || "",
@@ -57,7 +128,7 @@ const EditProfile = ({ user }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [updatingLocation, setUpdatingLocation] = useState(false);
-  const [githubToken, setGithubToken] = useState("");
+  const [githubToken, setGithubToken] = useState(user.githubProfile?.token || "");
   const [syncingGithub, setSyncingGithub] = useState(false);
 
   useEffect(() => {
@@ -70,6 +141,7 @@ const EditProfile = ({ user }) => {
       role: user.role || "",
       experienceYears: user.experienceYears ?? 0,
       availability: user.availability || "open",
+      theme: user.theme || "default",
       socialLinks: {
         github: user.socialLinks?.github || "",
         linkedin: user.socialLinks?.linkedin || "",
@@ -117,7 +189,7 @@ const EditProfile = ({ user }) => {
       const res = await axios.patch(`${BASE_URL}/profile/edit`, payload, {
         withCredentials: true,
       });
-      dispatch(addUser(res?.data?.user));
+      dispatch(addUser(res?.data?.data?.user));
       addToast("Profile updated", "success");
     } catch (error) {
       addToast(error?.response?.data?.message || "Unable to update profile", "error");
@@ -139,7 +211,7 @@ const EditProfile = ({ user }) => {
       });
       if (res.status === 200) {
         const updatedGallery = [...gallery];
-        updatedGallery[selectedIndex] = res.data.secure_url;
+        updatedGallery[selectedIndex] = res.data.data.secureUrl;
         setGallery(updatedGallery);
         dispatch(addUser({ ...user, photoUrl: updatedGallery }));
         addToast("Image uploaded", "success");
@@ -187,6 +259,8 @@ const EditProfile = ({ user }) => {
     );
   };
 
+
+
   const handleGithubSync = async () => {
     if (!githubToken.trim()) {
       addToast("Provide a GitHub personal access token", "info");
@@ -194,16 +268,43 @@ const EditProfile = ({ user }) => {
     }
     setSyncingGithub(true);
     try {
+      // Use the unified AI route for both, or keep /github/sync?
+      // Considering the user wants persistence, I'll point to /ai/github-sync
+      // because it handles saving the token.
       await axios.post(
-        `${BASE_URL}/github/sync`,
-        { accessToken: githubToken.trim() },
+        `${BASE_URL}/ai/github-sync`,
+        { githubToken: githubToken.trim() },
         { withCredentials: true }
       );
       await refreshUser();
-      addToast("GitHub profile synced", "success");
-      setGithubToken("");
+      addToast("GitHub profile synced securely", "success");
+      // Don't clear it, it's saved now!
     } catch (error) {
       addToast(error?.response?.data?.message || "GitHub sync failed", "error");
+    } finally {
+      setSyncingGithub(false);
+    }
+  };
+
+  const handleAiGithubSync = async () => {
+    const githubUrl = formData.socialLinks.github;
+    const username = githubUrl ? githubUrl.split("/").pop() : user.githubProfile?.username;
+    
+    if (!username) {
+      addToast("Please provide your GitHub URL or username in profile", "info");
+      return;
+    }
+
+    setSyncingGithub(true);
+    try {
+      // Pass the local githubToken state so it can be saved/updated on the backend
+      const { data } = await syncGitHubData(username, githubToken.trim());
+       setFormData((prev) => ({ ...prev, about: data.data.bio }));
+       setSkills(data.data.skills);
+      await refreshUser(); // Refresh to see the saved token/stats
+      addToast("AI Magic: Your profile is now code-aware!", "success");
+    } catch (error) {
+      addToast("AI Sync failed. Is the username/token correct?", "error");
     } finally {
       setSyncingGithub(false);
     }
@@ -263,6 +364,13 @@ const EditProfile = ({ user }) => {
               value={formData.availability}
               onChange={handleChange("availability")}
               options={availabilityOptions}
+            />
+
+            <SelectField
+              label="Profile Vibe (Theme)"
+              value={formData.theme}
+              onChange={handleChange("theme")}
+              options={themeOptions}
             />
 
             <InputField
@@ -439,7 +547,15 @@ const EditProfile = ({ user }) => {
                   disabled={syncingGithub}
                   className="justify-center"
                 >
-                  {syncingGithub ? <span className="loading loading-spinner loading-sm" /> : "Sync GitHub"}
+                  {syncingGithub ? <span className="loading loading-spinner loading-sm" /> : "Token Sync (Full Stats)"}
+                </Button>
+                <Button
+                  variant="primary"
+                  onClick={handleAiGithubSync}
+                  disabled={syncingGithub}
+                  className="justify-center gap-2 border-none bg-gradient-to-r from-brand-600 to-accent-purple hover:from-brand-500 hover:to-accent-purple"
+                >
+                  {syncingGithub ? <span className="loading loading-spinner loading-sm" /> : <>✨ Magic AI Sync</>}
                 </Button>
               </div>
             </div>
@@ -599,6 +715,7 @@ const SelectField = ({ label, value, onChange, options }) => (
 const UserCardPreview = ({ user }) => {
   const images = user.photoUrl || [];
   const [currentIndex, setCurrentIndex] = useState(0);
+  const currentTheme = themeStyles[user.theme] || themeStyles["default"];
 
   useEffect(() => {
     if (images.length > 1) {
@@ -611,7 +728,8 @@ const UserCardPreview = ({ user }) => {
 
   return (
     <motion.div
-      className="relative h-[400px] w-[280px] overflow-hidden rounded-3xl border border-white/10 bg-surface-950 shadow-brand-glow"
+      className={`relative h-[400px] w-[280px] overflow-hidden rounded-3xl border border-white/10 bg-surface-950 ${currentTheme.font}`}
+      style={{ boxShadow: currentTheme.shadow }}
       whileHover={{ y: -4, scale: 1.01 }}
       transition={{ duration: 0.3 }}
     >
@@ -633,7 +751,7 @@ const UserCardPreview = ({ user }) => {
           />
         )}
       </div>
-      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
+      <div className="absolute inset-0" style={{ background: currentTheme.gradient }} />
 
       <div className="absolute bottom-0 left-0 right-0 p-5">
         <h2 className="mb-1 flex items-center gap-2 text-xl font-bold text-white">
@@ -657,7 +775,7 @@ const UserCardPreview = ({ user }) => {
         {truncatedSkills.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {truncatedSkills.map((skill) => (
-              <span key={skill} className="rounded-full border border-brand-400/20 bg-brand-500/20 px-3 py-1 text-[10px] font-semibold text-brand-200">
+              <span key={skill} className="rounded-full px-3 py-1 text-[10px] font-semibold" style={{ background: currentTheme.badgeBg, color: currentTheme.badgeColor, border: `1px solid ${currentTheme.badgeBorder}`, backdropFilter: "blur(8px)" }}>
                 {skill}
               </span>
             ))}

@@ -1,8 +1,9 @@
 import axios from "axios";
 import { BASE_URL } from "../utils/constant";
 import { useDispatch, useSelector } from "react-redux";
-import { useCallback, useEffect, useState, useTransition, memo } from "react";
+import { useCallback, useEffect, useState, useTransition, memo, forwardRef } from "react";
 import { addFeed } from "../store/feedSlice";
+import { VirtuosoGrid } from "react-virtuoso";
 import UserCard from "./UserCard";
 import CompactUserItem from "./CompactUserItem";
 import { useToast } from "../context/ToastProvider";
@@ -14,21 +15,34 @@ import Card from "./ui/Card";
 import EmptyState from "./ui/EmptyState";
 import ErrorBoundary from "./ErrorBoundary";
 
+const gridComponents = {
+  List: forwardRef((props, ref) => (
+    <div {...props} ref={ref} className="grid w-full grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 pb-8" />
+  )),
+  Item: ({ children, ...props }) => (
+    <div {...props} className="w-full h-full flex">{children}</div>
+  )
+};
+
 const SearchGrid = memo(({ results, onSelect, query }) => (
   <motion.div 
     key="results-grid"
-    className="grid w-full grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 max-w-7xl"
+    className="w-full max-w-7xl h-[70vh] min-h-[500px]"
     initial={{ opacity: 0 }}
     animate={{ opacity: 1 }}
   >
-    {results.slice(0, 15).map(u => (
-      <CompactUserItem 
-        key={u._id} 
-        user={u} 
-        searchQuery={query} 
-        onView={onSelect} 
-      />
-    ))}
+    <VirtuosoGrid
+      style={{ height: '100%', width: '100%' }}
+      data={results}
+      components={gridComponents}
+      itemContent={(index, u) => (
+        <CompactUserItem 
+          user={u} 
+          searchQuery={query} 
+          onView={onSelect} 
+        />
+      )}
+    />
   </motion.div>
 ));
 
@@ -91,7 +105,7 @@ const Feed = () => {
       }
       const url = params.toString() ? `${BASE_URL}/feed?${params.toString()}` : `${BASE_URL}/feed`;
       const res = await axios.get(url, { withCredentials: true });
-      dispatch(addFeed(res?.data?.users || []));
+      dispatch(addFeed(res?.data?.data?.users || []));
     } catch (err) {
       addToast(err.message || "Error fetching feed. Please try again later.", "error");
     } finally {
@@ -120,7 +134,7 @@ const Feed = () => {
         withCredentials: true,
         signal,
       });
-      setSearchResults(res.data.users || []);
+      setSearchResults(res.data.data || []);
     } catch (err) {
       if (axios.isCancel(err)) return;
       console.error("Search error:", err);

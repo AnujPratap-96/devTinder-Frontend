@@ -39,7 +39,7 @@ const Body = () => {
           withCredentials: true,
         });
         if (res.data) {
-          dispatch(addUser(res.data.user));
+          dispatch(addUser(res.data.data.user));
         }
       } catch (err) {
         const status = err?.response?.status;

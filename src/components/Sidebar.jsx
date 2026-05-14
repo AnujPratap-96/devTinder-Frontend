@@ -11,7 +11,7 @@ import { HiX } from "react-icons/hi";
 import { useDispatch, useSelector } from "react-redux";
 import { removeUser } from "../store/userSlice";
 import axios from "axios";
-import { BASE_URL } from "../utils/constant";
+import { BASE_URL, closeSocketConnection } from "../utils/constant";
 import { useToast } from "../context/ToastProvider";
 import { HiBookmark, HiCollection, HiShieldCheck } from "react-icons/hi";
 
@@ -31,16 +31,16 @@ const Sidebar = ({ isSidebarOpen, setSidebarOpen }) => {
         const { data: notifData } = await axios.get(`${BASE_URL}/notifications`, {
           withCredentials: true,
         });
-        const connectionRequests = notifData.notifications?.filter(
-          (n) => n.type === "connection.request" && !n.isRead
-        )?.length || 0;
+         const connectionRequests = notifData.data.notifications?.filter(
+           (n) => n.type === "connection.request" && !n.isRead
+         )?.length || 0;
 
-        const { data: projectData } = await axios.get(`${BASE_URL}/projects`, {
-          withCredentials: true,
-        });
-        let projectRequests = 0;
-        const userIdStr = String(currentUserId);
-        projectData.projects?.forEach((project) => {
+         const { data: projectData } = await axios.get(`${BASE_URL}/projects`, {
+           withCredentials: true,
+         });
+         let projectRequests = 0;
+         const userIdStr = String(currentUserId);
+         projectData.data.projects?.forEach((project) => {
           const ownerIdStr = String(project.ownerId?._id || project.ownerId || "");
           if (ownerIdStr === userIdStr) {
             projectRequests += project.joinRequests?.filter((r) => r.status === "pending").length || 0;
@@ -73,6 +73,7 @@ const Sidebar = ({ isSidebarOpen, setSidebarOpen }) => {
   const handleLogout = async () => {
     try {
       await axios.post(`${BASE_URL}/logout`, {}, { withCredentials: true });
+      closeSocketConnection();
       dispatch(removeUser());
       addToast("Logged out successfully", "success");
       navigate("/");

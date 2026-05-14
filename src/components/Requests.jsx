@@ -18,7 +18,7 @@ const Requests = () => {
   const connectionRequest = useCallback(async () => {
     try {
       const res = await axios.get(BASE_URL + "/user/requests/received", { withCredentials: true });
-      dispatch(addRequests(res?.data?.requests || []));
+       dispatch(addRequests(res?.data?.data || []));
     } catch (error) {
       addToast(error?.response?.data?.message || "Error fetching requests. Please try again later.");
     }

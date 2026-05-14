@@ -17,7 +17,7 @@ const ProfileViews = () => {
         const { data } = await axios.get(`${BASE_URL}/profile/views`, {
           withCredentials: true,
         });
-        setViews(data.views ?? []);
+         setViews(data.data.views ?? []);
       } catch (error) {
         addToast(error?.response?.data?.message || "Unable to load profile views", "error");
       } finally {

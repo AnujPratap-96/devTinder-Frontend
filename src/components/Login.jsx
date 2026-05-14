@@ -31,7 +31,7 @@ const Login = () => {
         },
         { withCredentials: true }
       );
-      dispatch(addUser(res.data.user));
+       dispatch(addUser(res.data.data.user));
       addToast("Login successful!", "success");
       navigate("/feed");
     } catch (err) {

@@ -4,6 +4,19 @@ import io from "socket.io-client";
 
 let socketInstance;
 
+/**
+ * Disconnect the socket gracefully when the user closes the tab/window.
+ * This fires the 'disconnect' event on the server side immediately,
+ * so the user's online status is cleared without waiting for the TCP timeout.
+ */
+const handleBeforeUnload = () => {
+  if (socketInstance?.connected) {
+    socketInstance.disconnect();
+  }
+};
+
+window.addEventListener("beforeunload", handleBeforeUnload);
+
 export const createSocketConnection = (userId) => {
   if (!socketInstance) {
     const isLocal = location.hostname === "localhost";

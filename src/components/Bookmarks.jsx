@@ -22,15 +22,15 @@ const availabilityConfig = {
 
 // ─── Role → gradient map ───────────────────────────────────────
 const roleGradient = {
-  frontend:  "from-sky-600/40 via-indigo-700/30 to-transparent",
-  backend:   "from-emerald-700/40 via-teal-800/30 to-transparent",
+  frontend: "from-sky-600/40 via-indigo-700/30 to-transparent",
+  backend: "from-emerald-700/40 via-teal-800/30 to-transparent",
   fullstack: "from-violet-700/40 via-purple-800/30 to-transparent",
-  mobile:    "from-pink-700/40 via-rose-800/30 to-transparent",
-  design:    "from-orange-600/40 via-amber-700/30 to-transparent",
-  product:   "from-blue-700/40 via-cyan-800/30 to-transparent",
-  data:      "from-yellow-600/40 via-lime-700/30 to-transparent",
-  devops:    "from-red-700/40 via-orange-800/30 to-transparent",
-  other:     "from-neutral-700/40 via-stone-800/30 to-transparent",
+  mobile: "from-pink-700/40 via-rose-800/30 to-transparent",
+  design: "from-orange-600/40 via-amber-700/30 to-transparent",
+  product: "from-blue-700/40 via-cyan-800/30 to-transparent",
+  data: "from-yellow-600/40 via-lime-700/30 to-transparent",
+  devops: "from-red-700/40 via-orange-800/30 to-transparent",
+  other: "from-neutral-700/40 via-stone-800/30 to-transparent",
 };
 
 // ─── Skeleton loader ───────────────────────────────────────────
@@ -69,7 +69,7 @@ const Bookmarks = () => {
         const { data } = await axios.get(`${BASE_URL}/bookmarks`, {
           withCredentials: true,
         });
-        setBookmarks(data.bookmarks ?? []);
+        setBookmarks(data.data.bookmarks ?? []);
       } catch (error) {
         addToast(error?.response?.data?.message || "Unable to load bookmarks", "error");
       } finally {
@@ -177,7 +177,9 @@ const Bookmarks = () => {
             const avail = availabilityConfig[dev.availability] ?? availabilityConfig.open;
             const gradient = roleGradient[dev.role] ?? roleGradient.other;
             const skills = (dev.skills ?? []).slice(0, 4);
-            const photo = dev.photoUrl?.[0];
+            const photo = Array.isArray(dev.photoUrl)
+              ? dev.photoUrl[0]
+              : dev.photoUrl;
             const name = `${dev.firstName ?? ""} ${dev.lastName ?? ""}`.trim();
             const isRemoving = removing === bookmark._id;
 

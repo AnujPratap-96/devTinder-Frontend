@@ -70,7 +70,7 @@ const Messages = () => {
                   <div className="relative flex-shrink-0">
                     <div className="avatar-ring h-12 w-12 overflow-hidden">
                       <img
-                        src={conn.photoUrl?.[0] || "https://via.placeholder.com/50"}
+                         src={Array.isArray(conn.photoUrl) ? conn.photoUrl[0] : conn.photoUrl || "https://via.placeholder.com/150"}
                         alt={conn.firstName}
                         className="h-full w-full object-cover"
                       />

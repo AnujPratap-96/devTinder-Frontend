@@ -22,7 +22,7 @@ const Signup = () => {
         { withCredentials: true }
       );
       addToast("OTP sent successfully!", "success");
-      localStorage.setItem("signup_token", res.data.token);
+       localStorage.setItem("signup_token", res.data.data.token);
       navigate("/verify-otp");
     } catch (err) {
       addToast(err?.response?.data?.message || "Failed to send OTP", "error");

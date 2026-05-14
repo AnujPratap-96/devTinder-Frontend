@@ -79,7 +79,7 @@ const NotificationBell = () => {
         const { data } = await axios.get(`${BASE_URL}/notifications`, {
           withCredentials: true,
         });
-        const ordered = (data.notifications ?? []).sort(
+         const ordered = (data.data.notifications ?? []).sort(
           (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
         );
         setNotifications(ordered);
@@ -97,16 +97,16 @@ const NotificationBell = () => {
         const { data: notifData } = await axios.get(`${BASE_URL}/notifications`, {
           withCredentials: true,
         });
-        const connectionRequests = notifData.notifications?.filter(
-          (n) => n.type === "connection.request" && !n.isRead
-        )?.length || 0;
+         const connectionRequests = notifData.data.notifications?.filter(
+           (n) => n.type === "connection.request" && !n.isRead
+         )?.length || 0;
 
-        const { data: projectData } = await axios.get(`${BASE_URL}/projects`, {
-          withCredentials: true,
-        });
-        let projectRequests = 0;
-        const userIdStr = String(currentUserId);
-        projectData.projects?.forEach((project) => {
+         const { data: projectData } = await axios.get(`${BASE_URL}/projects`, {
+           withCredentials: true,
+         });
+         let projectRequests = 0;
+         const userIdStr = String(currentUserId);
+         projectData.data.projects?.forEach((project) => {
           const ownerIdStr = String(project.ownerId?._id || project.ownerId || "");
           if (ownerIdStr === userIdStr) {
             projectRequests += project.joinRequests?.filter((r) => r.status === "pending").length || 0;

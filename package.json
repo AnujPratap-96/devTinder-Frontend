@@ -12,6 +12,7 @@
   "dependencies": {
     "@headlessui/react": "^1.7.19",
     "axios": "^1.7.9",
+    "canvas-confetti": "^1.9.4",
     "clsx": "^2.1.1",
     "daisyui": "^4.12.23",
     "framer-motion": "^12.4.7",

@@ -10,7 +10,6 @@ const Profile = () => {
       <div className="space-y-6">
         <ProfileStrengthMeter profileStrength={user.profileStrength} />
         <EditProfile user={user} />
-        <ProfileViews />
       </div>
     )
   );

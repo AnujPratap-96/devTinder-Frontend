@@ -21,9 +21,9 @@ const MembershipCards = () => {
   const verifyPremiumUser = async () => {
     try {
       const res = await axios.get(BASE_URL + "/premium/verify", { withCredentials: true });
-      if (res.data.isPremium) {
-        dispatch(addUser(res.data.user));
-      }
+       if (res.data.data.isPremium) {
+         dispatch(addUser(res.data.data.user));
+       }
     } catch (error) {
       addToast(error.response?.data?.message || "Error verifying premium status.", "error");
     }

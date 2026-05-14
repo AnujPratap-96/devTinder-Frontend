@@ -20,6 +20,7 @@ import { ToastProvider } from "./context/ToastProvider";
 import Projects from "./components/Projects";
 import Bookmarks from "./components/Bookmarks";
 import AdminDashboard from "./components/AdminDashboard";
+import MatchCelebration from "./components/MatchCelebration";
 
 const App = () => {
   return (
@@ -53,6 +54,7 @@ const App = () => {
               </Route>
             </Routes>
           </div>
+          <MatchCelebration />
         </BrowserRouter>
       </ToastProvider>
     </Provider>

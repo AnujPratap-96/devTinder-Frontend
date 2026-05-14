@@ -1,12 +1,43 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { HiX, HiCode, HiChat } from "react-icons/hi";
+import { HiX, HiCode, HiChat, HiCheckCircle } from "react-icons/hi";
 import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import axios from "axios";
+import { BASE_URL } from "../utils/constant";
+import { useToast } from "../context/ToastProvider";
 import Button from "./ui/Button";
 
 const ConnectionModal = ({ user, isOpen, onClose }) => {
   const navigate = useNavigate();
+  const { addToast } = useToast();
+  const [localUser, setLocalUser] = useState(user);
+
+  useEffect(() => {
+    setLocalUser(user);
+  }, [user]);
 
   if (!isOpen || !user) return null;
+
+  const handleEndorse = async (skill) => {
+    try {
+      const { data } = await axios.post(
+        `${BASE_URL}/user/endorse`,
+        { targetUserId: user._id, skill },
+        { withCredentials: true }
+      );
+       setLocalUser((prev) => ({ ...prev, endorsements: data.data.endorsements }));
+       addToast(data.data.message, "success");
+    } catch (error) {
+      addToast(error?.response?.data?.message || "Endorsement failed", "error");
+    }
+  };
+
+  const getEndorsementCount = (skillName) => {
+    const endorsement = localUser?.endorsements?.find(
+      (e) => e.skill.toLowerCase() === skillName.toLowerCase()
+    );
+    return endorsement ? endorsement.endorsers.length : 0;
+  };
 
   return (
     <AnimatePresence>
@@ -37,7 +68,7 @@ const ConnectionModal = ({ user, isOpen, onClose }) => {
           {/* Left Image Area / Top on mobile */}
           <div className="relative h-64 w-full shrink-0 sm:h-auto sm:w-2/5 xl:w-5/12">
             <img
-              src={user.photoUrl?.[0] || "https://via.placeholder.com/400"}
+                src={Array.isArray(user.photoUrl) ? user.photoUrl[0] : user.photoUrl || "https://via.placeholder.com/150"}
               alt={user.firstName}
               className="h-full w-full object-cover"
             />
@@ -75,15 +106,26 @@ const ConnectionModal = ({ user, isOpen, onClose }) => {
                   Skills & Expertise
                 </h3>
                 <div className="flex flex-wrap gap-2">
-                  {user.skills.map((skill, index) => (
-                    <span
-                      key={index}
-                      className="inline-flex items-center gap-1.5 rounded-full border border-brand-400/20 bg-brand-500/10 px-3 py-1.5 text-xs font-medium text-brand-100 shadow-sm"
-                    >
-                      <HiCode className="text-brand-300 text-[10px]" />
-                      {skill}
-                    </span>
-                  ))}
+                  {user.skills.map((skill, index) => {
+                    const count = getEndorsementCount(skill);
+                    return (
+                      <button
+                        key={index}
+                        onClick={() => handleEndorse(skill)}
+                        title={`Click to endorse ${user.firstName} for ${skill}`}
+                        className="group inline-flex items-center gap-2 rounded-full border border-brand-400/20 bg-brand-500/10 px-3 py-1.5 text-xs font-medium text-brand-100 shadow-sm transition-all hover:border-brand-400 hover:bg-brand-500/20 active:scale-95"
+                      >
+                        <HiCode className="text-brand-300 text-[10px]" />
+                        {skill}
+                        {count > 0 && (
+                          <span className="flex items-center gap-1 rounded-full bg-brand-500/30 px-1.5 py-0.5 text-[10px] text-brand-200">
+                            <HiCheckCircle className="text-[10px]" />
+                            {count}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}

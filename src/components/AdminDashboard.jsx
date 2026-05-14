@@ -21,8 +21,8 @@ const AdminDashboard = () => {
         axios.get(`${BASE_URL}/admin/users`, { withCredentials: true }),
         axios.get(`${BASE_URL}/admin/reports`, { withCredentials: true }),
       ]);
-      setUsers(usersRes.data.users ?? []);
-      setReports(reportsRes.data.reports ?? []);
+       setUsers(usersRes.data.data.users ?? []);
+       setReports(reportsRes.data.data.reports ?? []);
     } catch (error) {
       addToast(error?.response?.data?.message || "Unable to load admin data", "error");
     } finally {

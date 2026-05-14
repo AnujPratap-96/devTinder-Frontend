@@ -11,6 +11,65 @@ import AIMatchExplainer from "./AIMatchExplainer";
 import Button from "./ui/Button";
 import { highlightText } from "../utils/textUtils.jsx";
 
+const themeStyles = {
+  default: {
+    shadow: "0 20px 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.06)",
+    gradient: "linear-gradient(to bottom, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.1) 40%, rgba(0,0,0,0.85) 100%)",
+    font: "sans",
+    badgeBg: "rgba(99,102,241,0.2)",
+    badgeColor: "#c7d2fe",
+    badgeBorder: "rgba(99,102,241,0.3)"
+  },
+  matrix: {
+    shadow: "0 20px 60px rgba(0,40,0,0.9), 0 0 0 2px rgba(34,197,94,0.4)",
+    gradient: "linear-gradient(to bottom, rgba(0,25,0,0.2) 0%, rgba(0,0,0,0.4) 40%, rgba(0,0,0,0.95) 100%)",
+    font: "mono text-green-400 font-mono",
+    badgeBg: "rgba(34,197,94,0.2)",
+    badgeColor: "#86efac",
+    badgeBorder: "rgba(34,197,94,0.4)"
+  },
+  hacker: {
+    shadow: "0 20px 60px rgba(0,0,0,0.9), 0 0 0 1px rgba(74,222,128,0.5)",
+    gradient: "linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.6) 40%, rgba(0,0,0,0.95) 100%)",
+    font: "mono text-green-500 font-mono",
+    badgeBg: "black",
+    badgeColor: "#22c55e",
+    badgeBorder: "rgba(34,197,94,0.5)"
+  },
+  neon: {
+    shadow: "0 20px 60px rgba(236,72,153,0.3), 0 0 20px rgba(139,92,246,0.4), 0 0 0 1px #ec4899",
+    gradient: "linear-gradient(to bottom, rgba(40,0,40,0.1) 0%, rgba(20,0,40,0.3) 40%, rgba(0,0,0,0.9) 100%)",
+    font: "sans",
+    badgeBg: "rgba(236,72,153,0.2)",
+    badgeColor: "#fbcfe8",
+    badgeBorder: "rgba(236,72,153,0.5)"
+  },
+  cyberpunk: {
+    shadow: "0 20px 60px rgba(234,179,8,0.2), 8px 8px 0px rgba(59,130,246,0.5), 0 0 0 2px #eab308",
+    gradient: "linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, rgba(30,30,0,0.3) 40%, rgba(10,10,20,0.95) 100%)",
+    font: "sans uppercase tracking-wide",
+    badgeBg: "rgba(234,179,8,0.2)",
+    badgeColor: "#fef08a",
+    badgeBorder: "rgba(234,179,8,0.8)"
+  },
+  glassmorphism: {
+    shadow: "0 20px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.2)",
+    gradient: "linear-gradient(to bottom, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 40%, rgba(0,0,0,0.8) 100%)",
+    font: "sans tracking-tight",
+    badgeBg: "rgba(255,255,255,0.1)",
+    badgeColor: "white",
+    badgeBorder: "rgba(255,255,255,0.3)"
+  },
+  minimal: {
+    shadow: "0 10px 40px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.03)",
+    gradient: "linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 50%, rgba(0,0,0,0.9) 100%)",
+    font: "sans font-light tracking-wide",
+    badgeBg: "rgba(38,38,38,0.5)",
+    badgeColor: "#d4d4d8",
+    badgeBorder: "rgba(63,63,70,1)"
+  }
+};
+
 const SwipeCard = ({ user, searchQuery = "" }) => {
   const { addToast } = useToast();
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -39,7 +98,11 @@ const SwipeCard = ({ user, searchQuery = "" }) => {
     recommended,
     matchScore,
     relationshipStatus = "none",
+    theme = "default",
+    endorsements = [],
   } = user;
+
+  const currentTheme = themeStyles[theme] || themeStyles["default"];
 
   const photoUrl = Array.isArray(incomingPhotoUrl) 
     ? incomingPhotoUrl 
@@ -141,6 +204,18 @@ const SwipeCard = ({ user, searchQuery = "" }) => {
       addToast("User reported", "success");
     } catch (error) {
       addToast(error?.response?.data?.message || "Unable to report user", "error");
+    }
+  };
+
+  const [localEndorsements, setLocalEndorsements] = useState(endorsements);
+
+  const handleEndorse = async (skill) => {
+    try {
+      const res = await axios.post(`${BASE_URL}/user/endorse`, { targetUserId: _id, skill }, { withCredentials: true });
+      addToast(`Endorsed for ${skill} 👍`, "success");
+       setLocalEndorsements(res.data.data || []);
+    } catch (err) {
+      addToast(err?.response?.data?.message || "Failed to endorse", "error");
     }
   };
 
@@ -252,13 +327,13 @@ const SwipeCard = ({ user, searchQuery = "" }) => {
     <div className="relative flex flex-col justify-center items-center w-full">
       {/* Card */}
       <motion.div
-        className="relative cursor-grab active:cursor-grabbing select-none"
+        className={`relative cursor-grab active:cursor-grabbing select-none ${currentTheme.font}`}
         style={{
           width: "340px",
           height: "520px",
           borderRadius: "24px",
           overflow: "hidden",
-          boxShadow: "0 20px 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.06)",
+          boxShadow: currentTheme.shadow,
           x,
           y,
           rotate,
@@ -339,7 +414,7 @@ const SwipeCard = ({ user, searchQuery = "" }) => {
         {/* Gradient overlay */}
         <div
           className="absolute inset-0"
-          style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.1) 40%, rgba(0,0,0,0.85) 100%)" }}
+          style={{ background: currentTheme.gradient }}
         />
 
         {/* Slider dots */}
@@ -411,21 +486,37 @@ const SwipeCard = ({ user, searchQuery = "" }) => {
 
            {skills?.length > 0 && (
              <div className="mt-3 flex flex-wrap gap-1.5">
-               {truncatedSkills.map((skill, idx) => (
-                 <span
+               {truncatedSkills.map((skill, idx) => {
+                 const skillEndorsementCount = localEndorsements?.find(e => e.skill.toLowerCase() === skill.toLowerCase())?.endorsers?.length || 0;
+                 return (
+                 <motion.span
                   key={idx}
-                  className="px-2.5 py-1 rounded-full text-xs font-medium"
+                  whileHover={{ scale: relationshipStatus === "connected" ? 1.05 : 1 }}
+                  whileTap={{ scale: relationshipStatus === "connected" ? 0.95 : 1 }}
+                  onClick={(e) => {
+                    if (relationshipStatus === "connected") {
+                      e.stopPropagation();
+                      handleEndorse(skill);
+                    }
+                  }}
+                  className={`px-2.5 py-1 rounded-full text-xs font-medium flex items-center transition-all ${relationshipStatus === "connected" ? "cursor-pointer hover:brightness-110" : ""}`}
                   style={{
-                    background: "rgba(99,102,241,0.2)",
-                    color: "#c7d2fe",
-                    border: "1px solid rgba(99,102,241,0.3)",
+                    background: currentTheme.badgeBg,
+                    color: currentTheme.badgeColor,
+                    border: `1px solid ${currentTheme.badgeBorder}`,
                     backdropFilter: "blur(8px)",
                   }}
+                  title={relationshipStatus === "connected" ? "Click to endorse" : "Endorsements"}
                 >
-                  <HiCode className="inline mr-1 text-xs" />
+                  <HiCode className="inline mr-1 text-[10px]" />
                   {highlightText(skill, searchQuery)}
-                </span>
-              ))}
+                  {skillEndorsementCount > 0 && (
+                    <span className="ml-1.5 flex items-center gap-0.5 text-[9px] bg-white/20 px-1.5 rounded-full font-bold">
+                      {skillEndorsementCount}
+                    </span>
+                  )}
+                </motion.span>
+               )})}
               {skills.length > 4 && (
                 <span className="px-2.5 py-1 rounded-full text-xs" style={{ color: "#64748b" }}>
                   +{skills.length - 4} more

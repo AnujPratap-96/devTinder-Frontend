@@ -13,11 +13,12 @@ import {
   HiDotsVertical,
   HiBan,
   HiFlag,
+  HiX,
 } from "react-icons/hi";
 import { BASE_URL, createSocketConnection } from "../utils/constant";
 import { useToast } from "../context/ToastProvider";
 import { getOnlineStatus, formatTimeAgo } from "../utils/timeUtils";
-import { generateIcebreaker } from "../utils/aiApi";
+import { generateIcebreaker, suggestCollaboration } from "../utils/aiApi";
 
 const MESSAGE_LIMIT = 30;
 
@@ -75,6 +76,8 @@ const ChatBox = () => {
   const [showMenu, setShowMenu] = useState(false);
   const [icebreaker, setIcebreaker] = useState("");
   const [icebreakerLoading, setIcebreakerLoading] = useState(false);
+  const [collabSuggestion, setCollabSuggestion] = useState(null);
+  const [collabLoading, setCollabLoading] = useState(false);
   const { addToast } = useToast();
 
   const blockUser = async () => {
@@ -85,6 +88,18 @@ const ChatBox = () => {
       navigate("/messages");
     } catch (error) {
       addToast(error?.response?.data?.message || "Unable to block user", "error");
+    }
+  };
+
+  const fetchCollabSuggestion = async () => {
+    setCollabLoading(true);
+    try {
+      const { data } = await suggestCollaboration(targetUserId);
+       setCollabSuggestion(data.data);
+    } catch (err) {
+      addToast("Failed to get collaboration suggestion", "error");
+    } finally {
+      setCollabLoading(false);
     }
   };
 
@@ -127,17 +142,17 @@ const ChatBox = () => {
       const { data } = await axios.get(`${BASE_URL}/chat/${targetUserId}?limit=${MESSAGE_LIMIT}`, {
         withCredentials: true,
       });
-      setMatchId(data.chat.matchId);
-      setMessages((prev) => {
-        const decorated = data.messages.map((msg) => decorateMessage(msg, userId, targetUserId));
-        return [...decorated];
-      });
-      setPage(1);
-      setHasMore((data.messages ?? []).length === MESSAGE_LIMIT);
-      setError(null);
+       setMatchId(data.data.chat.matchId);
+       setMessages((prev) => {
+         const decorated = data.data.messages.map((msg) => decorateMessage(msg, userId, targetUserId));
+         return [...decorated];
+       });
+       setPage(1);
+       setHasMore((data.data.messages ?? []).length === MESSAGE_LIMIT);
+       setError(null);
 
-      // Fetch icebreaker only on a fresh/empty chat
-      if ((data.messages ?? []).length === 0 && targetUserId) {
+       // Fetch icebreaker only on a fresh/empty chat
+       if ((data.data.messages ?? []).length === 0 && targetUserId) {
         fetchIcebreaker();
       }
     } catch (err) {
@@ -169,13 +184,13 @@ const ChatBox = () => {
         `${BASE_URL}/messages/${matchId}?page=${nextPage}&limit=${MESSAGE_LIMIT}`,
         { withCredentials: true }
       );
-      const decorated = data.messages.map((msg) => decorateMessage(msg, userId, targetUserId));
-      if (decorated.length) {
-        setMessages((prev) => [...decorated, ...prev]);
-        virtuosoRef.current?.prependItems(decorated.length);
-      }
-      setPage(nextPage);
-      setHasMore(data.hasMore);
+       const decorated = data.data.messages.map((msg) => decorateMessage(msg, userId, targetUserId));
+       if (decorated.length) {
+         setMessages((prev) => [...decorated, ...prev]);
+         virtuosoRef.current?.prependItems(decorated.length);
+       }
+       setPage(nextPage);
+       setHasMore(data.data.hasMore);
     } catch (err) {
       addToast("Unable to retrieve older messages", "error");
     } finally {
@@ -469,7 +484,20 @@ const ChatBox = () => {
                 {typingUsers.size ? "Typing…" : getOnlineStatus(otherUser.isOnline, otherUser.lastSeenAt)}
               </p>
             </div>
-            <div className="relative">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={fetchCollabSuggestion}
+                disabled={collabLoading}
+                className="flex items-center gap-2 rounded-lg bg-brand-500/10 px-3 py-1.5 text-[10px] sm:text-xs font-bold uppercase tracking-wider text-brand-400 transition hover:bg-brand-500/20 disabled:opacity-50"
+              >
+                {collabLoading ? (
+                  <span className="loading loading-spinner loading-[10px]" />
+                ) : (
+                  <>✨ Suggest Activity</>
+                )}
+              </button>
+              <div className="relative">
               <button
                 type="button"
                 onClick={() => setShowMenu(!showMenu)}
@@ -497,7 +525,8 @@ const ChatBox = () => {
               )}
             </div>
           </div>
-        )}
+        </div>
+      )}
       </div>
 
       {/* Message list OR empty state */}
@@ -643,6 +672,77 @@ const ChatBox = () => {
           </button>
         </div>
       </div>
+      <AnimatePresence>
+        {collabSuggestion && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-neutral-950/80 backdrop-blur-sm"
+              onClick={() => setCollabSuggestion(null)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative z-10 w-full max-w-lg overflow-hidden rounded-3xl border border-white/10 bg-surface-900 shadow-brand-strong"
+            >
+              <style>{`
+                .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+                .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+                .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, 0.2); border-radius: 10px; }
+                .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(99, 102, 241, 0.4); }
+              `}</style>
+              <div className="relative border-b border-brand-500/10 bg-brand-500/5 px-6 py-5">
+                <button
+                  type="button"
+                  onClick={() => setCollabSuggestion(null)}
+                  className="absolute right-4 top-4 rounded-full p-2 text-neutral-500 transition hover:bg-white/10 hover:text-white"
+                >
+                  <HiX className="text-lg" />
+                </button>
+                <p className="mb-1 text-[10px] font-black uppercase tracking-[0.2em] text-brand-400">Collaboration Idea ✨</p>
+                <h3 className="pr-6 text-xl font-bold text-neutral-50">{collabSuggestion.title}</h3>
+              </div>
+              <div className="max-h-[50vh] overflow-y-auto p-6 space-y-5 custom-scrollbar">
+                <div className="space-y-2">
+                   <p className="text-[10px] font-black uppercase tracking-widest text-neutral-500">The Mission</p>
+                   <div className="rounded-2xl border border-white/5 bg-white/[0.03] p-4 text-[13px] sm:text-sm leading-relaxed text-neutral-300">
+                    {collabSuggestion.description}
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-brand-400/60">AI Insight: Why this works</p>
+                  <p className="text-[13px] italic text-brand-200 bg-brand-500/5 p-4 rounded-2xl border border-brand-500/10 leading-relaxed">
+                    "{collabSuggestion.why}"
+                  </p>
+                </div>
+
+                <div className="pt-4 flex flex-col gap-3">
+                  <button
+                    onClick={() => {
+                      const msg = `Hey! I just got an AI suggestion for us: "${collabSuggestion.title}". ${collabSuggestion.description.slice(0, 160)}... Let's build this!`;
+                      setInput(msg);
+                      setCollabSuggestion(null);
+                    }}
+                    className="w-full rounded-xl bg-brand-500 py-4 text-sm font-bold text-white transition hover:bg-brand-400 shadow-brand-strong"
+                  >
+                    Post to Chat
+                  </button>
+                  <button
+                    onClick={() => setCollabSuggestion(null)}
+                    className="w-full text-center text-xs font-semibold text-neutral-500 hover:text-neutral-300 py-2"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

@@ -20,6 +20,131 @@ import Card from "./ui/Card";
 import Button from "./ui/Button";
 import { useToast } from "../context/ToastProvider";
 import { addProjects, removeProject, updateProject } from "../store/projectSlice";
+import { generateProjectDescription, suggestProjectTechStack, generateProjectRoadmap, suggestProjectDetails } from "../utils/aiApi";
+import { HiTrendingUp } from "react-icons/hi";
+
+const AI_LOADING_TEXT = "AI is thinking...";
+
+const RoadmapModal = ({ project, onClose }) => {
+  const [roadmap, setRoadmap] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [isEnhancing, setIsEnhancing] = useState(false);
+  const { addToast } = useToast();
+
+  const fetchRoadmap = async (force = false) => {
+    if (force) setIsEnhancing(true);
+    else setLoading(true);
+
+    try {
+      const { data } = await generateProjectRoadmap({
+        title: project.title,
+        description: project.description,
+        techStack: project.techStack,
+        projectId: project._id,
+        forceRefresh: force,
+      });
+       setRoadmap(data.data.roadmap);
+      if (force) addToast("Roadmap enhanced with AI!", "success");
+    } catch (error) {
+      addToast("Failed to generate roadmap", "error");
+      if (!force) onClose();
+    } finally {
+      setLoading(false);
+      setIsEnhancing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRoadmap();
+  }, [project._id]);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: 20, opacity: 0 }}
+        className="w-full max-w-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <Card tone="glass" className="max-h-[85vh] overflow-y-auto p-0">
+          <div className="flex items-center justify-between border-b border-white/10 p-6 sticky top-0 bg-surface-900/80 backdrop-blur-md z-20">
+            <div className="flex items-center gap-3">
+              <div className="rounded-xl bg-brand-500/20 p-2 text-brand-400 font-bold uppercase tracking-widest leading-none">
+                <HiTrendingUp className="text-xl" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-neutral-100">Project Blueprint</h3>
+                <p className="text-xs text-neutral-400">Step-by-step strategy for {project.title}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => fetchRoadmap(true)}
+                disabled={loading || isEnhancing}
+                className="text-[10px] uppercase font-bold tracking-widest text-brand-400 hover:text-brand-300"
+              >
+                {isEnhancing ? "Refining..." : "✨ Enhance"}
+              </Button>
+              <Button variant="ghost" size="sm" onClick={onClose} className="p-1">
+                <HiX className="text-xl text-neutral-400" />
+              </Button>
+            </div>
+          </div>
+
+          <div className="p-6">
+            {loading ? (
+              <div className="flex flex-col items-center justify-center py-16 gap-3">
+                <span className="loading loading-spinner loading-lg text-brand-500" />
+                <p className="text-sm font-medium text-neutral-400 animate-pulse uppercase tracking-widest">Architecting Plan...</p>
+              </div>
+            ) : (
+              <div className="space-y-8 py-2">
+                {roadmap?.map((phase, idx) => (
+                  <div key={idx} className="relative pl-10">
+                    {/* Connection Line */}
+                    {idx !== roadmap.length - 1 && (
+                      <div className="absolute left-[11px] top-8 h-[calc(100%+16px)] w-[1px] bg-gradient-to-b from-brand-500/30 to-transparent" />
+                    )}
+                    
+                    <div className="absolute left-0 top-[3px] flex h-6 w-6 items-center justify-center rounded-full border border-brand-500/40 bg-brand-500/10 text-[10px] font-black text-brand-400 shadow-brand-glow">
+                      {idx + 1}
+                    </div>
+
+                    <h4 className="mb-4 text-sm font-bold uppercase tracking-widest text-neutral-200">{phase.title}</h4>
+                    <div className="grid gap-2.5">
+                      {phase.tasks.map((task, tidx) => (
+                        <div key={tidx} className="flex items-center gap-3 rounded-lg border border-white/5 bg-white/[0.03] px-3 py-2.5 hover:bg-white/[0.06] transition-all group">
+                          <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-white/20 group-hover:border-brand-500/50 transition-colors">
+                            <HiCheck className="text-[10px] text-brand-400 opacity-30 group-hover:opacity-100 transition-opacity" />
+                          </div>
+                          <span className="text-sm text-neutral-300 leading-tight">{task}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="border-t border-white/10 p-6 flex justify-between items-center bg-white/[0.02]">
+            <p className="text-[10px] text-neutral-500 uppercase tracking-widest font-medium">Blueprint v1.0 • AI Verified</p>
+            <Button variant="primary" size="sm" onClick={onClose} className="px-6">Explore Tasks</Button>
+          </div>
+        </Card>
+      </motion.div>
+    </motion.div>
+  );
+};
 
 const EditProjectModal = ({ project, onClose, onSave }) => {
   const [form, setForm] = useState({
@@ -28,6 +153,29 @@ const EditProjectModal = ({ project, onClose, onSave }) => {
     techStack: project.techStack,
     status: project.status,
   });
+  const [loadingSuggestion, setLoadingSuggestion] = useState(false);
+  const { addToast } = useToast();
+
+  const handleMagicSuggest = async () => {
+    if (!form.title.trim()) {
+      addToast("Enter a project title first!", "info");
+      return;
+    }
+    setLoadingSuggestion(true);
+    try {
+      const { data } = await suggestProjectDetails(form.title);
+       setForm((p) => ({
+         ...p,
+         description: data.data.description,
+         techStack: [...new Set([...p.techStack, ...data.data.techStack])],
+       }));
+      addToast("AI has filled in the project details!", "success");
+    } catch (error) {
+      addToast("Failed to get suggestions", "error");
+    } finally {
+      setLoadingSuggestion(false);
+    }
+  };
 
   const handleSave = () => {
     onSave(project._id, form);
@@ -51,31 +199,57 @@ const EditProjectModal = ({ project, onClose, onSave }) => {
         <Card tone="glass" className="space-y-4 p-6">
           <h3 className="text-xl font-bold text-neutral-100">Edit Project</h3>
           <div className="space-y-3">
-            <input
-              value={form.title}
-              onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
-              placeholder="Title"
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-neutral-100 outline-none focus:ring-2 focus:ring-brand-500"
-            />
-            <TechInput
-              value={form.techStack}
-              onChange={(ts) => setForm((p) => ({ ...p, techStack: ts }))}
-            />
-            <textarea
-              value={form.description}
-              onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
-              placeholder="Description"
-              className="w-full min-h-[120px] rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-neutral-100 outline-none resize-none focus:ring-2 focus:ring-brand-500"
-            />
-            <select
-              value={form.status}
-              onChange={(e) => setForm((p) => ({ ...p, status: e.target.value }))}
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-neutral-100 outline-none focus:ring-2 focus:ring-brand-500 [&>option]:bg-neutral-900"
-            >
-              <option value="open">Open</option>
-              <option value="in_progress">In Progress</option>
-              <option value="completed">Completed</option>
-            </select>
+            <div>
+              <div className="mb-1 flex items-center justify-between">
+                <label className="text-xs font-semibold uppercase text-neutral-500">Project Title</label>
+                <button
+                  type="button"
+                  onClick={handleMagicSuggest}
+                  disabled={loadingSuggestion}
+                  className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-brand-400 hover:text-brand-300 disabled:opacity-50"
+                  title="Generate description and tech stack automatically"
+                >
+                  {loadingSuggestion ? "Thinking..." : "✨ Magic AI"}
+                </button>
+              </div>
+              <input
+                value={form.title}
+                onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
+                placeholder="Title"
+                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-neutral-100 outline-none focus:ring-2 focus:ring-brand-500"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-semibold uppercase text-neutral-500">Tech Stack</label>
+              <TechInput
+                value={form.techStack}
+                onChange={(ts) => setForm((p) => ({ ...p, techStack: ts }))}
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-semibold uppercase text-neutral-500">Description</label>
+              <textarea
+                value={form.description}
+                onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
+                placeholder="Description"
+                className="w-full min-h-[120px] rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-neutral-100 outline-none resize-none focus:ring-2 focus:ring-brand-500"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-semibold uppercase text-neutral-500">Project Status</label>
+              <select
+                value={form.status}
+                onChange={(e) => setForm((p) => ({ ...p, status: e.target.value }))}
+                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-neutral-100 outline-none focus:ring-2 focus:ring-brand-500 [&>option]:bg-neutral-900"
+              >
+                <option value="open">Open</option>
+                <option value="in_progress">In Progress</option>
+                <option value="completed">Completed</option>
+              </select>
+            </div>
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="ghost" onClick={onClose}>Cancel</Button>
@@ -212,7 +386,7 @@ const TechInput = ({ value, onChange }) => {
   );
 };
 
-const ProjectCard = ({ project, currentUserId, onJoin, onView, onRespond, onRemove, onShowMembers, onEdit, onDelete }) => {
+const ProjectCard = ({ project, currentUserId, onJoin, onView, onRespond, onRemove, onShowMembers, onEdit, onDelete, onShowRoadmap }) => {
   const getUserId = (m) => m.userId?._id || m.userId;
   const ownerId = project.ownerId?._id || project.ownerId;
   const ownerFullName = project.ownerId?.firstName || "Unknown";
@@ -299,7 +473,10 @@ const ProjectCard = ({ project, currentUserId, onJoin, onView, onRespond, onRemo
       )}
 
       <div className="flex items-center justify-between pt-2">
-        <div>
+        <div className="flex gap-2">
+          <Button variant="ghost" size="sm" className="px-2" onClick={() => onShowRoadmap(project)}>
+            <HiTrendingUp className="text-lg text-brand-400" /> Roadmap
+          </Button>
           <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-500">
             <span className="text-brand-200">{project.members?.length ?? 1} members</span>
             {project.members?.length > 1 && (
@@ -409,7 +586,7 @@ const ProjectChat = ({ project, currentUserId, onClose }) => {
       const { data } = await axios.get(`${BASE_URL}/project/${project._id}/messages`, {
         withCredentials: true,
       });
-      setMessages(data.messages || []);
+       setMessages(data.data.messages || []);
     } catch (error) {
       addToast("Unable to load messages", "error");
     } finally {
@@ -557,17 +734,40 @@ const Projects = () => {
   const [activeTab, setActiveTab] = useState("my");
   const [membersProject, setMembersProject] = useState(null);
   const [editingProject, setEditingProject] = useState(null);
+  const [roadmapProject, setRoadmapProject] = useState(null);
   const [form, setForm] = useState({ title: "", description: "", techStack: [] });
+  const [loadingSuggestion, setLoadingSuggestion] = useState(false);
   const { addToast } = useToast();
   const user = useSelector((store) => store.user);
   const currentUserId = user?._id;
+
+  const handleMagicSuggest = async () => {
+    if (!form.title.trim()) {
+      addToast("Enter a project title first!", "info");
+      return;
+    }
+    setLoadingSuggestion(true);
+    try {
+      const { data } = await suggestProjectDetails(form.title);
+       setForm((p) => ({
+         ...p,
+         description: data.data.description,
+         techStack: [...new Set([...p.techStack, ...data.data.techStack])],
+       }));
+      addToast("AI has filled in the project details!", "success");
+    } catch (error) {
+      addToast("Failed to get suggestions", "error");
+    } finally {
+      setLoadingSuggestion(false);
+    }
+  };
 
   const loadProjects = async () => {
     try {
       const { data } = await axios.get(`${BASE_URL}/projects`, {
         withCredentials: true,
       });
-      dispatch(addProjects(data.projects ?? []));
+       dispatch(addProjects(data.data.projects ?? []));
     } catch (error) {
       addToast(error?.response?.data?.message || "Unable to load projects", "error");
     } finally {
@@ -615,7 +815,7 @@ const Projects = () => {
     setCreating(true);
     try {
       const { data } = await axios.post(`${BASE_URL}/project`, form, { withCredentials: true });
-      dispatch(addProjects([data.project, ...projects]));
+       dispatch(addProjects([data.data.project, ...projects]));
       setForm({ title: "", description: "", techStack: [] });
       setShowCreate(false);
       addToast("Project created", "success");
@@ -629,7 +829,7 @@ const Projects = () => {
   const handleEditSave = async (projectId, updatedData) => {
     try {
       const { data } = await axios.patch(`${BASE_URL}/project/${projectId}`, updatedData, { withCredentials: true });
-      dispatch(updateProject(data.project));
+       dispatch(updateProject(data.data.project));
       setEditingProject(null);
       addToast("Project updated", "success");
     } catch (error) {
@@ -661,7 +861,7 @@ const Projects = () => {
   const respondToRequest = async (projectId, requestId, action) => {
     try {
       const { data } = await axios.post(`${BASE_URL}/project/request/respond`, { projectId, requestId, action }, { withCredentials: true });
-      dispatch(updateProject(data.project));
+       dispatch(updateProject(data.data.project));
       addToast(`Request ${action}ed`, "success");
     } catch (error) {
       addToast(error?.response?.data?.message || "Unable to respond", "error");
@@ -717,6 +917,7 @@ const Projects = () => {
                   onShowMembers={setMembersProject}
                   onEdit={setEditingProject}
                   onDelete={handleDelete}
+                  onShowRoadmap={setRoadmapProject}
                 />
               ))}
             </div>
@@ -731,11 +932,46 @@ const Projects = () => {
             </div>
             <Button variant="ghost" onClick={() => setShowCreate(false)}><HiX className="text-xl" /></Button>
           </div>
-          <div className="grid gap-3">
-            <input value={form.title} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} placeholder="Title" className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-neutral-100 outline-none" />
-            <TechInput value={form.techStack} onChange={(techStack) => setForm((p) => ({ ...p, techStack }))} />
+          <div className="grid gap-4">
+            <div>
+              <div className="mb-1 flex items-center justify-between">
+                <label className="text-xs font-semibold uppercase text-neutral-500">Project Title</label>
+                <button
+                  type="button"
+                  onClick={handleMagicSuggest}
+                  disabled={loadingSuggestion}
+                  className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-brand-400 hover:text-brand-300 disabled:opacity-50"
+                  title="Generate description and tech stack automatically"
+                >
+                  {loadingSuggestion ? "Thinking..." : "✨ Magic AI"}
+                </button>
+              </div>
+              <input
+                value={form.title}
+                onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
+                placeholder="e.g. Real-time Crypto Dashboard"
+                className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-neutral-100 outline-none focus:ring-2 focus:ring-brand-500"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-semibold uppercase text-neutral-500">Tech Stack</label>
+              <TechInput
+                value={form.techStack}
+                onChange={(ts) => setForm((p) => ({ ...p, techStack: ts }))}
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-semibold uppercase text-neutral-500">Description</label>
+              <textarea
+                value={form.description}
+                onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
+                placeholder="Describe your vision and find teammates."
+                className="min-h-[150px] w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-neutral-100 outline-none resize-y focus:ring-2 focus:ring-brand-500"
+              />
+            </div>
           </div>
-          <textarea value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} placeholder="Description..." className="min-h-[150px] w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-neutral-100 outline-none resize-y" />
           <div className="flex justify-end gap-2">
             <Button variant="ghost" onClick={() => setShowCreate(false)}>Cancel</Button>
             <Button variant="primary" onClick={createProject} disabled={creating}>{creating ? <span className="loading loading-spinner loading-sm" /> : <><HiPlus className="text-lg" /> Create Project</>}</Button>
@@ -747,6 +983,7 @@ const Projects = () => {
         {editingProject && <EditProjectModal project={editingProject} onClose={() => setEditingProject(null)} onSave={handleEditSave} />}
         {chatProject && <ProjectChat project={chatProject} currentUserId={currentUserId} onClose={() => setChatProject(null)} />}
         {membersProject && <MembersModal project={membersProject} currentUserId={currentUserId} onClose={() => setMembersProject(null)} onRemove={removeMember} />}
+        {roadmapProject && <RoadmapModal project={roadmapProject} onClose={() => setRoadmapProject(null)} />}
       </AnimatePresence>
     </div>
   );
