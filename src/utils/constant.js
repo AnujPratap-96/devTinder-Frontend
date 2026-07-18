@@ -1,4 +1,4 @@
-export const BASE_URL = location.hostname === "localhost" ? "http://localhost:3000" : "/api";
+export const BASE_URL = location.hostname === "localhost" ? "http://localhost:3000" : "https://dev-tinder-eight-kappa.vercel.app/";
 
 import io from "socket.io-client";
 
