@@ -11,7 +11,7 @@ const CompactUserItem = memo(({ user, onView, searchQuery = "" }) => {
   return (
     <Card 
       tone="glass" 
-      className="flex items-center justify-between p-4 hover:bg-white/5 transition-all cursor-pointer border border-white/5 active:scale-[0.98]"
+      className="flex items-center justify-between p-4 hover:bg-tint transition-all cursor-pointer border border-hairline-soft active:scale-[0.98]"
       onClick={() => onView(user)}
     >
       <div className="flex items-center gap-4 min-w-0">
@@ -42,7 +42,7 @@ const CompactUserItem = memo(({ user, onView, searchQuery = "" }) => {
       </div>
 
       <button 
-        className="flex items-center gap-1.5 rounded-lg bg-brand-500/10 px-3 py-1.5 text-xs font-semibold text-brand-300 transition hover:bg-brand-500/20"
+        className="flex items-center gap-1.5 rounded-lg bg-brand-500/10 px-3 py-1.5 text-xs font-semibold text-brand-600 transition hover:bg-brand-500/20"
       >
         View <HiArrowRight className="text-sm" />
       </button>

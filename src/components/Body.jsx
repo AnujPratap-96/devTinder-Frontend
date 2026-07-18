@@ -9,6 +9,7 @@ import Navbar from "./Navbar";
 import Sidebar from "./Sidebar";
 import Footer from "./Footer";
 import { useToast } from "../context/ToastProvider";
+import { createSocketConnection } from "../utils/constant";
 
 const Body = () => {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
@@ -30,6 +31,15 @@ const Body = () => {
       document.body.style.overflow = "";
     };
   }, [isSidebarOpen]);
+
+  // Keep a single app-wide socket connection alive while the user is signed
+  // in, so notifications and messages are delivered in real-time. The socket
+  // is only torn down on logout (Sidebar calls closeSocketConnection).
+  useEffect(() => {
+    if (user?._id) {
+      createSocketConnection(user._id);
+    }
+  }, [user?._id]);
 
   useEffect(() => {
     const resolveUser = async () => {
@@ -62,33 +72,32 @@ const Body = () => {
   }, [user, dispatch, navigate, addToast, location.pathname]);
 
   return (
-    <div className="flex min-h-screen flex-col bg-neutral-950 overflow-x-hidden">
+    <div className="flex h-dvh flex-col overflow-hidden">
       <Navbar />
 
-      <div className="flex flex-1 lg:pl-72">
+      <div className="flex flex-1 overflow-hidden pt-20 lg:pl-80">
         <Sidebar isSidebarOpen={isSidebarOpen} setSidebarOpen={setSidebarOpen} />
 
-        <main className="flex-1 flex flex-col">
-          <div className="content-container w-full max-w-full py-10">
+        <main className="flex-1 overflow-y-auto scroll-smooth">
+          <div className="content-container w-full max-w-full px-4 py-10 sm:px-6 lg:px-8">
             <Outlet />
           </div>
+          <Footer />
         </main>
-
-        {!isSidebarOpen && (
-          <div className="fixed bottom-6 right-6 z-30 lg:hidden">
-            <button
-              type="button"
-              onClick={() => setSidebarOpen(true)}
-              className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 via-brand-400 to-accent-purple text-neutral-50 shadow-brand-glow-strong transition-transform duration-200 ease-snappy hover:-translate-y-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300/60 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950"
-              aria-label="Open navigation"
-            >
-              <HiMenuAlt3 className="text-xl" />
-            </button>
-          </div>
-        )}
       </div>
 
-      <Footer />
+      {!isSidebarOpen && (
+        <div className="fixed bottom-6 right-6 z-30 lg:hidden">
+          <button
+            type="button"
+            onClick={() => setSidebarOpen(true)}
+            className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 via-brand-400 to-accent-purple text-on-accent shadow-brand-glow-strong transition-transform duration-200 ease-snappy hover:-translate-y-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300/60 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
+            aria-label="Open navigation"
+          >
+            <HiMenuAlt3 className="text-xl" />
+          </button>
+        </div>
+      )}
 
       {isSidebarOpen && (
         <div

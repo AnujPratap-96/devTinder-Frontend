@@ -4,51 +4,77 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  color-scheme: dark;
+/* ============================================================
+   THEME TOKENS
+   Source of truth = CSS variables. Tailwind utilities
+   (white / neutral-* / surface-* / glass) read these via
+   rgb(var(--c-*) / <alpha-value>) so [data-theme] switches
+   the whole UI with zero component changes.
+   ============================================================ */
+:root,
+[data-theme='dark'] {
+  /* Theme-aware channels */
+  --c-white: 255 255 255;
+  --c-glass: 21 28 48;
+
+  --c-neutral-50: 248 250 252;
+  --c-neutral-100: 238 242 248;
+  --c-neutral-200: 220 227 238;
+  --c-neutral-300: 186 199 219;
+  --c-neutral-400: 145 164 189;
+  --c-neutral-500: 116 136 163;
+  --c-neutral-600: 90 108 134;
+  --c-neutral-700: 67 81 105;
+  --c-neutral-800: 46 55 73;
+  --c-neutral-900: 26 33 48;
+  --c-neutral-950: 7 9 15;
+
+  --c-surface-800: 30 38 60;
+  --c-surface-900: 18 24 42;
+  --c-surface-950: 10 14 26;
+
+  /* Legacy named aliases still referenced in code/utilities */
+  --neutral-50: rgb(var(--c-neutral-50));
+  --neutral-100: rgb(var(--c-neutral-100));
+  --neutral-200: rgb(var(--c-neutral-200));
+  --neutral-300: rgb(var(--c-neutral-300));
+  --neutral-400: rgb(var(--c-neutral-400));
+  --neutral-500: rgb(var(--c-neutral-500));
+  --neutral-600: rgb(var(--c-neutral-600));
+  --neutral-700: rgb(var(--c-neutral-700));
+  --neutral-800: rgb(var(--c-neutral-800));
+  --neutral-900: rgb(var(--c-neutral-900));
+  --neutral-950: rgb(var(--c-neutral-950));
+  --surface-800: rgb(var(--c-surface-800));
+  --surface-900: rgb(var(--c-surface-900));
+  --surface-950: rgb(var(--c-surface-950));
 
   --brand-50: #eef2ff;
   --brand-100: #e0e7ff;
   --brand-200: #c7d2fe;
   --brand-300: #a5b4fc;
-  --brand-400: #818cf8;
-  --brand-500: #6366f1;
-  --brand-600: #4f46e5;
-  --brand-700: #4338ca;
-  --brand-800: #3730a3;
-  --brand-900: #312e81;
+  --brand-400: #8B95FF;
+  --brand-500: #6E7BFF;
+  --brand-600: #5A66F0;
+  --brand-700: #4B54D6;
+  --brand-800: #3B43AE;
+  --brand-900: #2E3387;
   --brand-950: #1e1b4b;
 
-  --accent-cyan: #22d3ee;
-  --accent-purple: #a855f7;
+  --accent-cyan: #4DD8FF;
+  --accent-purple: #7B5DFF;
   --accent-pink: #ec4899;
   --accent-orange: #fb923c;
   --accent-lime: #a3e635;
 
-  --neutral-50: #f8fafc;
-  --neutral-100: #eef2f8;
-  --neutral-200: #dce3ee;
-  --neutral-300: #bac7db;
-  --neutral-400: #91a4bd;
-  --neutral-500: #7488a3;
-  --neutral-600: #5a6c86;
-  --neutral-700: #435169;
-  --neutral-800: #2e3749;
-  --neutral-900: #1a2130;
-  --neutral-950: #0a101d;
+  --status-success: #2ECC71;
+  --status-warning: #F5B041;
+  --status-danger: #FF5D73;
+  --status-info: #6E7BFF;
 
-  --surface-800: #222b44;
-  --surface-900: #151c30;
-  --surface-950: #0c1221;
-
-  --status-success: #22c55e;
-  --status-warning: #f59e0b;
-  --status-danger: #ef4444;
-  --status-info: #3b82f6;
-
-  --shadow-soft: 0 14px 48px rgba(10, 17, 33, 0.35);
-  --shadow-brand: 0 18px 48px rgba(99, 102, 241, 0.35);
-  --shadow-brand-strong: 0 30px 70px rgba(129, 140, 248, 0.55);
+  --shadow-soft: 0 14px 48px rgba(2, 4, 10, 0.40);
+  --shadow-brand: 0 18px 48px rgba(110, 123, 255, 0.30);
+  --shadow-brand-strong: 0 30px 70px rgba(123, 93, 255, 0.45);
 
   --radius-lg: 1rem;
   --radius-xl: 1.5rem;
@@ -61,6 +87,76 @@
   --motion-ease-snappy: cubic-bezier(0.16, 1, 0.3, 1);
   --motion-ease-soothing: cubic-bezier(0.4, 0, 0.2, 1);
   --motion-ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* Aurora hues (subtle, blended — not rainbow) */
+  --aurora-1: rgba(110, 123, 255, 0.16);
+  --aurora-2: rgba(123, 93, 255, 0.14);
+  --aurora-3: rgba(77, 216, 255, 0.12);
+  --aurora-base: rgba(7, 9, 15, 0.6);
+
+  /* Glass surfaces (Glassmorphism 2.0) */
+  --glass-bg: rgba(255, 255, 255, 0.08);
+  --glass-bg-strong: rgba(255, 255, 255, 0.12);
+  --glass-border: rgba(255, 255, 255, 0.12);
+  --glass-border-strong: rgba(255, 255, 255, 0.18);
+  --shadow-glass: 0 20px 50px rgba(2, 4, 10, 0.45);
+  --shadow-glass-lg: 0 30px 80px rgba(2, 4, 10, 0.55);
+
+  /* Semantic, theme-aware UI channels (flip per theme) */
+  --c-ink: 237 241 247;
+  --c-muted: 148 163 184;
+  --c-faint: 100 116 139;
+  --c-on-accent: 255 255 255;
+  --c-canvas: 7 9 15;
+  --c-hairline: rgba(255, 255, 255, 0.12);
+  --c-hairline-soft: rgba(255, 255, 255, 0.07);
+  --c-fill: rgba(255, 255, 255, 0.05);
+  --c-fill-strong: rgba(255, 255, 255, 0.10);
+}
+
+[data-theme='light'] {
+  --c-white: 15 23 42;
+  --c-glass: 255 255 255;
+
+  --c-neutral-50: 15 23 42;
+  --c-neutral-100: 30 41 59;
+  --c-neutral-200: 51 65 85;
+  --c-neutral-300: 71 85 105;
+  --c-neutral-400: 71 85 105;
+  --c-neutral-500: 100 116 139;
+  --c-neutral-600: 148 163 184;
+  --c-neutral-700: 184 197 212;
+  --c-neutral-800: 203 213 225;
+  --c-neutral-900: 226 232 240;
+  --c-neutral-950: 246 248 252;
+
+  --c-surface-800: 241 245 249;
+  --c-surface-900: 255 255 255;
+  --c-surface-950: 236 240 247;
+
+  --aurora-1: rgba(110, 123, 255, 0.12);
+  --aurora-2: rgba(123, 93, 255, 0.10);
+  --aurora-3: rgba(77, 216, 255, 0.10);
+  --aurora-base: rgba(246, 248, 252, 0.6);
+
+  /* Glass surfaces — clean WHITE frosted cards over light bg (no gray veil) */
+  --glass-bg: rgba(255, 255, 255, 0.85);
+  --glass-bg-strong: rgba(255, 255, 255, 0.92);
+  --glass-border: rgba(15, 23, 42, 0.12);
+  --glass-border-strong: rgba(15, 23, 42, 0.16);
+  --shadow-glass: 0 14px 44px rgba(15, 23, 42, 0.18);
+  --shadow-glass-lg: 0 30px 80px rgba(15, 23, 42, 0.22);
+
+  /* Semantic, theme-aware UI channels (flip per theme) */
+  --c-ink: 15 23 42;
+  --c-muted: 71 85 105;
+  --c-faint: 100 116 139;
+  --c-on-accent: 255 255 255;
+  --c-canvas: 248 250 252;
+  --c-hairline: rgba(15, 23, 42, 0.08);
+  --c-hairline-soft: rgba(15, 23, 42, 0.05);
+  --c-fill: rgba(255, 255, 255, 0.55);
+  --c-fill-strong: rgba(255, 255, 255, 0.85);
 }
 
 @layer base {
@@ -73,7 +169,7 @@
   html {
     @apply antialiased;
     scroll-behavior: smooth;
-    background-color: var(--neutral-950);
+    background-color: rgb(var(--c-neutral-950));
   }
 
   body {
@@ -82,13 +178,14 @@
     @apply bg-neutral-950 font-sans text-neutral-100;
     line-height: 1.6;
     background-image:
-      radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.12) 0%, transparent 45%),
-      radial-gradient(circle at 80% 0%, rgba(34, 211, 238, 0.1) 0%, transparent 50%),
-      radial-gradient(circle at 20% 80%, rgba(236, 72, 153, 0.08) 0%, transparent 50%),
-      linear-gradient(180deg, rgba(12, 18, 33, 0.92) 0%, rgba(12, 18, 33, 0.98) 60%, rgba(12, 18, 33, 1) 100%);
+      radial-gradient(circle at 10% 20%, var(--aurora-1) 0%, transparent 45%),
+      radial-gradient(circle at 80% 0%, var(--aurora-2) 0%, transparent 50%),
+      radial-gradient(circle at 20% 80%, var(--aurora-3) 0%, transparent 50%),
+      linear-gradient(180deg, var(--aurora-base) 0%, var(--aurora-base) 60%, var(--aurora-base) 100%);
     background-attachment: fixed;
     display: flex;
     flex-direction: column;
+    transition: background-color 0.4s var(--motion-ease-soothing);
   }
 
   body > * {
@@ -146,15 +243,15 @@
 
   a {
     text-decoration: none;
-    @apply text-brand-300 transition-colors duration-150 ease-snappy;
+    @apply text-brand-600 transition-colors duration-150 ease-snappy;
   }
 
   a:hover {
-    @apply text-brand-200;
+    @apply text-brand-600;
   }
 
   a:active {
-    @apply text-brand-100;
+    @apply text-brand-500;
   }
 
   button,
@@ -225,5 +322,198 @@
   .scrollbar-thin {
     scrollbar-width: thin;
     scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+  }
+
+  /* ---------- Aurora ---------- */
+  .aurora {
+    position: absolute;
+    inset: -20% -10% auto -10%;
+    height: 120%;
+    z-index: -10;
+    pointer-events: none;
+    filter: blur(150px);
+    opacity: 0.9;
+    background:
+      radial-gradient(40% 40% at 20% 30%, var(--aurora-1) 0%, transparent 70%),
+      radial-gradient(35% 35% at 80% 20%, var(--aurora-2) 0%, transparent 70%),
+      radial-gradient(40% 40% at 60% 80%, var(--aurora-3) 0%, transparent 70%);
+    animation: aurora 22s ease-in-out infinite;
+    will-change: transform;
+  }
+
+  .aurora-static {
+    position: absolute;
+    inset: -20% -10% auto -10%;
+    height: 120%;
+    z-index: -10;
+    pointer-events: none;
+    filter: blur(150px);
+    opacity: 0.9;
+    background:
+      radial-gradient(40% 40% at 20% 30%, var(--aurora-1) 0%, transparent 70%),
+      radial-gradient(35% 35% at 80% 20%, var(--aurora-2) 0%, transparent 70%),
+      radial-gradient(40% 40% at 60% 80%, var(--aurora-3) 0%, transparent 70%);
+  }
+
+  /* ---------- Glassmorphism 2.0 ---------- */
+  .glass {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    box-shadow: var(--shadow-glass);
+  }
+
+  .glass-elevated {
+    background: var(--glass-bg-strong);
+    border: 1px solid var(--glass-border-strong);
+    backdrop-filter: blur(28px);
+    -webkit-backdrop-filter: blur(28px);
+    box-shadow: var(--shadow-glass-lg);
+  }
+
+  .glass-strong {
+    background: var(--glass-bg-strong);
+    border: 1px solid var(--glass-border-strong);
+    backdrop-filter: blur(28px);
+    -webkit-backdrop-filter: blur(28px);
+    box-shadow: var(--shadow-glass-lg);
+  }
+
+  /* Thin gradient hairline border (for hero / elevated glass) */
+  .border-gradient {
+    position: relative;
+  }
+  .border-gradient::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.35), rgba(255, 255, 255, 0.04) 40%, rgba(99, 102, 241, 0.25));
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+
+  .skeleton {
+    background-image: linear-gradient(90deg, rgba(34, 44, 68, 0.55) 0%, rgba(67, 84, 126, 0.65) 50%, rgba(34, 44, 68, 0.55) 100%);
+    background-size: 1000px 100%;
+    animation: shimmer 2.4s infinite linear;
+    border-radius: var(--radius-lg);
+  }
+
+  .pulse-glow {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  .toast-enter {
+    animation: slideInRight var(--motion-duration-medium) var(--motion-ease-snappy) both;
+  }
+
+  .spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgb(var(--c-white) / 0.25);
+    border-top-color: currentColor;
+    border-radius: 999px;
+    animation: spin 0.7s linear infinite;
+  }
+
+  .section-divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.35), transparent);
+  }
+
+  .gradient-text {
+    background-image: linear-gradient(120deg, var(--brand-400), var(--accent-cyan, #22d3ee));
+    -webkit-background-clip: text;
+    color: transparent;
+  }
+
+  .gradient-text-warm {
+    background-image: linear-gradient(135deg, #f59e0b, #ec4899);
+    -webkit-background-clip: text;
+    color: transparent;
+  }
+
+  .glow-primary {
+    box-shadow: var(--shadow-brand);
+  }
+
+  .glow-cyan {
+    box-shadow: 0 0 28px rgba(34, 211, 238, 0.25);
+  }
+
+  .bg-mesh {
+    background-image: theme('backgroundImage.mesh-radiant');
+    background-size: cover;
+  }
+}
+
+/* ---------- Reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .aurora,
+  .pulse-glow,
+  .skeleton {
+    animation: none !important;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ---------- Keyframes (explicit so they are always emitted) ---------- */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes aurora {
+  0% {
+    transform: translate3d(-6%, -4%, 0) rotate(0deg) scale(1.05);
+  }
+  50% {
+    transform: translate3d(6%, 4%, 0) rotate(8deg) scale(1.15);
+  }
+  100% {
+    transform: translate3d(-6%, -4%, 0) rotate(0deg) scale(1.05);
   }
 }

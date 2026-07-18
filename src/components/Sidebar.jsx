@@ -31,22 +31,22 @@ const Sidebar = ({ isSidebarOpen, setSidebarOpen }) => {
         const { data: notifData } = await axios.get(`${BASE_URL}/notifications`, {
           withCredentials: true,
         });
-         const connectionRequests = notifData.data.notifications?.filter(
-           (n) => n.type === "connection.request" && !n.isRead
-         )?.length || 0;
+        const connectionRequests = notifData.data.notifications?.filter(
+          (n) => n.type === "connection.request" && !n.isRead
+        )?.length || 0;
 
-         const { data: projectData } = await axios.get(`${BASE_URL}/projects`, {
-           withCredentials: true,
-         });
-         let projectRequests = 0;
-         const userIdStr = String(currentUserId);
-         projectData.data.projects?.forEach((project) => {
+        const { data: projectData } = await axios.get(`${BASE_URL}/projects`, {
+          withCredentials: true,
+        });
+        let projectRequests = 0;
+        const userIdStr = String(currentUserId);
+        projectData.data.projects?.forEach((project) => {
           const ownerIdStr = String(project.ownerId?._id || project.ownerId || "");
           if (ownerIdStr === userIdStr) {
             projectRequests += project.joinRequests?.filter((r) => r.status === "pending").length || 0;
           }
         });
-        
+
         setRequestCount(connectionRequests + projectRequests);
       } catch (error) {
         console.error("Failed to load request count", error);
@@ -85,18 +85,18 @@ const Sidebar = ({ isSidebarOpen, setSidebarOpen }) => {
   return (
     <aside
       className={clsx(
-        "fixed inset-y-0 left-0 top-0 z-40 flex w-72 flex-col border-r border-white/5 bg-surface-900/90 backdrop-blur-xl shadow-soft transition-transform duration-300 ease-snappy lg:translate-x-0 lg:shadow-none",
-        isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+        "glass fixed bottom-3 left-3 top-24 z-40 flex w-72 flex-col rounded-3xl border-hairline transition-transform duration-300 ease-snappy lg:translate-x-0",
+        isSidebarOpen ? "translate-x-0" : "-translate-x-[120%]"
       )}
     >
-      <div className="flex items-center justify-between px-5 pt-6 pb-2 lg:px-6 lg:pt-14">
-        <p className="text-[0.65rem] font-semibold uppercase tracking-[0.42em] text-neutral-500">
+        <div className="flex items-center justify-between px-5 pt-6 pb-2 lg:px-6 lg:pt-8">
+        <p className="text-[0.65rem]  font-semibold uppercase tracking-[0.42em] text-neutral-500">
           Navigation
         </p>
         <button
           type="button"
           onClick={() => setSidebarOpen(false)}
-          className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-neutral-200 transition duration-200 ease-snappy hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300/40 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 lg:hidden"
+          className="flex h-9 w-9 items-center justify-center rounded-xl border border-hairline bg-tint text-neutral-200 transition duration-200 ease-snappy hover:bg-tint-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300/40 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas lg:hidden"
           aria-label="Close navigation"
         >
           <HiX className="text-lg" />
@@ -118,11 +118,11 @@ const Sidebar = ({ isSidebarOpen, setSidebarOpen }) => {
         ))}
       </nav>
 
-      <div className="border-t border-white/5 px-4 pb-6 pt-5 lg:px-6">
+      <div className="border-t border-hairline-soft px-4 pb-6 pt-5 lg:px-6">
         <button
           type="button"
           onClick={handleLogout}
-          className="group flex w-full items-center gap-3 rounded-2xl border border-danger-400/30 bg-danger-500/10 px-4 py-3 text-sm font-semibold text-danger-400 transition duration-200 ease-snappy hover:-translate-y-0.5 hover:border-danger-400 hover:bg-danger-500/20 hover:text-danger-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger-400/40 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950"
+          className="group flex w-full items-center gap-3 rounded-2xl border border-danger-400/30 bg-danger-500/10 px-4 py-3 text-sm font-semibold text-danger-400 transition duration-200 ease-snappy hover:-translate-y-0.5 hover:border-danger-400 hover:bg-danger-500/20 hover:text-danger-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger-400/40 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
         >
           <FiLogOut className="text-lg" />
           <span>Logout</span>
@@ -143,14 +143,14 @@ const SidebarItem = ({ to, Icon, text, currentPath, setSidebarOpen, iconClassNam
         "group relative flex items-center gap-3 rounded-2xl px-4 py-3 text-body-sm font-medium transition duration-200 ease-snappy lg:px-5",
         isActive
           ? "nav-item-active shadow-brand-glow"
-          : "text-neutral-400 hover:bg-white/5 hover:text-neutral-100"
+          : "text-neutral-400 hover:bg-tint hover:text-neutral-100"
       )}
     >
       <span
         className={clsx(
-          "flex h-9 w-9 items-center justify-center rounded-xl border border-white/5 bg-white/5 transition duration-200 ease-snappy",
+          "flex h-9 w-9 items-center justify-center rounded-xl border border-hairline-soft bg-tint transition duration-200 ease-snappy",
           isActive
-            ? "border-brand-400/40 bg-brand-500/15 text-brand-100"
+            ? "border-brand-400/40 bg-brand-500/15 text-brand-500"
             : iconClassName ?? "text-neutral-300 group-hover:text-neutral-100"
         )}
       >

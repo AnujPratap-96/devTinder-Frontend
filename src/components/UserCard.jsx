@@ -6,6 +6,7 @@ import axios from "axios";
 import { removeUserFromFeed } from "../store/feedSlice";
 import { useDispatch } from "react-redux";
 import { useToast } from "../context/ToastProvider";
+import { useTheme } from "../context/ThemeProvider";
 import { HiHeart, HiX, HiCode, HiLightningBolt, HiLocationMarker, HiBan, HiFlag, HiBookmark, HiCheck, HiArrowLeft } from "react-icons/hi";
 import AIMatchExplainer from "./AIMatchExplainer";
 import Button from "./ui/Button";
@@ -13,65 +14,67 @@ import { highlightText } from "../utils/textUtils.jsx";
 
 const themeStyles = {
   default: {
-    shadow: "0 20px 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.06)",
-    gradient: "linear-gradient(to bottom, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.1) 40%, rgba(0,0,0,0.85) 100%)",
+    shadow: "0 24px 60px rgba(8, 12, 24, 0.45)",
+    gradient: "linear-gradient(to top, rgba(8,12,24,0.92) 0%, rgba(8,12,24,0.45) 45%, rgba(8,12,24,0.05) 100%)",
     font: "sans",
-    badgeBg: "rgba(99,102,241,0.2)",
+    badgeBg: "rgba(99,102,241,0.18)",
     badgeColor: "#c7d2fe",
-    badgeBorder: "rgba(99,102,241,0.3)"
-  },
-  matrix: {
-    shadow: "0 20px 60px rgba(0,40,0,0.9), 0 0 0 2px rgba(34,197,94,0.4)",
-    gradient: "linear-gradient(to bottom, rgba(0,25,0,0.2) 0%, rgba(0,0,0,0.4) 40%, rgba(0,0,0,0.95) 100%)",
-    font: "mono text-green-400 font-mono",
-    badgeBg: "rgba(34,197,94,0.2)",
-    badgeColor: "#86efac",
-    badgeBorder: "rgba(34,197,94,0.4)"
-  },
-  hacker: {
-    shadow: "0 20px 60px rgba(0,0,0,0.9), 0 0 0 1px rgba(74,222,128,0.5)",
-    gradient: "linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.6) 40%, rgba(0,0,0,0.95) 100%)",
-    font: "mono text-green-500 font-mono",
-    badgeBg: "black",
-    badgeColor: "#22c55e",
-    badgeBorder: "rgba(34,197,94,0.5)"
-  },
-  neon: {
-    shadow: "0 20px 60px rgba(236,72,153,0.3), 0 0 20px rgba(139,92,246,0.4), 0 0 0 1px #ec4899",
-    gradient: "linear-gradient(to bottom, rgba(40,0,40,0.1) 0%, rgba(20,0,40,0.3) 40%, rgba(0,0,0,0.9) 100%)",
-    font: "sans",
-    badgeBg: "rgba(236,72,153,0.2)",
-    badgeColor: "#fbcfe8",
-    badgeBorder: "rgba(236,72,153,0.5)"
-  },
-  cyberpunk: {
-    shadow: "0 20px 60px rgba(234,179,8,0.2), 8px 8px 0px rgba(59,130,246,0.5), 0 0 0 2px #eab308",
-    gradient: "linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, rgba(30,30,0,0.3) 40%, rgba(10,10,20,0.95) 100%)",
-    font: "sans uppercase tracking-wide",
-    badgeBg: "rgba(234,179,8,0.2)",
-    badgeColor: "#fef08a",
-    badgeBorder: "rgba(234,179,8,0.8)"
+    badgeBorder: "rgba(99,102,241,0.35)"
   },
   glassmorphism: {
-    shadow: "0 20px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.2)",
-    gradient: "linear-gradient(to bottom, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 40%, rgba(0,0,0,0.8) 100%)",
+    shadow: "0 24px 60px rgba(8, 12, 24, 0.45)",
+    gradient: "linear-gradient(to top, rgba(8,12,24,0.92) 0%, rgba(8,12,24,0.45) 45%, rgba(8,12,24,0.05) 100%)",
     font: "sans tracking-tight",
-    badgeBg: "rgba(255,255,255,0.1)",
-    badgeColor: "white",
-    badgeBorder: "rgba(255,255,255,0.3)"
+    badgeBg: "rgba(255,255,255,0.10)",
+    badgeColor: "#e2e8f0",
+    badgeBorder: "rgba(255,255,255,0.20)"
   },
   minimal: {
-    shadow: "0 10px 40px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.03)",
-    gradient: "linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 50%, rgba(0,0,0,0.9) 100%)",
+    shadow: "0 18px 44px rgba(8, 12, 24, 0.50)",
+    gradient: "linear-gradient(to top, rgba(8,12,24,0.90) 0%, rgba(8,12,24,0.50) 50%, transparent 100%)",
     font: "sans font-light tracking-wide",
-    badgeBg: "rgba(38,38,38,0.5)",
-    badgeColor: "#d4d4d8",
-    badgeBorder: "rgba(63,63,70,1)"
+    badgeBg: "rgba(255,255,255,0.08)",
+    badgeColor: "#e2e8f0",
+    badgeBorder: "rgba(255,255,255,0.18)"
+  },
+  matrix: {
+    shadow: "0 24px 60px rgba(16,185,129,0.16)",
+    gradient: "linear-gradient(to top, rgba(6,18,12,0.92) 0%, rgba(6,18,12,0.42) 50%, transparent 100%)",
+    font: "mono",
+    badgeBg: "rgba(16,185,129,0.16)",
+    badgeColor: "#86efac",
+    badgeBorder: "rgba(16,185,129,0.35)"
+  },
+  hacker: {
+    shadow: "0 24px 60px rgba(34,197,94,0.18)",
+    gradient: "linear-gradient(to top, rgba(4,12,8,0.94) 0%, rgba(4,12,8,0.45) 50%, transparent 100%)",
+    font: "mono",
+    badgeBg: "rgba(34,197,94,0.16)",
+    badgeColor: "#86efac",
+    badgeBorder: "rgba(34,197,94,0.35)"
+  },
+  neon: {
+    shadow: "0 24px 60px rgba(168,85,247,0.18)",
+    gradient: "linear-gradient(to top, rgba(20,8,24,0.92) 0%, rgba(20,8,24,0.42) 50%, transparent 100%)",
+    font: "sans",
+    badgeBg: "rgba(168,85,247,0.16)",
+    badgeColor: "#f5d0fe",
+    badgeBorder: "rgba(168,85,247,0.35)"
+  },
+  cyberpunk: {
+    shadow: "0 24px 60px rgba(234,179,8,0.16)",
+    gradient: "linear-gradient(to top, rgba(20,16,4,0.92) 0%, rgba(20,16,4,0.42) 50%, transparent 100%)",
+    font: "sans uppercase tracking-wide",
+    badgeBg: "rgba(234,179,8,0.16)",
+    badgeColor: "#fde68a",
+    badgeBorder: "rgba(234,179,8,0.35)"
   }
 };
 
 const SwipeCard = ({ user, searchQuery = "" }) => {
   const { addToast } = useToast();
+  const { theme: appTheme } = useTheme();
+  const isAppDark = appTheme !== "light";
   const [currentIndex, setCurrentIndex] = useState(0);
   const [swipe, setSwipe] = useState("center");
   const [bookmarked, setBookmarked] = useState(Boolean(user?.isBookmarked));
@@ -183,8 +186,8 @@ const SwipeCard = ({ user, searchQuery = "" }) => {
   const blockUser = async () => {
     try {
       await axios.post(
-        `${BASE_URL}/user/block`,
-        { blockedUserId: _id },
+        `${BASE_URL}/block`,
+        { userId: _id },
         { withCredentials: true }
       );
       addToast("User blocked", "success");
@@ -197,8 +200,8 @@ const SwipeCard = ({ user, searchQuery = "" }) => {
   const reportUser = async () => {
     try {
       await axios.post(
-        `${BASE_URL}/user/report`,
-        { reportedUserId: _id, reason: "Inappropriate behavior" },
+        `${BASE_URL}/report`,
+        { userId: _id, reason: "Inappropriate behavior" },
         { withCredentials: true }
       );
       addToast("User reported", "success");
@@ -269,57 +272,30 @@ const SwipeCard = ({ user, searchQuery = "" }) => {
             </Button>
           </div>
         );
-      default:
-        return (
-          <>
-            <motion.button
-              whileHover={{ scale: 1.12, boxShadow: "0 0 25px rgba(239,68,68,0.4)" }}
-              whileTap={{ scale: 0.92 }}
-              onClick={() => sendConnectionRequest("ignored", _id, "left")}
-              className="swipe-btn-nope"
-              style={{
-                width: "58px",
-                height: "58px",
-                borderRadius: "50%",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                background: "rgba(239,68,68,0.1)",
-                border: "2px solid rgba(239,68,68,0.4)",
-                color: "#f87171",
-                fontSize: "1.4rem",
-                cursor: "pointer",
-                boxShadow: "0 4px 15px rgba(239,68,68,0.15)",
-                transition: "all 0.25s ease",
-              }}
-            >
-              <HiX />
-            </motion.button>
+        default:
+          return (
+            <>
+              <motion.button
+                whileHover={{ scale: 1.12 }}
+                whileTap={{ scale: 0.92 }}
+                onClick={() => sendConnectionRequest("ignored", _id, "left")}
+                className="swipe-btn-nope"
+                aria-label="Skip"
+              >
+                <HiX />
+              </motion.button>
 
-            <motion.button
-              whileHover={{ scale: 1.12, boxShadow: "0 8px 35px rgba(16,185,129,0.35)" }}
-              whileTap={{ scale: 0.92 }}
-              onClick={() => sendConnectionRequest("interested", _id, "right")}
-              style={{
-                width: "68px",
-                height: "68px",
-                borderRadius: "50%",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                background: "linear-gradient(135deg, rgba(16,185,129,0.25), rgba(52,211,153,0.2))",
-                border: "2px solid rgba(16,185,129,0.5)",
-                color: "#34d399",
-                fontSize: "1.6rem",
-                cursor: "pointer",
-                boxShadow: "0 8px 25px rgba(16,185,129,0.25)",
-                transition: "all 0.25s ease",
-              }}
-            >
-              <HiHeart />
-            </motion.button>
-          </>
-        );
+              <motion.button
+                whileHover={{ scale: 1.12 }}
+                whileTap={{ scale: 0.92 }}
+                onClick={() => sendConnectionRequest("interested", _id, "right")}
+                className="swipe-btn-like"
+                aria-label="Like"
+              >
+                <HiHeart />
+              </motion.button>
+            </>
+          );
     }
   };
 
@@ -329,7 +305,7 @@ const SwipeCard = ({ user, searchQuery = "" }) => {
       <motion.div
         className={`relative cursor-grab active:cursor-grabbing select-none ${currentTheme.font}`}
         style={{
-          width: "340px",
+          width: "min(340px, 86vw)",
           height: "520px",
           borderRadius: "24px",
           overflow: "hidden",
@@ -376,10 +352,7 @@ const SwipeCard = ({ user, searchQuery = "" }) => {
           className="absolute top-8 left-8 z-20 rotate-[-20deg]"
           style={{ opacity: likeOpacity }}
         >
-          <div
-            className="px-4 py-1.5 rounded-lg text-xl font-black"
-            style={{ border: "3px solid #34d399", color: "#34d399", letterSpacing: "0.1em" }}
-          >
+          <div className="rounded-lg border-[3px] border-success-500 px-4 py-1.5 text-xl font-black text-success-500 tracking-[0.1em]">
             LIKE
           </div>
         </motion.div>
@@ -389,10 +362,7 @@ const SwipeCard = ({ user, searchQuery = "" }) => {
           className="absolute top-8 right-8 z-20 rotate-[20deg]"
           style={{ opacity: nopeOpacity }}
         >
-          <div
-            className="px-4 py-1.5 rounded-lg text-xl font-black"
-            style={{ border: "3px solid #f87171", color: "#f87171", letterSpacing: "0.1em" }}
-          >
+          <div className="rounded-lg border-[3px] border-error-500 px-4 py-1.5 text-xl font-black text-error-500 tracking-[0.1em]">
             NOPE
           </div>
         </motion.div>
@@ -423,11 +393,12 @@ const SwipeCard = ({ user, searchQuery = "" }) => {
             {photoUrl.map((_, idx) => (
               <span
                 key={idx}
-                className="rounded-full transition-all duration-300"
+                className={`rounded-full transition-all duration-300 ${
+                  idx === currentIndex ? "bg-white" : "bg-tint-strong"
+                }`}
                 style={{
                   width: idx === currentIndex ? "20px" : "6px",
                   height: "6px",
-                  background: idx === currentIndex ? "white" : "rgba(255,255,255,0.4)",
                 }}
               />
             ))}
@@ -438,29 +409,45 @@ const SwipeCard = ({ user, searchQuery = "" }) => {
         <div className="absolute bottom-0 left-0 right-0 p-5">
           <h2 className="text-2xl font-bold text-white leading-tight">
             {highlightText(firstName, searchQuery)} {highlightText(lastName, searchQuery)}
-            {age && <span className="font-normal text-xl ml-2" style={{ color: "#c7d2fe" }}>{age}</span>}
+            {age && <span className="ml-2 font-normal text-xl text-brand-600">{age}</span>}
           </h2>
 
           <div className="mt-1 flex flex-wrap items-center gap-2 text-xs font-medium text-slate-200/90">
             {role && (
-              <span className="rounded-full border border-white/20 bg-white/10 px-2 py-1 uppercase tracking-wide">
+              <span
+                className="rounded-full px-2 py-1 uppercase tracking-wide"
+                style={{
+                  background: currentTheme.badgeBg,
+                  color: currentTheme.badgeColor,
+                  border: `1px solid ${currentTheme.badgeBorder}`,
+                  backdropFilter: "blur(8px)",
+                }}
+              >
                 {highlightText(role, searchQuery)}
               </span>
             )}
             {typeof experienceYears === "number" && (
-              <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1">
+              <span
+                className="rounded-full px-2 py-1"
+                style={{
+                  background: currentTheme.badgeBg,
+                  color: currentTheme.badgeColor,
+                  border: `1px solid ${currentTheme.badgeBorder}`,
+                  backdropFilter: "blur(8px)",
+                }}
+              >
                 {experienceYears} yrs exp
               </span>
             )}
             {availability && (
-              <span className="rounded-full border border-emerald-500/40 bg-emerald-500/15 px-2 py-1 text-emerald-200">
+              <span className={`rounded-full border px-2 py-1 font-semibold ${isAppDark ? "border-emerald-500/40 text-emerald-300" : "border-emerald-500/50 text-emerald-700"}`}>
                 {availability === "open"
                   ? "Available"
                   : availability.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase())}
               </span>
             )}
             {typeof matchScore === "number" && (
-              <span className="rounded-full border border-brand-400/40 bg-brand-500/10 px-2 py-1 text-brand-100">
+              <span className={`rounded-full border px-2 py-1 font-semibold ${isAppDark ? "border-brand-400/40 text-brand-300" : "border-brand-500/50 text-brand-600"}`}>
                 Score {Math.round(matchScore)}%
               </span>
             )}
@@ -479,7 +466,7 @@ const SwipeCard = ({ user, searchQuery = "" }) => {
           )}
 
           {about && (
-            <p className="mt-2 text-sm line-clamp-2 leading-relaxed" style={{ color: "#cbd5e1" }}>
+            <p className={`mt-2 text-sm leading-relaxed line-clamp-2 ${isAppDark ? "text-neutral-200" : "text-neutral-800"}`}>
               {highlightText(about, searchQuery)}
             </p>
           )}
@@ -511,14 +498,14 @@ const SwipeCard = ({ user, searchQuery = "" }) => {
                   <HiCode className="inline mr-1 text-[10px]" />
                   {highlightText(skill, searchQuery)}
                   {skillEndorsementCount > 0 && (
-                    <span className="ml-1.5 flex items-center gap-0.5 text-[9px] bg-white/20 px-1.5 rounded-full font-bold">
+                    <span className="ml-1.5 flex items-center gap-0.5 text-[9px] bg-tint-strong px-1.5 rounded-full font-bold">
                       {skillEndorsementCount}
                     </span>
                   )}
                 </motion.span>
                )})}
               {skills.length > 4 && (
-                <span className="px-2.5 py-1 rounded-full text-xs" style={{ color: "#64748b" }}>
+                <span className="rounded-full px-2.5 py-1 text-xs text-neutral-500">
                   +{skills.length - 4} more
                 </span>
               )}
@@ -536,12 +523,12 @@ const SwipeCard = ({ user, searchQuery = "" }) => {
         {renderActions()}
       </div>
 
-      <p className="mt-4 text-xs" style={{ color: "#475569" }}>
+      <p className="mt-4 text-xs text-neutral-600">
         {relationshipStatus === "none" ? "Drag the card or use buttons to connect" : "Current relationship status shown above"}
       </p>
     </div>
   ) : (
-    <div className="text-center" style={{ color: "#94a3b8" }}>
+    <div className="text-center text-neutral-400">
       🚫 No Users Available
     </div>
   );

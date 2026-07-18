@@ -36,14 +36,14 @@ const RoadmapModal = ({ project, onClose }) => {
     else setLoading(true);
 
     try {
-      const { data } = await generateProjectRoadmap({
+      const response = await generateProjectRoadmap({
         title: project.title,
         description: project.description,
         techStack: project.techStack,
         projectId: project._id,
         forceRefresh: force,
       });
-       setRoadmap(data.data.roadmap);
+       setRoadmap(response.data.roadmap);
       if (force) addToast("Roadmap enhanced with AI!", "success");
     } catch (error) {
       addToast("Failed to generate roadmap", "error");
@@ -63,7 +63,7 @@ const RoadmapModal = ({ project, onClose }) => {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 pt-24 lg:pl-80"
       onClick={onClose}
     >
       <motion.div
@@ -73,10 +73,10 @@ const RoadmapModal = ({ project, onClose }) => {
         className="w-full max-w-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <Card tone="glass" className="max-h-[85vh] overflow-y-auto p-0">
-          <div className="flex items-center justify-between border-b border-white/10 p-6 sticky top-0 bg-surface-900/80 backdrop-blur-md z-20">
+        <Card tone="glass" className="!rounded-2xl max-h-[calc(100vh-8rem)] overflow-hidden p-0 flex flex-col">
+          <div className="flex items-center justify-between border-b border-hairline p-6 glass z-20 shrink-0">
             <div className="flex items-center gap-3">
-              <div className="rounded-xl bg-brand-500/20 p-2 text-brand-400 font-bold uppercase tracking-widest leading-none">
+              <div className="rounded-xl bg-brand-500/20 p-2 text-brand-500 font-bold uppercase tracking-widest leading-none">
                 <HiTrendingUp className="text-xl" />
               </div>
               <div>
@@ -90,7 +90,7 @@ const RoadmapModal = ({ project, onClose }) => {
                 size="sm" 
                 onClick={() => fetchRoadmap(true)}
                 disabled={loading || isEnhancing}
-                className="text-[10px] uppercase font-bold tracking-widest text-brand-400 hover:text-brand-300"
+                className="text-[10px] uppercase font-bold tracking-widest text-brand-500 hover:text-brand-600"
               >
                 {isEnhancing ? "Refining..." : "✨ Enhance"}
               </Button>
@@ -100,10 +100,10 @@ const RoadmapModal = ({ project, onClose }) => {
             </div>
           </div>
 
-          <div className="p-6">
+          <div className="p-6 overflow-y-auto flex-1">
             {loading ? (
               <div className="flex flex-col items-center justify-center py-16 gap-3">
-                <span className="loading loading-spinner loading-lg text-brand-500" />
+                <span className="spinner h-7 w-7 border-[3px] text-brand-600" />
                 <p className="text-sm font-medium text-neutral-400 animate-pulse uppercase tracking-widest">Architecting Plan...</p>
               </div>
             ) : (
@@ -115,16 +115,16 @@ const RoadmapModal = ({ project, onClose }) => {
                       <div className="absolute left-[11px] top-8 h-[calc(100%+16px)] w-[1px] bg-gradient-to-b from-brand-500/30 to-transparent" />
                     )}
                     
-                    <div className="absolute left-0 top-[3px] flex h-6 w-6 items-center justify-center rounded-full border border-brand-500/40 bg-brand-500/10 text-[10px] font-black text-brand-400 shadow-brand-glow">
+                    <div className="absolute left-0 top-[3px] flex h-6 w-6 items-center justify-center rounded-full border border-brand-500/40 bg-brand-500/10 text-[10px] font-black text-brand-500 shadow-brand-glow">
                       {idx + 1}
                     </div>
 
                     <h4 className="mb-4 text-sm font-bold uppercase tracking-widest text-neutral-200">{phase.title}</h4>
                     <div className="grid gap-2.5">
                       {phase.tasks.map((task, tidx) => (
-                        <div key={tidx} className="flex items-center gap-3 rounded-lg border border-white/5 bg-white/[0.03] px-3 py-2.5 hover:bg-white/[0.06] transition-all group">
-                          <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-white/20 group-hover:border-brand-500/50 transition-colors">
-                            <HiCheck className="text-[10px] text-brand-400 opacity-30 group-hover:opacity-100 transition-opacity" />
+                        <div key={tidx} className="flex items-center gap-3 rounded-lg border border-hairline-soft bg-tint px-3 py-2.5 hover:bg-tint transition-all group">
+                          <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-hairline group-hover:border-brand-500/50 transition-colors">
+                            <HiCheck className="text-[10px] text-brand-500 opacity-30 group-hover:opacity-100 transition-opacity" />
                           </div>
                           <span className="text-sm text-neutral-300 leading-tight">{task}</span>
                         </div>
@@ -136,7 +136,7 @@ const RoadmapModal = ({ project, onClose }) => {
             )}
           </div>
 
-          <div className="border-t border-white/10 p-6 flex justify-between items-center bg-white/[0.02]">
+          <div className="border-t border-hairline p-6 flex justify-between items-center glass shrink-0">
             <p className="text-[10px] text-neutral-500 uppercase tracking-widest font-medium">Blueprint v1.0 • AI Verified</p>
             <Button variant="primary" size="sm" onClick={onClose} className="px-6">Explore Tasks</Button>
           </div>
@@ -163,11 +163,11 @@ const EditProjectModal = ({ project, onClose, onSave }) => {
     }
     setLoadingSuggestion(true);
     try {
-      const { data } = await suggestProjectDetails(form.title);
+      const response = await suggestProjectDetails(form.title);
        setForm((p) => ({
          ...p,
-         description: data.data.description,
-         techStack: [...new Set([...p.techStack, ...data.data.techStack])],
+         description: response.data.description,
+         techStack: [...new Set([...p.techStack, ...response.data.techStack])],
        }));
       addToast("AI has filled in the project details!", "success");
     } catch (error) {
@@ -186,7 +186,7 @@ const EditProjectModal = ({ project, onClose, onSave }) => {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 pt-24 lg:pl-80"
       onClick={onClose}
     >
       <motion.div
@@ -196,7 +196,7 @@ const EditProjectModal = ({ project, onClose, onSave }) => {
         className="w-full max-w-lg"
         onClick={(e) => e.stopPropagation()}
       >
-        <Card tone="glass" className="space-y-4 p-6">
+        <Card tone="glass" className="space-y-4 p-6 max-h-[calc(100vh-8rem)] overflow-y-auto">
           <h3 className="text-xl font-bold text-neutral-100">Edit Project</h3>
           <div className="space-y-3">
             <div>
@@ -206,7 +206,7 @@ const EditProjectModal = ({ project, onClose, onSave }) => {
                   type="button"
                   onClick={handleMagicSuggest}
                   disabled={loadingSuggestion}
-                  className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-brand-400 hover:text-brand-300 disabled:opacity-50"
+                  className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-brand-500 hover:text-brand-600 disabled:opacity-50"
                   title="Generate description and tech stack automatically"
                 >
                   {loadingSuggestion ? "Thinking..." : "✨ Magic AI"}
@@ -216,7 +216,7 @@ const EditProjectModal = ({ project, onClose, onSave }) => {
                 value={form.title}
                 onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
                 placeholder="Title"
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-neutral-100 outline-none focus:ring-2 focus:ring-brand-500"
+                className="w-full rounded-xl border border-hairline bg-tint px-4 py-2 text-sm text-neutral-100 outline-none focus:ring-2 focus:ring-brand-500"
               />
             </div>
 
@@ -234,7 +234,7 @@ const EditProjectModal = ({ project, onClose, onSave }) => {
                 value={form.description}
                 onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
                 placeholder="Description"
-                className="w-full min-h-[120px] rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-neutral-100 outline-none resize-none focus:ring-2 focus:ring-brand-500"
+                className="w-full min-h-[120px] rounded-xl border border-hairline bg-tint px-4 py-2 text-sm text-neutral-100 outline-none resize-none focus:ring-2 focus:ring-brand-500"
               />
             </div>
 
@@ -243,7 +243,7 @@ const EditProjectModal = ({ project, onClose, onSave }) => {
               <select
                 value={form.status}
                 onChange={(e) => setForm((p) => ({ ...p, status: e.target.value }))}
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-neutral-100 outline-none focus:ring-2 focus:ring-brand-500 [&>option]:bg-neutral-900"
+                className="w-full rounded-xl border border-hairline bg-tint px-4 py-2 text-sm text-neutral-100 outline-none focus:ring-2 focus:ring-brand-500 [&>option]:bg-neutral-900"
               >
                 <option value="open">Open</option>
                 <option value="in_progress">In Progress</option>
@@ -273,7 +273,7 @@ const MembersModal = ({ project, currentUserId, onClose, onRemove }) => {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 pt-24 lg:pl-80"
       onClick={onClose}
     >
       <motion.div
@@ -284,7 +284,7 @@ const MembersModal = ({ project, currentUserId, onClose, onRemove }) => {
         onClick={(e) => e.stopPropagation()}
       >
         <Card tone="glass" className="p-0 overflow-hidden">
-          <div className="flex items-center justify-between border-b border-white/10 p-4">
+          <div className="flex items-center justify-between border-b border-hairline p-4">
             <h3 className="text-lg font-semibold text-neutral-100">Members</h3>
             <Button variant="ghost" size="sm" onClick={onClose}>
               <HiX className="text-xl" />
@@ -300,7 +300,7 @@ const MembersModal = ({ project, currentUserId, onClose, onRemove }) => {
               return (
                 <div
                   key={memberUserId}
-                  className="flex items-center justify-between rounded-lg border border-white/5 bg-white/5 p-2 hover:bg-white/10 transition-colors"
+                  className="flex items-center justify-between rounded-lg border border-hairline-soft bg-tint p-2 hover:bg-tint-strong transition-colors"
                 >
                   <div className="flex items-center gap-3">
                     <div className="h-10 w-10 overflow-hidden rounded-full border border-brand-400/30">
@@ -316,7 +316,7 @@ const MembersModal = ({ project, currentUserId, onClose, onRemove }) => {
                   <div>
                     <p className="text-sm text-neutral-200">{memberFullName}</p>
                     {isMemberOwner && (
-                      <p className="text-[10px] text-brand-200">Owner</p>
+                      <p className="text-[10px] text-brand-600">Owner</p>
                     )}
                   </div>
                 </div>
@@ -340,12 +340,12 @@ const MembersModal = ({ project, currentUserId, onClose, onRemove }) => {
 };
 
 const TechChip = ({ tech, onRemove }) => (
-  <span className="flex items-center gap-1.5 rounded-full border border-brand-400/30 bg-brand-500/15 px-3 py-1 text-xs font-medium text-brand-200">
+  <span className="flex items-center gap-1.5 rounded-full border border-brand-400/30 bg-brand-500/15 px-3 py-1 text-xs font-medium text-brand-600">
     {tech}
     <button
       type="button"
       onClick={onRemove}
-      className="flex h-4 w-4 items-center justify-center rounded-full bg-white/10 text-brand-200 transition hover:bg-white/20"
+      className="flex h-4 w-4 items-center justify-center rounded-full bg-tint-strong text-brand-600 transition hover:bg-tint-strong"
     >
       <HiX className="text-[10px]" />
     </button>
@@ -371,7 +371,7 @@ const TechInput = ({ value, onChange }) => {
   };
 
   return (
-    <div className="flex min-h-[46px] flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 transition focus-within:ring-2 focus-within:ring-brand-500/50 hover:bg-white/10">
+    <div className="flex min-h-[46px] flex-wrap items-center gap-2 rounded-xl border border-hairline bg-tint px-3 py-2 transition focus-within:ring-2 focus-within:ring-brand-500/50 hover:bg-tint-strong">
       {value.map((tech) => (
         <TechChip key={tech} tech={tech} onRemove={() => removeTech(tech)} />
       ))}
@@ -413,9 +413,9 @@ const ProjectCard = ({ project, currentUserId, onJoin, onView, onRespond, onRemo
             <span
               className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${
                 project.status === "open"
-                  ? "border-success-400/40 bg-success-500/15 text-success-200"
+                  ? "border-success-400/40 bg-success-500/15 text-success-600"
                   : project.status === "in_progress"
-                  ? "border-warning-400/40 bg-warning-500/15 text-warning-200"
+                  ? "border-warning-400/40 bg-warning-500/15 text-warning-600"
                   : "border-neutral-500/40 bg-neutral-500/15 text-neutral-400"
               }`}
             >
@@ -433,14 +433,14 @@ const ProjectCard = ({ project, currentUserId, onJoin, onView, onRespond, onRemo
                 className="h-full w-full object-cover"
               />
             </div>
-            <span className="text-xs text-brand-200">{ownerFullName}</span>
+            <span className="text-xs text-brand-600">{ownerFullName}</span>
           </div>
         </div>
         <div className="flex items-center gap-2">
           {canManage && (
             <>
               <Button variant="ghost" size="sm" onClick={() => onEdit(project)}>
-                <HiPencilAlt className="text-lg text-brand-300" />
+                <HiPencilAlt className="text-lg text-brand-600" />
               </Button>
               <Button variant="ghost" size="sm" onClick={() => onDelete(project._id)}>
                 <HiTrash className="text-lg text-error-400" />
@@ -464,7 +464,7 @@ const ProjectCard = ({ project, currentUserId, onJoin, onView, onRespond, onRemo
           {project.techStack.map((tech) => (
             <span
               key={tech}
-              className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] text-neutral-300"
+              className="rounded-full border border-hairline bg-tint px-2 py-0.5 text-[11px] text-neutral-300"
             >
               {tech}
             </span>
@@ -475,15 +475,15 @@ const ProjectCard = ({ project, currentUserId, onJoin, onView, onRespond, onRemo
       <div className="flex items-center justify-between pt-2">
         <div className="flex gap-2">
           <Button variant="ghost" size="sm" className="px-2" onClick={() => onShowRoadmap(project)}>
-            <HiTrendingUp className="text-lg text-brand-400" /> Roadmap
+            <HiTrendingUp className="text-lg text-brand-500" /> Roadmap
           </Button>
           <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-500">
-            <span className="text-brand-200">{project.members?.length ?? 1} members</span>
+            <span className="text-brand-600">{project.members?.length ?? 1} members</span>
             {project.members?.length > 1 && (
               <button
                 type="button"
                 onClick={() => onShowMembers(project)}
-                className="flex items-center gap-1 text-brand-300 hover:text-brand-200"
+                className="flex items-center gap-1 text-brand-600 hover:text-brand-600"
               >
                 <HiUsers className="text-sm" /> View
               </button>
@@ -493,7 +493,7 @@ const ProjectCard = ({ project, currentUserId, onJoin, onView, onRespond, onRemo
         <div>
           {project.joinRequests?.filter((r) => r.status === "pending")
             ?.length > 0 && canManage && (
-            <span className="rounded-full bg-brand-500/20 px-2 py-0.5 text-brand-200">
+            <span className="rounded-full bg-brand-500/20 px-2 py-0.5 text-brand-600">
               {project.joinRequests.filter((r) => r.status === "pending").length}{" "}
               pending
             </span>
@@ -502,7 +502,7 @@ const ProjectCard = ({ project, currentUserId, onJoin, onView, onRespond, onRemo
         {!isMember && project.status === "open" && (
           <div>
             {hasPendingRequest ? (
-              <span className="text-xs text-warning-200">Request pending...</span>
+              <span className="text-xs text-warning-600">Request pending...</span>
             ) : (
               <Button variant="secondary" size="sm" onClick={() => onJoin(project._id)}>
                 <HiUserAdd className="text-lg" /> Join
@@ -514,7 +514,7 @@ const ProjectCard = ({ project, currentUserId, onJoin, onView, onRespond, onRemo
 
       {canManage &&
         project.joinRequests?.filter((r) => r.status === "pending").length > 0 && (
-          <div className="mt-3 space-y-2 border-t border-white/5 pt-3">
+          <div className="mt-3 space-y-2 border-t border-hairline-soft pt-3">
             <p className="text-xs font-medium uppercase text-neutral-500">
               Join Requests
             </p>
@@ -523,10 +523,10 @@ const ProjectCard = ({ project, currentUserId, onJoin, onView, onRespond, onRemo
               .map((request) => (
                 <div
                   key={request._id}
-                  className="flex items-center justify-between rounded-lg border border-white/5 bg-white/5 p-2"
+                  className="flex items-center justify-between rounded-lg border border-hairline-soft bg-tint p-2"
                 >
                   <div className="flex items-center gap-2">
-                    <div className="h-8 w-8 overflow-hidden rounded-full border border-white/10">
+                    <div className="h-8 w-8 overflow-hidden rounded-full border border-hairline">
                       <img
                         src={
                           request.user?.photoUrl?.[0] ||
@@ -647,17 +647,17 @@ const ProjectChat = ({ project, currentUserId, onClose }) => {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 pt-24 lg:pl-80"
       onClick={onClose}
     >
       <motion.div
         initial={{ scale: 0.9 }}
         animate={{ scale: 1 }}
         exit={{ scale: 0.9 }}
-        className="flex h-[80vh] w-full max-w-2xl flex-col rounded-2xl bg-neutral-900 border border-white/10 overflow-hidden"
+        className="flex h-[80vh] w-full max-w-2xl flex-col rounded-2xl bg-neutral-900 border border-hairline overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+        <div className="flex items-center justify-between border-b border-hairline px-4 py-3">
           <div>
             <h3 className="text-lg font-semibold text-neutral-100">{project.title}</h3>
             <p className="text-xs text-neutral-400">Project Chat</p>
@@ -670,7 +670,7 @@ const ProjectChat = ({ project, currentUserId, onClose }) => {
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
           {loading ? (
             <div className="flex h-full items-center justify-center">
-              <span className="loading loading-spinner loading-md text-brand-300" />
+              <span className="spinner h-5 w-5 border-2 text-brand-600" />
             </div>
           ) : messages.length === 0 ? (
             <p className="text-center text-sm text-neutral-500">No messages yet. Start the conversation!</p>
@@ -685,14 +685,14 @@ const ProjectChat = ({ project, currentUserId, onClose }) => {
                       <img
                         src={getSenderPhoto(msg.senderId)}
                         alt={getSenderName(msg.senderId)}
-                        className="h-8 w-8 rounded-full object-cover border border-white/10"
+                        className="h-8 w-8 rounded-full object-cover border border-hairline"
                       />
                     </div>
                   )}
                   <div className={`max-w-[75%] rounded-2xl px-4 py-2 ${
-                    isOwn ? "bg-brand-500 text-white" : "bg-white/10 text-neutral-200"
+                    isOwn ? "bg-brand-500 text-white" : "bg-tint-strong text-neutral-200"
                   }`}>
-                    {!isOwn && <p className="text-xs font-medium text-brand-200 mb-1">{getSenderName(msg.senderId)}</p>}
+                    {!isOwn && <p className="text-xs font-medium text-brand-600 mb-1">{getSenderName(msg.senderId)}</p>}
                     <p className="text-sm">{msg.message}</p>
                     <p className="text-[10px] text-white/60 mt-1">
                       {new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
@@ -705,14 +705,14 @@ const ProjectChat = ({ project, currentUserId, onClose }) => {
           <div ref={messagesEndRef} />
         </div>
 
-        <div className="border-t border-white/10 p-3">
+        <div className="border-t border-hairline p-3">
           <div className="flex gap-2">
             <input
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage()}
               placeholder="Type a message..."
-              className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-neutral-100 outline-none focus-visible:ring-2 focus-visible:ring-brand-400"
+              className="flex-1 rounded-xl border border-hairline bg-tint px-4 py-2 text-sm text-neutral-100 outline-none focus-visible:ring-2 focus-visible:ring-brand-400"
             />
             <Button variant="primary" onClick={sendMessage} disabled={sending || !newMessage.trim()}>
               <HiPaperAirplane className="text-lg" />
@@ -748,11 +748,11 @@ const Projects = () => {
     }
     setLoadingSuggestion(true);
     try {
-      const { data } = await suggestProjectDetails(form.title);
+      const response = await suggestProjectDetails(form.title);
        setForm((p) => ({
          ...p,
-         description: data.data.description,
-         techStack: [...new Set([...p.techStack, ...data.data.techStack])],
+         description: response.data.description,
+         techStack: [...new Set([...p.techStack, ...response.data.techStack])],
        }));
       addToast("AI has filled in the project details!", "success");
     } catch (error) {
@@ -894,11 +894,11 @@ const Projects = () => {
 
           {loading ? (
             <Card tone="translucent" className="flex h-64 items-center justify-center">
-              <span className="loading loading-spinner loading-lg text-brand-300" />
+              <span className="spinner h-7 w-7 border-[3px] text-brand-600" />
             </Card>
           ) : displayProjects.length === 0 ? (
             <Card tone="translucent" className="flex flex-col items-center gap-4 p-8 text-center">
-              {activeTab === "my" ? <HiCollection className="text-3xl text-brand-300" /> : <HiGlobeAlt className="text-3xl text-brand-300" />}
+              {activeTab === "my" ? <HiCollection className="text-3xl text-brand-600" /> : <HiGlobeAlt className="text-3xl text-brand-600" />}
               <h3 className="text-lg font-semibold text-neutral-100">{activeTab === "my" ? "No projects yet" : "No projects to explore"}</h3>
               <p className="text-sm text-neutral-400">{activeTab === "my" ? "Create a project to start collaborating." : "All projects are either private or you've already joined."}</p>
               {activeTab === "my" && <Button variant="primary" onClick={() => setShowCreate(true)}><HiPlus className="text-lg" /> Create Project</Button>}
@@ -940,7 +940,7 @@ const Projects = () => {
                   type="button"
                   onClick={handleMagicSuggest}
                   disabled={loadingSuggestion}
-                  className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-brand-400 hover:text-brand-300 disabled:opacity-50"
+                  className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-brand-500 hover:text-brand-600 disabled:opacity-50"
                   title="Generate description and tech stack automatically"
                 >
                   {loadingSuggestion ? "Thinking..." : "✨ Magic AI"}
@@ -950,7 +950,7 @@ const Projects = () => {
                 value={form.title}
                 onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
                 placeholder="e.g. Real-time Crypto Dashboard"
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-neutral-100 outline-none focus:ring-2 focus:ring-brand-500"
+                className="w-full rounded-xl border border-hairline bg-tint px-3 py-2 text-sm text-neutral-100 outline-none focus:ring-2 focus:ring-brand-500"
               />
             </div>
 
@@ -968,13 +968,13 @@ const Projects = () => {
                 value={form.description}
                 onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
                 placeholder="Describe your vision and find teammates."
-                className="min-h-[150px] w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-neutral-100 outline-none resize-y focus:ring-2 focus:ring-brand-500"
+                className="min-h-[150px] w-full rounded-xl border border-hairline bg-tint px-3 py-2 text-sm text-neutral-100 outline-none resize-y focus:ring-2 focus:ring-brand-500"
               />
             </div>
           </div>
           <div className="flex justify-end gap-2">
             <Button variant="ghost" onClick={() => setShowCreate(false)}>Cancel</Button>
-            <Button variant="primary" onClick={createProject} disabled={creating}>{creating ? <span className="loading loading-spinner loading-sm" /> : <><HiPlus className="text-lg" /> Create Project</>}</Button>
+            <Button variant="primary" onClick={createProject} disabled={creating}>{creating ? <span className="spinner h-4 w-4 border-2 text-brand-600" /> : <><HiPlus className="text-lg" /> Create Project</>}</Button>
           </div>
         </Card>
       )}

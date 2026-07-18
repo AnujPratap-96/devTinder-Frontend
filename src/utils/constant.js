@@ -3,6 +3,7 @@ export const BASE_URL = location.hostname === "localhost" ? "http://localhost:30
 import io from "socket.io-client";
 
 let socketInstance;
+let registeredUserId;
 
 /**
  * Disconnect the socket gracefully when the user closes the tab/window.
@@ -18,6 +19,10 @@ const handleBeforeUnload = () => {
 window.addEventListener("beforeunload", handleBeforeUnload);
 
 export const createSocketConnection = (userId) => {
+  if (userId) {
+    registeredUserId = userId;
+  }
+
   if (!socketInstance) {
     const isLocal = location.hostname === "localhost";
     const connectionOptions = {
@@ -26,6 +31,14 @@ export const createSocketConnection = (userId) => {
       path: isLocal ? "/socket.io" : "/api/socket.io",
     };
     socketInstance = io(isLocal ? BASE_URL : "/", connectionOptions);
+
+    // Re-register the session on every (re)connect so the server keeps
+    // tracking this user as online and can deliver real-time events.
+    socketInstance.on("connect", () => {
+      if (registeredUserId) {
+        socketInstance.emit("session:register", { userId: registeredUserId });
+      }
+    });
   }
 
   if (userId) {

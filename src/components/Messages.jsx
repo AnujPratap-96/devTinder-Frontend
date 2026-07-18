@@ -55,7 +55,7 @@ const Messages = () => {
       </div>
 
       {hasConnections && hasResults ? (
-        <div className="mx-auto w-full max-w-4xl space-y-4">
+        <div className="mx-auto w-full max-w-2xl space-y-4">
           <ul className="flex flex-col gap-3">
             {filteredConnections.map((conn, index) => (
               <li key={conn._id}>
@@ -65,12 +65,12 @@ const Messages = () => {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.2, delay: index * 0.05 }}
                   onClick={() => navigate(`/chat/${conn._id}`)}
-                  className="flex w-full items-center gap-4 rounded-xl border border-white/5 bg-surface-800/40 px-5 py-4 text-left transition duration-200 ease-snappy hover:-translate-y-0.5 hover:bg-surface-800/80 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300/40 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950"
+                  className="flex w-full items-center gap-4 rounded-xl border border-hairline-soft bg-surface-800/40 px-5 py-4 text-left transition duration-200 ease-snappy hover:-translate-y-0.5 hover:bg-surface-800/80 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300/40 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
                 >
                   <div className="relative flex-shrink-0">
                     <div className="avatar-ring h-12 w-12 overflow-hidden">
                       <img
-                         src={Array.isArray(conn.photoUrl) ? conn.photoUrl[0] : conn.photoUrl || "https://via.placeholder.com/150"}
+                        src={Array.isArray(conn.photoUrl) ? conn.photoUrl[0] : conn.photoUrl || "https://via.placeholder.com/150"}
                         alt={conn.firstName}
                         className="h-full w-full object-cover"
                       />
@@ -95,13 +95,13 @@ const Messages = () => {
                       {conn.about || "Click to start chatting..."}
                     </p>
                   </div>
-                  
+
                   {conn.unreadCount > 0 && (
                     <div className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-brand-500 px-1.5 text-[10px] font-bold text-white shadow-brand-glow animate-pulse">
                       {conn.unreadCount}
                     </div>
                   )}
-                  
+
                   <HiChat className="text-base text-neutral-700" />
                 </motion.button>
               </li>
@@ -138,18 +138,18 @@ const Messages = () => {
           animate={{ opacity: 1, y: 0 }}
           className="mx-auto max-w-md"
         >
-        <EmptyState
-          icon={<HiSearch className="text-3xl" />}
-          title="No matches found"
-          description="Try adjusting your search terms to find the conversation you need."
-          tone="translucent"
-          secondaryAction={
-            <Button variant="ghost" size="sm" onClick={() => setQuery("")}>
-              Clear search
-            </Button>
-          }
-        />
-      </motion.div>
+          <EmptyState
+            icon={<HiSearch className="text-3xl" />}
+            title="No matches found"
+            description="Try adjusting your search terms to find the conversation you need."
+            tone="translucent"
+            secondaryAction={
+              <Button variant="ghost" size="sm" onClick={() => setQuery("")}>
+                Clear search
+              </Button>
+            }
+          />
+        </motion.div>
       )}
     </div>
   );

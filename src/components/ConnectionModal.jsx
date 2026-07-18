@@ -54,7 +54,7 @@ const ConnectionModal = ({ user, isOpen, onClose }) => {
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
           transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-          className="relative flex w-full max-w-2xl flex-col bg-surface-900 overflow-hidden shadow-brand-strong border border-white/10 rounded-3xl z-10 sm:flex-row"
+          className="relative flex w-full max-w-2xl flex-col bg-surface-900 overflow-hidden shadow-brand-strong border border-hairline rounded-3xl z-10 sm:flex-row"
           style={{ maxHeight: "90vh" }}
         >
           {/* Close Button */}
@@ -73,7 +73,7 @@ const ConnectionModal = ({ user, isOpen, onClose }) => {
               className="h-full w-full object-cover"
             />
             {/* Gradient mask for seamless blend on desktop, and soften bottom on mobile */}
-            <div className="absolute inset-0 bg-gradient-to-t from-surface-900 via-transparent to-transparent sm:bg-gradient-to-r" />
+            <div className="absolute inset-0 bg-gradient-to-t from-surface-900/50 via-transparent to-transparent sm:bg-gradient-to-r" />
           </div>
 
           {/* Right Content Area */}
@@ -82,7 +82,7 @@ const ConnectionModal = ({ user, isOpen, onClose }) => {
               <h2 className="text-3xl font-bold text-neutral-50 mb-1 leading-tight tracking-tight">
                 {user.firstName} {user.lastName}
               </h2>
-              <div className="flex items-center gap-2 text-brand-300 text-sm font-medium uppercase tracking-wider">
+              <div className="flex items-center gap-2 text-brand-600 text-sm font-medium uppercase tracking-wider">
                 {user.age && <span>{user.age} Yrs</span>}
                 {user.age && user.gender && <span>&bull;</span>}
                 {user.gender && <span>{user.gender}</span>}
@@ -101,7 +101,7 @@ const ConnectionModal = ({ user, isOpen, onClose }) => {
             )}
 
             {user.skills && user.skills.length > 0 && (
-              <div className="mt-8 border-t border-white/5 pt-8">
+              <div className="mt-8 border-t border-hairline-soft pt-8">
                 <h3 className="text-[0.65rem] font-bold uppercase tracking-[0.2em] text-neutral-500 mb-3.5">
                   Skills & Expertise
                 </h3>
@@ -113,12 +113,12 @@ const ConnectionModal = ({ user, isOpen, onClose }) => {
                         key={index}
                         onClick={() => handleEndorse(skill)}
                         title={`Click to endorse ${user.firstName} for ${skill}`}
-                        className="group inline-flex items-center gap-2 rounded-full border border-brand-400/20 bg-brand-500/10 px-3 py-1.5 text-xs font-medium text-brand-100 shadow-sm transition-all hover:border-brand-400 hover:bg-brand-500/20 active:scale-95"
+                        className="group inline-flex items-center gap-2 rounded-full border border-brand-400/20 bg-brand-500/10 px-3 py-1.5 text-xs font-medium text-brand-500 shadow-sm transition-all hover:border-brand-400 hover:bg-brand-500/20 active:scale-95"
                       >
-                        <HiCode className="text-brand-300 text-[10px]" />
+                        <HiCode className="text-brand-600 text-[10px]" />
                         {skill}
                         {count > 0 && (
-                          <span className="flex items-center gap-1 rounded-full bg-brand-500/30 px-1.5 py-0.5 text-[10px] text-brand-200">
+                          <span className="flex items-center gap-1 rounded-full bg-brand-500/30 px-1.5 py-0.5 text-[10px] text-brand-600">
                             <HiCheckCircle className="text-[10px]" />
                             {count}
                           </span>

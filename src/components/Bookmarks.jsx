@@ -15,8 +15,8 @@ import { useToast } from "../context/ToastProvider";
 
 // ─── Availability badge colours ───────────────────────────────
 const availabilityConfig = {
-  open: { label: "Open to work", dot: "bg-emerald-400", text: "text-emerald-300", ring: "border-emerald-500/30 bg-emerald-500/10" },
-  busy: { label: "Busy", dot: "bg-amber-400", text: "text-amber-300", ring: "border-amber-500/30 bg-amber-500/10" },
+  open: { label: "Open to work", dot: "bg-emerald-400", text: "text-emerald-700", ring: "border-emerald-500/30 bg-emerald-500/10" },
+  busy: { label: "Busy", dot: "bg-amber-400", text: "text-amber-700", ring: "border-amber-500/30 bg-amber-500/10" },
   not_looking: { label: "Not looking", dot: "bg-neutral-500", text: "text-neutral-400", ring: "border-neutral-600/30 bg-neutral-700/20" },
 };
 
@@ -35,22 +35,22 @@ const roleGradient = {
 
 // ─── Skeleton loader ───────────────────────────────────────────
 const SkeletonCard = () => (
-  <div className="overflow-hidden rounded-2xl border border-white/5 bg-surface-900 animate-pulse">
-    <div className="h-28 bg-white/5" />
+  <div className="overflow-hidden rounded-2xl border border-hairline-soft bg-surface-900 animate-pulse">
+    <div className="h-28 bg-tint" />
     <div className="p-4 space-y-3">
       <div className="flex items-end gap-3 -mt-8">
-        <div className="h-14 w-14 rounded-xl bg-white/10 ring-4 ring-surface-900" />
+        <div className="h-14 w-14 rounded-xl bg-tint-strong ring-4 ring-surface-900" />
         <div className="flex-1 space-y-1.5 pb-1">
-          <div className="h-3 rounded bg-white/10 w-32" />
-          <div className="h-2.5 rounded bg-white/5 w-20" />
+          <div className="h-3 rounded bg-tint-strong w-32" />
+          <div className="h-2.5 rounded bg-tint w-20" />
         </div>
       </div>
-      <div className="h-2 rounded bg-white/5 w-full" />
-      <div className="h-2 rounded bg-white/5 w-4/5" />
+      <div className="h-2 rounded bg-tint w-full" />
+      <div className="h-2 rounded bg-tint w-4/5" />
       <div className="flex gap-2 pt-1">
-        <div className="h-7 rounded-full bg-white/5 flex-1" />
-        <div className="h-7 rounded-full bg-white/5 flex-1" />
-        <div className="h-7 rounded-full bg-white/5 flex-1" />
+        <div className="h-7 rounded-full bg-tint flex-1" />
+        <div className="h-7 rounded-full bg-tint flex-1" />
+        <div className="h-7 rounded-full bg-tint flex-1" />
       </div>
     </div>
   </div>
@@ -97,8 +97,8 @@ const Bookmarks = () => {
   const blockUser = async (userId, bookmarkId) => {
     try {
       await axios.post(
-        `${BASE_URL}/user/block`,
-        { blockedUserId: userId },
+        `${BASE_URL}/block`,
+        { userId },
         { withCredentials: true }
       );
       setBookmarks((prev) => prev.filter((b) => b._id !== bookmarkId));
@@ -111,8 +111,8 @@ const Bookmarks = () => {
   const reportUser = async (userId) => {
     try {
       await axios.post(
-        `${BASE_URL}/user/report`,
-        { reportedUserId: userId, reason: "Inappropriate behavior" },
+        `${BASE_URL}/report`,
+        { userId, reason: "Inappropriate behavior" },
         { withCredentials: true }
       );
       addToast("User reported", "success");
@@ -127,7 +127,7 @@ const Bookmarks = () => {
       <div>
         <h1 className="flex items-center gap-3 text-2xl font-bold tracking-tight text-neutral-50">
           <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-500/20">
-            <HiBookmark className="text-lg text-brand-400" />
+            <HiBookmark className="text-lg text-brand-500" />
           </span>
           Saved Profiles
         </h1>
@@ -191,7 +191,7 @@ const Bookmarks = () => {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.92, y: -10 }}
                 transition={{ duration: 0.25, delay: idx * 0.04 }}
-                className="group relative overflow-hidden rounded-2xl border border-white/5 bg-surface-900 shadow-soft transition hover:border-brand-500/20 hover:shadow-brand-glow"
+                className="group relative overflow-hidden rounded-2xl border border-hairline-soft bg-surface-900 shadow-soft transition hover:border-brand-500/20 hover:shadow-brand-glow"
               >
                 {/* ── Cover banner ── */}
                 <div className={`relative h-28 bg-gradient-to-br ${gradient}`}>
@@ -206,7 +206,7 @@ const Bookmarks = () => {
                   />
                   {/* experience pill */}
                   {typeof dev.experienceYears === "number" && (
-                    <span className="absolute top-3 right-3 rounded-full border border-white/10 bg-black/30 px-2.5 py-1 text-[10px] font-semibold text-white/70 backdrop-blur-sm">
+                    <span className="absolute top-3 right-3 rounded-full border border-hairline bg-black/30 px-2.5 py-1 text-[10px] font-semibold text-white/70 backdrop-blur-sm">
                       {dev.experienceYears} yr{dev.experienceYears !== 1 ? "s" : ""} exp
                     </span>
                   )}
@@ -275,14 +275,14 @@ const Bookmarks = () => {
                       {skills.map((skill) => (
                         <span
                           key={skill}
-                          className="flex items-center gap-1 rounded-full border border-brand-400/20 bg-brand-500/10 px-2.5 py-1 text-[10px] font-semibold text-brand-300"
+                          className="flex items-center gap-1 rounded-full border border-brand-400/20 bg-brand-500/10 px-2.5 py-1 text-[10px] font-semibold text-brand-600"
                         >
                           <HiCode className="text-[9px]" />
                           {skill}
                         </span>
                       ))}
                       {(dev.skills?.length ?? 0) > 4 && (
-                        <span className="rounded-full border border-white/5 bg-white/5 px-2.5 py-1 text-[10px] text-neutral-500">
+                        <span className="rounded-full border border-hairline-soft bg-tint px-2.5 py-1 text-[10px] text-neutral-500">
                           +{dev.skills.length - 4}
                         </span>
                       )}
@@ -300,7 +300,7 @@ const Bookmarks = () => {
                   </p>
 
                   {/* Divider */}
-                  <div className="mb-3 border-t border-white/5" />
+                  <div className="mb-3 border-t border-hairline-soft" />
 
                   {/* Action buttons */}
                   <div className="flex items-center gap-2">
@@ -311,7 +311,7 @@ const Bookmarks = () => {
                       className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-red-500/20 bg-red-500/10 py-2 text-xs font-semibold text-red-400 transition hover:bg-red-500/20 hover:text-red-300 disabled:opacity-50"
                     >
                       {isRemoving ? (
-                        <span className="loading loading-spinner loading-xs" />
+                        <span className="spinner h-3 w-3 border text-brand-600" />
                       ) : (
                         <HiTrash className="text-sm" />
                       )}
@@ -330,7 +330,7 @@ const Bookmarks = () => {
                     <button
                       type="button"
                       onClick={() => reportUser(dev._id)}
-                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/5 bg-white/5 text-neutral-500 transition hover:bg-white/10 hover:text-neutral-300"
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-hairline-soft bg-tint text-neutral-500 transition hover:bg-tint-strong hover:text-neutral-300"
                       title="Report user"
                     >
                       <HiFlag className="text-sm" />

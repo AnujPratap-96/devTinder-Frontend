@@ -16,8 +16,10 @@ import {
   HiX,
 } from "react-icons/hi";
 import { BASE_URL, createSocketConnection } from "../utils/constant";
+import { ensureCrypto, isCryptoReady, encryptMessage, decryptMessage, canEncryptWith } from "../utils/e2ee";
 import { useToast } from "../context/ToastProvider";
 import { getOnlineStatus, formatTimeAgo } from "../utils/timeUtils";
+import { resolvePhotoUrl } from "../utils/avatar";
 import { generateIcebreaker, suggestCollaboration } from "../utils/aiApi";
 
 const MESSAGE_LIMIT = 30;
@@ -30,7 +32,7 @@ const generateClientId = () =>
 const getStatusLabel = (message, isMine) => {
   if (!isMine) return null;
   if (message.seen) {
-    return <span className="text-brand-300 font-medium">Seen</span>;
+    return <span className="text-brand-600 font-medium">Seen</span>;
   }
   if (message.delivered) {
     return <span className="text-neutral-400">Delivered</span>;
@@ -51,6 +53,21 @@ const decorateMessage = (payload, userId, targetUserId) => ({
   counterpartId: payload.senderId === userId ? targetUserId : payload.senderId,
   receiverId: payload.receiverId,
 });
+
+// Decrypt an incoming message for display. If it isn't encrypted, or we can't
+// decrypt it (e.g. missing peer key), return it with a safe placeholder so the
+// UI never crashes on ciphertext.
+const decryptIncoming = async (msg) => {
+  if (!msg?.isEncrypted) return msg;
+  if (!isCryptoReady()) return { ...msg, message: "[encrypted message]" };
+  try {
+    const peer = msg.senderId === userId ? msg.receiverId : msg.senderId;
+    const plain = await decryptMessage(peer, msg.message);
+    return { ...msg, message: plain };
+  } catch {
+    return { ...msg, message: "[encrypted message]" };
+  }
+};
 
 const ChatBox = () => {
   const { targetUserId } = useParams();
@@ -82,7 +99,7 @@ const ChatBox = () => {
 
   const blockUser = async () => {
     try {
-      await axios.post(`${BASE_URL}/user/block`, { blockedUserId: targetUserId }, { withCredentials: true });
+      await axios.post(`${BASE_URL}/block`, { userId: targetUserId }, { withCredentials: true });
       addToast("User blocked", "success");
       setShowMenu(false);
       navigate("/messages");
@@ -95,7 +112,7 @@ const ChatBox = () => {
     setCollabLoading(true);
     try {
       const { data } = await suggestCollaboration(targetUserId);
-       setCollabSuggestion(data.data);
+       setCollabSuggestion(data);
     } catch (err) {
       addToast("Failed to get collaboration suggestion", "error");
     } finally {
@@ -105,7 +122,7 @@ const ChatBox = () => {
 
   const reportUser = async () => {
     try {
-      await axios.post(`${BASE_URL}/user/report`, { reportedUserId: targetUserId, reason: "Inappropriate behavior" }, { withCredentials: true });
+      await axios.post(`${BASE_URL}/report`, { userId: targetUserId, reason: "Inappropriate behavior" }, { withCredentials: true });
       addToast("User reported", "success");
       setShowMenu(false);
     } catch (error) {
@@ -139,20 +156,32 @@ const ChatBox = () => {
   const fetchInitialMessages = async () => {
     if (!userId || !targetUserId) return;
     try {
+      // Load messages first — this is the critical path and must never depend
+      // on crypto succeeding. E2E init happens afterwards and is non-fatal.
       const { data } = await axios.get(`${BASE_URL}/chat/${targetUserId}?limit=${MESSAGE_LIMIT}`, {
         withCredentials: true,
       });
-       setMatchId(data.data.chat.matchId);
-       setMessages((prev) => {
-         const decorated = data.data.messages.map((msg) => decorateMessage(msg, userId, targetUserId));
-         return [...decorated];
-       });
-       setPage(1);
-       setHasMore((data.data.messages ?? []).length === MESSAGE_LIMIT);
-       setError(null);
+      setMatchId(data.data.chat.matchId);
 
-       // Fetch icebreaker only on a fresh/empty chat
-       if ((data.data.messages ?? []).length === 0 && targetUserId) {
+      const raw = (data.data.messages ?? []).map((msg) =>
+        decorateMessage(msg, userId, targetUserId)
+      );
+
+      // Initialize E2E in the background; a failure must not block the chat.
+      try {
+        await ensureCrypto({ userId });
+      } catch {
+        /* fall back to plaintext/placeholder display */
+      }
+
+      const decorated = await Promise.all(raw.map((msg) => decryptIncoming(msg)));
+      setMessages(decorated);
+      setPage(1);
+      setHasMore(raw.length === MESSAGE_LIMIT);
+      setError(null);
+
+      // Fetch icebreaker only on a fresh/empty chat
+      if (raw.length === 0 && targetUserId) {
         fetchIcebreaker();
       }
     } catch (err) {
@@ -179,12 +208,19 @@ const ChatBox = () => {
     if (!matchId || loadingOlder || !hasMore) return;
     setLoadingOlder(true);
     try {
+      try {
+        await ensureCrypto({ userId });
+      } catch {
+        /* non-fatal; older messages still load (possibly as placeholders) */
+      }
       const nextPage = page + 1;
       const { data } = await axios.get(
         `${BASE_URL}/messages/${matchId}?page=${nextPage}&limit=${MESSAGE_LIMIT}`,
         { withCredentials: true }
       );
-       const decorated = data.data.messages.map((msg) => decorateMessage(msg, userId, targetUserId));
+       const decorated = await Promise.all(
+         data.data.messages.map((msg) => decryptIncoming(decorateMessage(msg, userId, targetUserId)))
+       );
        if (decorated.length) {
          setMessages((prev) => [...decorated, ...prev]);
          virtuosoRef.current?.prependItems(decorated.length);
@@ -212,10 +248,11 @@ const ChatBox = () => {
     });
   };
 
-  const handleAck = (payload) => {
+  const handleAck = async (payload) => {
     pendingTimeoutsRef.current.get(payload.clientMessageId)?.();
     pendingTimeoutsRef.current.delete(payload.clientMessageId);
-    upsertMessage(decorateMessage(payload, userId, targetUserId));
+    const decrypted = await decryptIncoming(payload);
+    upsertMessage(decorateMessage(decrypted, userId, targetUserId));
   };
 
   const handleDeliveryUpdate = (messagesPayload, mode = "delivered") => {
@@ -258,8 +295,9 @@ const ChatBox = () => {
       setMatchId(serverMatchId);
     });
 
-    socket.on("message:created", (msg) => {
-      upsertMessage(decorateMessage(msg, userId, targetUserId));
+    socket.on("message:created", async (msg) => {
+      const decrypted = await decryptIncoming(msg);
+      upsertMessage(decorateMessage(decrypted, userId, targetUserId));
     });
 
     socket.on("message:ack", (msg) => {
@@ -340,21 +378,43 @@ const ChatBox = () => {
     typingTimeoutRef.current = setTimeout(() => emitTyping(false), 1500);
   };
 
-  const sendMessage = () => {
+  const sendMessage = async () => {
     if (!socketRef.current || !input.trim() || !userId || !targetUserId) return;
     const clientMessageId = generateClientId();
+    const plaintext = input.trim();
+
+    // Encrypt client-side when the recipient has an E2E public key; otherwise
+    // fall back to plaintext for backwards compatibility with legacy clients.
+    let body = plaintext;
+    let isEncrypted = false;
+    try {
+      await ensureCrypto({ userId });
+      if (await canEncryptWith(targetUserId)) {
+        body = await encryptMessage(targetUserId, plaintext);
+        isEncrypted = true;
+      }
+    } catch {
+      /* fall back to plaintext */
+    }
+
     const payload = {
       matchId,
       userId,
       targetUserId,
-      message: input.trim(),
+      message: body,
       messageType: "text",
       clientMessageId,
       receiverId: targetUserId,
+      isEncrypted,
     };
     const pendingMessage = decorateMessage(
       {
-        ...payload,
+        matchId,
+        userId,
+        targetUserId,
+        clientMessageId,
+        message: plaintext,
+        messageType: "text",
         delivered: false,
         seen: false,
         status: "pending",
@@ -372,20 +432,39 @@ const ChatBox = () => {
     socketRef.current.emit("sendMessage", payload);
   };
 
-  const handleRetry = (message) => {
+  const handleRetry = async (message) => {
     if (!socketRef.current) return;
+    const plaintext = message.message;
+    let body = plaintext;
+    let isEncrypted = false;
+    try {
+      await ensureCrypto({ userId });
+      if (await canEncryptWith(targetUserId)) {
+        body = await encryptMessage(targetUserId, plaintext);
+        isEncrypted = true;
+      }
+    } catch {
+      /* fall back to plaintext */
+    }
+
     const retriedPayload = {
       matchId,
       userId,
       targetUserId,
-      message: message.message,
+      message: body,
       messageType: message.messageType,
       clientMessageId: generateClientId(),
       receiverId: targetUserId,
+      isEncrypted,
     };
     const pendingMessage = decorateMessage(
       {
-        ...retriedPayload,
+        matchId,
+        userId,
+        targetUserId,
+        clientMessageId: retriedPayload.clientMessageId,
+        message: plaintext,
+        messageType: message.messageType,
         delivered: false,
         seen: false,
         status: "pending",
@@ -412,14 +491,14 @@ const ChatBox = () => {
 
   if (error) {
     return (
-      <div className="flex h-[80vh] w-full flex-col items-center justify-center gap-4 rounded-2xl border border-white/10 bg-surface-900/70">
+      <div className="flex h-[80vh] w-full flex-col items-center justify-center gap-4 rounded-2xl border border-hairline bg-surface-900/70">
         <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-error-500/20 bg-error-500/10 text-3xl">
           ⚠️
         </div>
         <p className="text-base font-semibold text-error-300">{error}</p>
         <button
           onClick={() => navigate("/messages")}
-          className="rounded-lg border border-white/10 px-5 py-2 text-sm font-semibold text-neutral-200 hover:bg-white/5"
+          className="rounded-lg border border-hairline px-5 py-2 text-sm font-semibold text-neutral-200 hover:bg-tint"
         >
           ← Back to Messages
         </button>
@@ -436,7 +515,7 @@ const ChatBox = () => {
         <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl border border-brand-400/20 bg-brand-500/10">
           {otherUser?.photoUrl?.[0] ? (
             <img
-              src={otherUser.photoUrl[0]}
+              src={resolvePhotoUrl(otherUser.photoUrl, otherUser.firstName)}
               alt={otherUser.firstName}
               className="h-full w-full rounded-2xl object-cover"
             />
@@ -448,7 +527,7 @@ const ChatBox = () => {
       <div>
         <p className="text-base font-bold text-neutral-100">
           Start a conversation with{" "}
-          <span className="text-brand-300">{otherUser?.firstName ?? "this developer"}</span>
+          <span className="text-brand-600">{otherUser?.firstName ?? "this developer"}</span>
         </p>
         <p className="mt-1 text-xs text-neutral-500">
           Send the first message — or use the AI icebreaker below ✨
@@ -458,11 +537,11 @@ const ChatBox = () => {
   );
 
   return (
-    <div className="flex h-[calc(100svh-theme(spacing.48))] min-h-[500px] w-full flex-col overflow-hidden rounded-2xl border border-white/10 bg-surface-900/80 backdrop-blur-xl">
-      <div className="flex items-center gap-3 border-b border-white/5 px-5 py-4">
+    <div className="flex h-[calc(100svh-theme(spacing.48))] min-h-[500px] w-full flex-col overflow-hidden rounded-2xl border border-hairline bg-surface-900/80 backdrop-blur-xl">
+      <div className="flex items-center gap-3 border-b border-hairline-soft px-5 py-4">
         <button
           onClick={() => navigate("/messages")}
-          className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-neutral-300 transition hover:bg-white/10"
+          className="flex h-9 w-9 items-center justify-center rounded-lg border border-hairline bg-tint text-neutral-300 transition hover:bg-tint-strong"
         >
           <HiArrowLeft className="text-base" />
         </button>
@@ -470,7 +549,7 @@ const ChatBox = () => {
           <div className="flex items-center gap-3 flex-1">
             <div className="relative h-10 w-10 overflow-hidden rounded-xl border border-brand-400/30">
               <img
-                src={otherUser.photoUrl?.[0] || "https://via.placeholder.com/40"}
+                src={resolvePhotoUrl(otherUser.photoUrl, otherUser.firstName)}
                 alt={otherUser.firstName}
                 className="h-full w-full object-cover"
               />
@@ -489,10 +568,10 @@ const ChatBox = () => {
                 type="button"
                 onClick={fetchCollabSuggestion}
                 disabled={collabLoading}
-                className="flex items-center gap-2 rounded-lg bg-brand-500/10 px-3 py-1.5 text-[10px] sm:text-xs font-bold uppercase tracking-wider text-brand-400 transition hover:bg-brand-500/20 disabled:opacity-50"
+                className="flex items-center gap-2 rounded-lg bg-brand-500/10 px-3 py-1.5 text-[10px] sm:text-xs font-bold uppercase tracking-wider text-brand-500 transition hover:bg-brand-500/20 disabled:opacity-50"
               >
                 {collabLoading ? (
-                  <span className="loading loading-spinner loading-[10px]" />
+                  <span className="spinner h-[10px] w-[10px] border text-brand-600" />
                 ) : (
                   <>✨ Suggest Activity</>
                 )}
@@ -501,23 +580,23 @@ const ChatBox = () => {
               <button
                 type="button"
                 onClick={() => setShowMenu(!showMenu)}
-                className="p-2 rounded-lg text-neutral-400 hover:text-neutral-200 hover:bg-white/5"
+                className="p-2 rounded-lg text-neutral-400 hover:text-neutral-200 hover:bg-tint"
               >
                 <HiDotsVertical className="text-lg" />
               </button>
               {showMenu && (
-                <div className="absolute right-0 top-full mt-1 w-40 rounded-lg border border-white/10 bg-surface-900 py-1 shadow-xl z-50">
+                <div className="absolute right-0 top-full mt-1 w-40 rounded-lg border border-hairline bg-surface-900 py-1 shadow-xl z-50">
                   <button
                     type="button"
                     onClick={blockUser}
-                    className="w-full px-4 py-2 text-left text-sm text-warning-400 hover:bg-white/5 flex items-center gap-2"
+                    className="w-full px-4 py-2 text-left text-sm text-warning-400 hover:bg-tint flex items-center gap-2"
                   >
                     <HiBan className="text-sm" /> Block
                   </button>
                   <button
                     type="button"
                     onClick={reportUser}
-                    className="w-full px-4 py-2 text-left text-sm text-neutral-400 hover:bg-white/5 flex items-center gap-2"
+                    className="w-full px-4 py-2 text-left text-sm text-neutral-400 hover:bg-tint flex items-center gap-2"
                   >
                     <HiFlag className="text-sm" /> Report
                   </button>
@@ -554,9 +633,9 @@ const ChatBox = () => {
                 className={`mb-4 flex w-full gap-3 px-6 ${message.isOwn ? "justify-end" : "justify-start text-left"}`}
               >
                 {!message.isOwn && (
-                  <div className={`mt-auto h-8 w-8 shrink-0 overflow-hidden rounded-lg border border-white/5 transition ${showAvatar ? "opacity-100" : "opacity-0"}`}>
+                  <div className={`mt-auto h-8 w-8 shrink-0 overflow-hidden rounded-lg border border-hairline-soft transition ${showAvatar ? "opacity-100" : "opacity-0"}`}>
                     <img
-                      src={otherUser?.photoUrl?.[0] || "https://via.placeholder.com/32"}
+                      src={resolvePhotoUrl(otherUser?.photoUrl, otherUser?.firstName)}
                       alt="avatar"
                       className="h-full w-full object-cover"
                     />
@@ -566,7 +645,7 @@ const ChatBox = () => {
                   className={`relative flex max-w-[75%] flex-col rounded-2xl px-4 py-2.5 text-sm shadow-sm transition-all sm:max-w-[70%] ${
                     message.isOwn 
                       ? "bg-brand-500 text-white rounded-br-none" 
-                      : "bg-surface-800 text-neutral-100 border border-white/5 rounded-bl-none"
+                      : "bg-surface-800 text-neutral-100 border border-hairline-soft rounded-bl-none"
                   }`}
                 >
                   <p className="break-words whitespace-pre-wrap leading-relaxed">
@@ -585,7 +664,7 @@ const ChatBox = () => {
                      <button
                        type="button"
                        onClick={() => handleRetry(message)}
-                       className="mt-1 self-end rounded-md bg-white/10 px-2 py-0.5 text-[10px] text-white hover:bg-white/20"
+                       className="mt-1 self-end rounded-md bg-tint-strong px-2 py-0.5 text-[10px] text-white hover:bg-tint-strong"
                      >
                        Retry
                      </button>
@@ -598,9 +677,9 @@ const ChatBox = () => {
       )}
       </div>
 
-      <div className="flex flex-col gap-2 border-t border-white/5 px-4 py-3">
+      <div className="flex flex-col gap-2 border-t border-hairline-soft px-4 py-3">
         {typingUsers.size > 0 && (
-          <p className="text-xs text-brand-200">Someone is typing…</p>
+          <p className="text-xs text-brand-600">Someone is typing…</p>
         )}
 
         {/* AI Icebreaker suggestion — only shown when input is empty */}
@@ -653,7 +732,7 @@ const ChatBox = () => {
           )}
         </AnimatePresence>
         <div className="flex items-end gap-3">
-          <div className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-2">
+          <div className="flex-1 rounded-xl border border-hairline bg-tint px-4 py-2">
             <textarea
               value={input}
               onChange={handleInputChange}
@@ -686,7 +765,7 @@ const ChatBox = () => {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative z-10 w-full max-w-lg overflow-hidden rounded-3xl border border-white/10 bg-surface-900 shadow-brand-strong"
+              className="relative z-10 w-full max-w-lg overflow-hidden rounded-3xl border border-hairline bg-surface-900 shadow-brand-strong"
             >
               <style>{`
                 .custom-scrollbar::-webkit-scrollbar { width: 4px; }
@@ -698,24 +777,24 @@ const ChatBox = () => {
                 <button
                   type="button"
                   onClick={() => setCollabSuggestion(null)}
-                  className="absolute right-4 top-4 rounded-full p-2 text-neutral-500 transition hover:bg-white/10 hover:text-white"
+                  className="absolute right-4 top-4 rounded-full p-2 text-neutral-500 transition hover:bg-tint-strong hover:text-white"
                 >
                   <HiX className="text-lg" />
                 </button>
-                <p className="mb-1 text-[10px] font-black uppercase tracking-[0.2em] text-brand-400">Collaboration Idea ✨</p>
+                <p className="mb-1 text-[10px] font-black uppercase tracking-[0.2em] text-brand-500">Collaboration Idea ✨</p>
                 <h3 className="pr-6 text-xl font-bold text-neutral-50">{collabSuggestion.title}</h3>
               </div>
               <div className="max-h-[50vh] overflow-y-auto p-6 space-y-5 custom-scrollbar">
                 <div className="space-y-2">
                    <p className="text-[10px] font-black uppercase tracking-widest text-neutral-500">The Mission</p>
-                   <div className="rounded-2xl border border-white/5 bg-white/[0.03] p-4 text-[13px] sm:text-sm leading-relaxed text-neutral-300">
+                   <div className="rounded-2xl border border-hairline-soft bg-tint p-4 text-[13px] sm:text-sm leading-relaxed text-neutral-300">
                     {collabSuggestion.description}
                   </div>
                 </div>
                 
                 <div className="space-y-2">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-brand-400/60">AI Insight: Why this works</p>
-                  <p className="text-[13px] italic text-brand-200 bg-brand-500/5 p-4 rounded-2xl border border-brand-500/10 leading-relaxed">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-brand-500/60">AI Insight: Why this works</p>
+                  <p className="text-[13px] italic text-brand-600 bg-brand-500/5 p-4 rounded-2xl border border-brand-500/10 leading-relaxed">
                     "{collabSuggestion.why}"
                   </p>
                 </div>

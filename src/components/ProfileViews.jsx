@@ -31,7 +31,7 @@ const ProfileViews = () => {
   if (loading) {
     return (
       <Card tone="translucent" className="flex h-40 items-center justify-center">
-        <span className="loading loading-spinner loading-md text-brand-300" />
+        <span className="spinner h-5 w-5 border-2 text-brand-600" />
       </Card>
     );
   }
@@ -51,13 +51,13 @@ const ProfileViews = () => {
     <Card tone="translucent" className="space-y-4 p-6">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold text-neutral-100">Recent profile views</h2>
-        <span className="rounded-full bg-white/5 px-2 py-1 text-[11px] text-neutral-300">{views.length}</span>
+        <span className="rounded-full bg-tint px-2 py-1 text-[11px] text-neutral-300">{views.length}</span>
       </div>
       <div className="space-y-3">
         {views.map((view) => (
-          <div key={view._id} className="flex items-center justify-between rounded-xl border border-white/5 bg-white/5 p-3">
+          <div key={view._id} className="flex items-center justify-between rounded-xl border border-hairline-soft bg-tint p-3">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 overflow-hidden rounded-xl border border-white/10">
+              <div className="h-10 w-10 overflow-hidden rounded-xl border border-hairline">
                 <img
                   src={view.viewerId?.photoUrl?.[0] || "https://via.placeholder.com/40"}
                   alt={view.viewerId?.firstName}

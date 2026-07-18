@@ -1,4 +1,3 @@
-import daisyui from 'daisyui';
 import defaultTheme from 'tailwindcss/defaultTheme.js';
 
 const hexToRgbChannels = (hex) => {
@@ -29,6 +28,8 @@ const withOpacity = (hex) => {
   };
 };
 
+const v = (name) => `rgb(var(${name}) / <alpha-value>)`;
+
 const createPalette = (entries) =>
   Object.fromEntries(Object.entries(entries).map(([key, value]) => [key, withOpacity(value)]));
 
@@ -54,27 +55,43 @@ export default {
         'body-xs': ['0.8125rem', { lineHeight: '1.5', letterSpacing: '0.02em' }],
       },
       colors: {
+        // Theme-aware tokens (switch via [data-theme] CSS variables)
+        white: v('--c-white'),
+        glass: v('--c-glass'),
+        neutral: {
+          50: v('--c-neutral-50'),
+          100: v('--c-neutral-100'),
+          200: v('--c-neutral-200'),
+          300: v('--c-neutral-300'),
+          400: v('--c-neutral-400'),
+          500: v('--c-neutral-500'),
+          600: v('--c-neutral-600'),
+          700: v('--c-neutral-700'),
+          800: v('--c-neutral-800'),
+          900: v('--c-neutral-900'),
+          950: v('--c-neutral-950'),
+        },
+        surface: {
+          800: v('--c-surface-800'),
+          900: v('--c-surface-900'),
+          950: v('--c-surface-950'),
+        },
         brand: createPalette({
           50: '#eef2ff',
           100: '#e0e7ff',
           200: '#c7d2fe',
           300: '#a5b4fc',
-          400: '#818cf8',
-          500: '#6366f1',
-          600: '#4f46e5',
-          700: '#4338ca',
-          800: '#3730a3',
-          900: '#312e81',
+          400: '#8B95FF',
+          500: '#6E7BFF',
+          600: '#5A66F0',
+          700: '#4B54D6',
+          800: '#3B43AE',
+          900: '#2E3387',
           950: '#1e1b4b',
         }),
-        surface: createPalette({
-          800: '#222b44',
-          900: '#151c30',
-          950: '#0c1221',
-        }),
         accent: {
-          cyan: withOpacity('#22d3ee'),
-          purple: withOpacity('#a855f7'),
+          cyan: withOpacity('#4DD8FF'),
+          purple: withOpacity('#7B5DFF'),
           pink: withOpacity('#ec4899'),
           orange: withOpacity('#fb923c'),
           lime: withOpacity('#a3e635'),
@@ -84,45 +101,60 @@ export default {
           200: '#bbf7d0',
           300: '#86efac',
           400: '#4ade80',
-          500: '#22c55e',
-          600: '#16a34a',
-          700: '#15803d',
+          500: '#2ECC71',
+          600: '#1faa5a',
+          700: '#178a49',
         }),
         warning: createPalette({
           100: '#fef3c7',
           200: '#fde68a',
           300: '#fbbf24',
-          400: '#f59e0b',
-          500: '#d97706',
+          400: '#F5B041',
+          500: '#d98e2b',
           600: '#b45309',
         }),
         danger: createPalette({
           100: '#fee2e2',
           200: '#fecaca',
           300: '#f87171',
-          400: '#ef4444',
-          500: '#dc2626',
-          600: '#b91c1c',
+          400: '#ff8797',
+          500: '#FF5D73',
+          600: '#e23a55',
         }),
         info: createPalette({
           100: '#dbeafe',
           200: '#bfdbfe',
           300: '#93c5fd',
-          400: '#60a5fa',
-          500: '#3b82f6',
-          600: '#2563eb',
+          400: '#6E7BFF',
+          500: '#5A66F0',
+          600: '#4B54D6',
         }),
+        ink: withOpacity('--c-ink'),
+        muted: withOpacity('--c-muted'),
+        faint: withOpacity('--c-faint'),
+        'on-accent': withOpacity('--c-on-accent'),
+        canvas: withOpacity('--c-canvas'),
+        hairline: 'var(--c-hairline)',
+        'hairline-soft': 'var(--c-hairline-soft)',
+        tint: 'var(--c-fill)',
+        'tint-strong': 'var(--c-fill-strong)',
       },
       boxShadow: {
-        soft: '0 14px 48px rgba(10, 17, 33, 0.35)',
-        brand: '0 18px 48px rgba(99, 102, 241, 0.35)',
-        'brand-strong': '0 30px 70px rgba(129, 140, 248, 0.55)',
-        'brand-glow': '0 24px 64px rgba(99, 102, 241, 0.45)',
-        'brand-glow-strong': '0 34px 88px rgba(129, 140, 248, 0.55)',
-        outline: '0 0 0 2px rgba(99, 102, 241, 0.35)',
+        soft: '0 14px 48px rgba(2, 4, 10, 0.40)',
+        brand: '0 18px 48px rgba(110, 123, 255, 0.30)',
+        'brand-strong': '0 30px 70px rgba(123, 93, 255, 0.45)',
+        'brand-glow': '0 24px 64px rgba(110, 123, 255, 0.45)',
+        'brand-glow-strong': '0 34px 88px rgba(123, 93, 255, 0.55)',
+        outline: '0 0 0 2px rgba(110, 123, 255, 0.35)',
+        glass: '0 20px 50px rgba(2, 4, 10, 0.45)',
+        'glass-lg': '0 30px 80px rgba(2, 4, 10, 0.55)',
+        'inner-hi': 'inset 0 1px 0 0 rgba(255, 255, 255, 0.08)',
       },
       borderRadius: {
         pill: '999px',
+        control: '1rem',
+        card: '1.5rem',
+        xl2: '1.75rem',
       },
       transitionTimingFunction: {
         snappy: 'cubic-bezier(0.16, 1, 0.3, 1)',
@@ -132,7 +164,22 @@ export default {
       backgroundImage: {
         'mesh-radiant': 'radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.18) 0%, transparent 55%), radial-gradient(circle at 80% 0%, rgba(34, 211, 238, 0.16) 0%, transparent 60%), radial-gradient(circle at 5% 90%, rgba(236, 72, 153, 0.14) 0%, transparent 60%)',
       },
+      keyframes: {
+        aurora: {
+          '0%': { transform: 'translate3d(-6%, -4%, 0) rotate(0deg) scale(1.05)' },
+          '50%': { transform: 'translate3d(6%, 4%, 0) rotate(8deg) scale(1.15)' },
+          '100%': { transform: 'translate3d(-6%, -4%, 0) rotate(0deg) scale(1.05)' },
+        },
+        shimmer: {
+          '0%': { backgroundPosition: '-1000px 0' },
+          '100%': { backgroundPosition: '1000px 0' },
+        },
+      },
+      animation: {
+        aurora: 'aurora 22s ease-in-out infinite',
+        shimmer: 'shimmer 2.4s infinite linear',
+      },
     },
   },
-  plugins: [daisyui],
+  plugins: [],
 };

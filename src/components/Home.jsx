@@ -38,7 +38,7 @@ const features = [
     title: "Global Dev Hub",
     description: "Connect with brilliant developers worldwide across every timezone.",
     icon: HiGlobe,
-    accent: "border-brand-400/30 bg-brand-500/10 text-brand-200",
+    accent: "border-brand-400/30 bg-brand-500/10 text-brand-600",
   },
   {
     title: "Filter by Stack",
@@ -86,12 +86,15 @@ const devImages = [
 
 const ImageTile = ({ src, delay }) => (
   <motion.div
+    initial={{ opacity: 0, y: 18, scale: 0.95 }}
+    whileInView={{ opacity: 1, y: 0, scale: 1 }}
+    viewport={{ once: true }}
+    transition={{ duration: 0.5, delay, ease: [0.16, 1, 0.3, 1] }}
     whileHover={{ scale: 1.06, rotate: 3 }}
-    transition={{ type: "spring", stiffness: 260, damping: 18, delay }}
-    className="group relative h-24 w-24 overflow-hidden rounded-2xl border border-brand-400/30 bg-surface-800/80 shadow-soft sm:h-28 sm:w-28"
+    className="group relative h-24 w-24 overflow-hidden rounded-2xl border border-brand-400/30 bg-gradient-to-br from-brand-500/20 via-accent-cyan/10 to-surface-800 shadow-soft transition-shadow duration-300 hover:shadow-brand-glow sm:h-28 sm:w-28"
   >
-    <img src={src} alt="Developer" className="h-full w-full object-cover transition duration-300 ease-snappy group-hover:scale-105" />
-    <span className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-2 border-neutral-950 bg-success-500" />
+    <img src={src} alt="Developer" loading="lazy" className="h-full w-full object-cover transition duration-300 ease-snappy group-hover:scale-105" />
+
   </motion.div>
 );
 
@@ -113,12 +116,12 @@ const Home = () => {
     <div className="space-y-24 py-10">
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 -z-10 bg-mesh opacity-60" />
-        <div className="absolute -left-40 top-10 -z-10 h-64 w-64 rounded-full bg-gradient-primary opacity-20 blur-3xl" />
-        <div className="absolute -right-32 bottom-0 -z-10 h-72 w-72 rounded-full bg-gradient-accent opacity-25 blur-3xl" />
+        <div className="absolute -left-40 top-10 -z-10 h-64 w-64 rounded-full bg-brand-500/25 opacity-40 blur-3xl" />
+        <div className="absolute -right-32 bottom-0 -z-10 h-72 w-72 rounded-full bg-accent-cyan/25 opacity-40 blur-3xl" />
 
         <div className="content-container grid gap-12 lg:grid-cols-12 lg:items-center">
           <div className="space-y-8 lg:col-span-6">
-            <span className="inline-flex items-center gap-2 rounded-pill border border-brand-400/40 bg-brand-500/10 px-4 py-1 text-body-xs uppercase tracking-[0.4em] text-brand-200">
+            <span className="inline-flex items-center gap-2 rounded-pill border border-brand-400/40 bg-brand-500/10 px-4 py-1 text-body-xs uppercase tracking-[0.4em] text-brand-600">
               <HiCode className="text-base" /> The Developer Network
             </span>
             <h1 className="text-display-xl font-semibold text-neutral-50">
@@ -160,10 +163,12 @@ const Home = () => {
           </div>
 
           <div className="flex justify-center lg:col-span-6 lg:justify-end">
-            <div className="grid grid-cols-3 gap-4">
-              {devImages.map((src, index) => (
-                <ImageTile key={src} src={src} delay={index * 0.05} />
-              ))}
+            <div className="glass relative rounded-3xl border-hairline p-6 shadow-glass">
+              <div className="grid grid-cols-3 gap-4">
+                {devImages.map((src, index) => (
+                  <ImageTile key={src} src={src} delay={index * 0.08} />
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -171,7 +176,7 @@ const Home = () => {
 
       <section className="content-container space-y-12">
         <div className="text-center space-y-4">
-          <span className="inline-flex items-center gap-2 rounded-pill border border-brand-400/30 bg-brand-500/10 px-4 py-1 text-body-xs uppercase tracking-[0.3em] text-brand-200">
+          <span className="inline-flex items-center gap-2 rounded-pill border border-brand-400/30 bg-brand-500/10 px-4 py-1 text-body-xs uppercase tracking-[0.3em] text-brand-600">
             <HiCode /> Core features
           </span>
           <h2 className="text-heading-xl text-neutral-50">

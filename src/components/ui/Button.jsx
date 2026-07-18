@@ -1,7 +1,7 @@
 import { forwardRef } from "react";
 import clsx from "clsx";
 
-const baseStyles = "inline-flex items-center justify-center gap-2 rounded-2xl font-semibold tracking-tight transition duration-200 ease-snappy focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300/40 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 disabled:cursor-not-allowed disabled:opacity-60";
+const baseStyles = "inline-flex items-center justify-center gap-2 rounded-2xl font-semibold tracking-tight transition duration-200 ease-snappy focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300/40 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas disabled:cursor-not-allowed disabled:opacity-60";
 
 const sizeStyles = {
   xs: "h-8 px-3 text-xs",
@@ -13,17 +13,17 @@ const sizeStyles = {
 
 const variantStyles = {
   primary:
-    "bg-gradient-to-r from-brand-500 via-brand-400 to-accent-cyan text-neutral-50 shadow-brand-glow hover:-translate-y-0.5 hover:shadow-brand-glow-strong active:translate-y-0",
+    "bg-gradient-to-r from-brand-500 via-brand-400 to-accent-cyan text-on-accent shadow-brand-glow hover:-translate-y-0.5 hover:shadow-brand-glow-strong active:translate-y-0",
   secondary:
-    "border border-brand-400/40 bg-brand-500/10 text-brand-100 hover:-translate-y-0.5 hover:border-brand-300 hover:bg-brand-500/20 hover:text-brand-50",
+    "border border-brand-400/40 bg-brand-500/10 text-brand-500 hover:-translate-y-0.5 hover:border-brand-300 hover:bg-brand-500/20 hover:text-brand-500",
   outline:
-    "border border-white/10 bg-transparent text-neutral-100 hover:bg-white/5",
-  subtle: "bg-white/5 text-neutral-100 hover:bg-white/8",
+    "border border-hairline bg-transparent text-neutral-100 hover:bg-tint",
+  subtle: "bg-tint text-neutral-100 hover:bg-tint",
   danger:
-    "border border-danger-400/40 bg-danger-500/10 text-danger-400 hover:-translate-y-0.5 hover:border-danger-400 hover:bg-danger-500/20 hover:text-danger-100",
-  ghost: "bg-transparent text-neutral-300 hover:bg-white/5",
+    "border border-danger-500/50 bg-danger-500/10 text-danger-600 hover:-translate-y-0.5 hover:border-danger-500 hover:bg-danger-500/20",
+  ghost: "bg-transparent text-neutral-300 hover:bg-tint",
   success:
-    "border border-success-400/40 bg-success-500/15 text-success-400 hover:-translate-y-0.5 hover:border-success-400 hover:bg-success-500/25 hover:text-success-100",
+    "border border-success-500/50 bg-success-500/10 text-success-600 hover:-translate-y-0.5 hover:border-success-500 hover:bg-success-500/20 hover:text-success-700",
 };
 
 const Button = forwardRef(({ as: Component = "button", className, size = "md", variant = "primary", ...props }, ref) => {

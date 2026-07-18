@@ -104,7 +104,7 @@ const Connections = () => {
                       e.stopPropagation();
                       setOpenMenu(openMenu === _id ? null : _id);
                     }}
-                    className="p-2 rounded-xl hover:bg-white/10 transition-colors text-neutral-400 hover:text-neutral-50"
+                    className="p-2 rounded-xl hover:bg-tint-strong transition-colors text-neutral-400 hover:text-neutral-50"
                   >
                     <HiDotsVertical />
                   </button>
@@ -115,7 +115,7 @@ const Connections = () => {
                         initial={{ opacity: 0, scale: 0.95, y: -10 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                        className="absolute right-0 mt-2 w-48 rounded-2xl bg-surface-800 border border-white/10 shadow-xl overflow-hidden py-1 z-20"
+                        className="absolute right-0 mt-2 w-48 rounded-2xl bg-surface-800 border border-hairline shadow-xl overflow-hidden py-1 z-20"
                       >
                         <button
                           onClick={(e) => {
@@ -131,7 +131,7 @@ const Connections = () => {
                             e.stopPropagation();
                             setReportModal({ isOpen: true, userId: _id, name: `${firstName} ${lastName}` });
                           }}
-                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-neutral-300 hover:bg-white/5 transition-colors font-medium text-left"
+                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-neutral-300 hover:bg-tint transition-colors font-medium text-left"
                         >
                           <HiFlag className="text-lg" /> Report User
                         </button>
@@ -175,8 +175,8 @@ const Connections = () => {
                 {skills?.length > 0 && (
                   <div className="flex flex-wrap gap-1.5">
                     {skills.slice(0, 3).map((skill, i) => (
-                      <span key={i} className="inline-flex items-center gap-1 rounded-pill border border-brand-400/30 bg-brand-500/10 px-2.5 py-1 text-[0.7rem] font-medium text-brand-100">
-                        <HiCode className="text-sm text-brand-200" /> {skill}
+                      <span key={i} className="inline-flex items-center gap-1 rounded-pill border border-brand-400/30 bg-brand-500/10 px-2.5 py-1 text-[0.7rem] font-medium text-brand-500">
+                        <HiCode className="text-sm text-brand-600" /> {skill}
                       </span>
                     ))}
                     {skills.length > 3 && (
@@ -232,7 +232,7 @@ const Connections = () => {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-md bg-surface-900 rounded-3xl border border-white/10 shadow-2xl overflow-hidden"
+              className="w-full max-w-md bg-surface-900 rounded-3xl border border-hairline shadow-2xl overflow-hidden"
             >
               <div className="p-6 space-y-6">
                 <div>
@@ -246,7 +246,7 @@ const Connections = () => {
                     <select
                       value={reportData.reason}
                       onChange={(e) => setReportData({ ...reportData, reason: e.target.value })}
-                      className="w-full bg-surface-800 border border-white/10 rounded-2xl px-4 py-3 text-sm text-neutral-200 focus:outline-none focus:ring-2 focus:ring-brand-500/40"
+                      className="w-full bg-surface-800 border border-hairline rounded-2xl px-4 py-3 text-sm text-neutral-200 focus:outline-none focus:ring-2 focus:ring-brand-500/40"
                     >
                       <option value="">Select a reason</option>
                       <option value="Inappropriate behavior">Inappropriate behavior</option>
@@ -263,7 +263,7 @@ const Connections = () => {
                       value={reportData.details}
                       onChange={(e) => setReportData({ ...reportData, details: e.target.value })}
                       placeholder="Please provide more information..."
-                      className="w-full bg-surface-800 border border-white/10 rounded-2xl px-4 py-3 text-sm text-neutral-200 focus:outline-none focus:ring-2 focus:ring-brand-500/40 min-h-[100px] resize-none"
+                      className="w-full bg-surface-800 border border-hairline rounded-2xl px-4 py-3 text-sm text-neutral-200 focus:outline-none focus:ring-2 focus:ring-brand-500/40 min-h-[100px] resize-none"
                     />
                   </div>
                 </div>

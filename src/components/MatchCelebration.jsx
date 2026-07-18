@@ -55,12 +55,12 @@ const MatchCelebration = () => {
           initial={{ scale: 0.5, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.5, opacity: 0 }}
-          className="relative w-full max-w-lg p-8 text-center"
+          className="relative w-full max-w-lg p-6 text-center"
         >
           {/* Close Button */}
           <button
             onClick={() => setMatch(null)}
-            className="absolute right-4 top-4 rounded-full bg-white/10 p-2 text-white/60 hover:bg-white/20 hover:text-white"
+            className="absolute right-4 top-4 rounded-full bg-tint-strong p-2 text-white/60 hover:bg-tint-strong hover:text-white"
           >
             <HiX className="text-xl" />
           </button>
@@ -68,21 +68,21 @@ const MatchCelebration = () => {
           <motion.div
             initial={{ y: -20 }}
             animate={{ y: 0 }}
-            className="mb-6 inline-flex rounded-full bg-brand-500/20 p-4 text-brand-400 shadow-brand-glow"
+            className="mb-4 inline-flex rounded-full bg-brand-500/20 p-3 text-brand-500 shadow-brand-glow"
           >
-            <HiHeart className="text-5xl animate-pulse" />
+            <HiHeart className="text-4xl animate-pulse" />
           </motion.div>
 
-          <h1 className="mb-2 text-4xl font-bold text-white tracking-tight">It's a Match!</h1>
-          <p className="mb-8 text-lg text-neutral-300">
-            You and <span className="font-bold text-brand-400">{otherUser?.firstName}</span> are now connected.
+          <h1 className="mb-1 text-3xl font-bold text-white tracking-tight">It's a Match!</h1>
+          <p className="mb-6 text-base text-neutral-300">
+            You and <span className="font-bold text-brand-500">{otherUser?.firstName}</span> are now connected.
           </p>
 
-          <div className="relative mb-10 flex justify-center items-center">
+          <div className="relative mb-6 flex justify-center items-center">
             <motion.div
               initial={{ x: -40, rotate: -10 }}
               animate={{ x: 0, rotate: -5 }}
-              className="z-10 h-32 w-32 overflow-hidden rounded-2xl border-4 border-white shadow-xl"
+              className="z-10 h-28 w-28 overflow-hidden rounded-2xl border-4 border-white shadow-xl"
             >
               <img
                 src={user.photoUrl?.[0] || "https://via.placeholder.com/150"}
@@ -98,7 +98,7 @@ const MatchCelebration = () => {
             <motion.div
               initial={{ x: 40, rotate: 10 }}
               animate={{ x: 0, rotate: 5 }}
-              className="z-10 h-32 w-32 overflow-hidden rounded-2xl border-4 border-white shadow-xl"
+              className="z-10 h-28 w-28 overflow-hidden rounded-2xl border-4 border-white shadow-xl"
             >
               <img
                 src={otherUser?.photoUrl?.[0] || "https://via.placeholder.com/150"}
@@ -113,9 +113,9 @@ const MatchCelebration = () => {
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="mb-8 rounded-2xl border border-brand-500/20 bg-brand-500/10 p-4 text-left backdrop-blur-sm"
+                className="mb-6 rounded-2xl border border-brand-500/20 bg-brand-500/10 p-4 text-left backdrop-blur-sm"
               >
-                <div className="mb-1 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-brand-400">
+                <div className="mb-1 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-brand-500">
                   <HiSparkles /> AI Suggestion
                 </div>
                 <h4 className="text-sm font-bold text-white mb-1">Project Idea: {collab.title}</h4>

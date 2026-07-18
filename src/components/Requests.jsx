@@ -104,8 +104,8 @@ const Requests = () => {
                 {skills?.length > 0 && (
                   <div className="flex flex-wrap gap-1.5">
                     {skills.slice(0, 3).map((skill, i) => (
-                      <span key={i} className="inline-flex items-center gap-1 rounded-pill border border-brand-400/30 bg-brand-500/10 px-2.5 py-1 text-[0.7rem] font-medium text-brand-100">
-                        <HiCode className="text-sm text-brand-200" /> {skill}
+                      <span key={i} className="inline-flex items-center gap-1 rounded-pill border border-brand-400/30 bg-brand-500/10 px-2.5 py-1 text-[0.7rem] font-medium text-brand-500">
+                        <HiCode className="text-sm text-brand-600" /> {skill}
                       </span>
                     ))}
                   </div>

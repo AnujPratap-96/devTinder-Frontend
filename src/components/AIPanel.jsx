@@ -26,7 +26,7 @@ const LoadingDots = () => (
     {[0, 1, 2].map((i) => (
       <motion.span
         key={i}
-        className="block h-1.5 w-1.5 rounded-full bg-violet-400"
+        className="block h-1.5 w-1.5 rounded-full bg-brand-500"
         animate={{ y: [0, -5, 0] }}
         transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.15 }}
       />
@@ -121,22 +121,22 @@ const AIPanel = ({ user, skills, formData, onBioGenerated, onSkillsAccepted }) =
   };
 
   return (
-    <div className="mt-8 overflow-hidden rounded-2xl border border-violet-500/20 bg-gradient-to-br from-violet-950/40 via-purple-950/30 to-violet-900/20 shadow-lg">
+    <div className="mt-8 overflow-hidden rounded-2xl border border-brand-400/30 bg-gradient-to-br from-brand-500/10 via-transparent to-accent-purple/10 shadow-soft">
       {/* Header */}
-      <div className="flex items-center gap-3 border-b border-violet-500/15 px-5 py-4">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-500/20">
-          <SparkleIcon className="h-5 w-5 text-violet-300" />
+      <div className="flex items-center gap-3 border-b border-brand-400/20 px-5 py-4">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-500/15">
+          <SparkleIcon className="h-5 w-5 text-brand-500" />
         </div>
         <div>
-          <p className="text-sm font-semibold text-violet-100">AI Assistant</p>
-          <p className="text-[11px] text-violet-400">Powered by Mistral — improve your profile instantly</p>
+          <p className="text-sm font-semibold text-brand-600">AI Assistant</p>
+          <p className="text-[11px] text-neutral-500">Powered by Mistral — improve your profile instantly</p>
         </div>
-        <span className="ml-auto rounded-full border border-violet-400/30 bg-violet-400/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-violet-300">
+        <span className="ml-auto rounded-full border border-brand-400/30 bg-brand-500/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-600">
           Beta
         </span>
       </div>
 
-      <div className="flex flex-col divide-y divide-violet-500/10">
+      <div className="flex flex-col divide-y divide-brand-400/10">
         {/* ── Bio Generator Section ── */}
         <div className="p-5">
           <div className="flex items-start justify-between gap-4">
@@ -150,7 +150,7 @@ const AIPanel = ({ user, skills, formData, onBioGenerated, onSkillsAccepted }) =
               type="button"
               onClick={handleGenerateBio}
               disabled={bioLoading}
-              className="shrink-0 flex items-center gap-2 rounded-xl border border-violet-400/40 bg-violet-500/20 px-4 py-2 text-xs font-semibold text-violet-200 transition hover:bg-violet-500/30 disabled:opacity-50"
+              className="shrink-0 flex items-center gap-2 rounded-xl border border-brand-400/40 bg-brand-500/15 px-4 py-2 text-xs font-semibold text-brand-600 transition hover:bg-brand-500/25 disabled:opacity-50"
             >
               {bioLoading ? (
                 <>
@@ -170,7 +170,7 @@ const AIPanel = ({ user, skills, formData, onBioGenerated, onSkillsAccepted }) =
                 initial={{ opacity: 0, y: -4 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
-                className="mt-3 rounded-lg border border-red-400/30 bg-red-500/10 px-3 py-2 text-xs text-red-300"
+                className="mt-3 rounded-lg border border-danger-400/30 bg-danger-500/10 px-3 py-2 text-xs text-danger-500"
               >
                 {bioError}
               </motion.p>
@@ -183,14 +183,14 @@ const AIPanel = ({ user, skills, formData, onBioGenerated, onSkillsAccepted }) =
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}
-                className="mt-4 rounded-xl border border-violet-400/20 bg-violet-950/40 p-4"
+                 className="mt-4 rounded-xl border border-brand-400/20 bg-brand-500/5 p-4"
               >
                 <p className="mb-3 text-sm leading-relaxed text-neutral-200">{generatedBio}</p>
                 <div className="flex gap-2">
                   <button
                     type="button"
                     onClick={handleUseBio}
-                    className="flex-1 rounded-lg bg-violet-500 py-2 text-xs font-bold text-white transition hover:bg-violet-400"
+                     className="flex-1 rounded-lg bg-brand-500 py-2 text-xs font-bold text-on-accent transition hover:bg-brand-600"
                   >
                     ✓ Use This Bio
                   </button>
@@ -198,7 +198,7 @@ const AIPanel = ({ user, skills, formData, onBioGenerated, onSkillsAccepted }) =
                     type="button"
                     onClick={handleGenerateBio}
                     disabled={bioLoading}
-                    className="flex-1 rounded-lg border border-violet-400/30 py-2 text-xs font-semibold text-violet-300 transition hover:bg-violet-500/10"
+                     className="flex-1 rounded-lg border border-brand-400/30 py-2 text-xs font-semibold text-brand-600 transition hover:bg-brand-500/10"
                   >
                     ↻ Regenerate
                   </button>
@@ -221,7 +221,7 @@ const AIPanel = ({ user, skills, formData, onBioGenerated, onSkillsAccepted }) =
               type="button"
               onClick={handleSuggestSkills}
               disabled={skillsLoading}
-              className="shrink-0 flex items-center gap-2 rounded-xl border border-violet-400/40 bg-violet-500/20 px-4 py-2 text-xs font-semibold text-violet-200 transition hover:bg-violet-500/30 disabled:opacity-50"
+              className="shrink-0 flex items-center gap-2 rounded-xl border border-brand-400/40 bg-brand-500/15 px-4 py-2 text-xs font-semibold text-brand-600 transition hover:bg-brand-500/25 disabled:opacity-50"
             >
               {skillsLoading ? (
                 <>
@@ -241,7 +241,7 @@ const AIPanel = ({ user, skills, formData, onBioGenerated, onSkillsAccepted }) =
                 initial={{ opacity: 0, y: -4 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
-                className="mt-3 rounded-lg border border-red-400/30 bg-red-500/10 px-3 py-2 text-xs text-red-300"
+                className="mt-3 rounded-lg border border-danger-400/30 bg-danger-500/10 px-3 py-2 text-xs text-danger-500"
               >
                 {skillsError}
               </motion.p>
@@ -269,11 +269,11 @@ const AIPanel = ({ user, skills, formData, onBioGenerated, onSkillsAccepted }) =
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                         onClick={() => toggleSkill(skill)}
-                        className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
-                          selected
-                            ? "border-violet-400/60 bg-violet-500/30 text-violet-100"
-                            : "border-white/10 bg-white/5 text-neutral-300 hover:border-violet-400/30 hover:bg-violet-500/10 hover:text-violet-200"
-                        }`}
+                         className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                           selected
+                             ? "border-brand-400/60 bg-brand-500/20 text-brand-600"
+                             : "border-hairline bg-tint text-neutral-300 hover:border-brand-400/30 hover:bg-brand-500/10 hover:text-brand-600"
+                         }`}
                       >
                         {selected ? "✓ " : "+ "}{skill}
                       </motion.button>
@@ -287,7 +287,7 @@ const AIPanel = ({ user, skills, formData, onBioGenerated, onSkillsAccepted }) =
                     animate={{ opacity: 1, scale: 1 }}
                     type="button"
                     onClick={handleAddSelected}
-                    className="mt-4 w-full rounded-xl bg-violet-500 py-2.5 text-sm font-bold text-white transition hover:bg-violet-400"
+                     className="mt-4 w-full rounded-xl bg-brand-500 py-2.5 text-sm font-bold text-on-accent transition hover:bg-brand-600"
                   >
                     Add {selectedSuggestions.size} skill{selectedSuggestions.size > 1 ? "s" : ""} to profile
                   </motion.button>

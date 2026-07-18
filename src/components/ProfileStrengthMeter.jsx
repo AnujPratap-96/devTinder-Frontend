@@ -30,7 +30,7 @@ const ProfileStrengthMeter = ({ profileStrength }) => {
   const colorClass = getStrengthColor(score);
 
   return (
-    <div className="mb-8 rounded-3xl border border-white/5 bg-surface-900/80 p-6 shadow-md">
+    <div className="mb-8 rounded-3xl border border-hairline-soft bg-surface-900/80 p-6 shadow-md">
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-neutral-500">
@@ -38,12 +38,12 @@ const ProfileStrengthMeter = ({ profileStrength }) => {
           </p>
           <p className="mt-1 text-lg font-semibold text-neutral-50">{score}% complete</p>
         </div>
-        <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-neutral-300">
+        <span className="rounded-full border border-hairline bg-tint px-3 py-1 text-xs font-semibold text-neutral-300">
           {score >= 80 ? "Great" : score >= 50 ? "Good" : "Needs Work"}
         </span>
       </div>
 
-      <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-white/5">
+      <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-tint">
         <div
           className={`h-full transition-all duration-500 ${colorClass}`}
           style={{ width: `${Math.min(score, 100)}%` }}
@@ -59,7 +59,7 @@ const ProfileStrengthMeter = ({ profileStrength }) => {
             {missing.slice(0, 5).map((field) => (
               <li
                 key={field}
-                className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] text-neutral-300"
+                className="rounded-full border border-hairline bg-tint px-3 py-1 text-[11px] text-neutral-300"
               >
                 {humanize(field)}
               </li>

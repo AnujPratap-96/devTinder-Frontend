@@ -4,10 +4,10 @@ const footerLinks = ["Privacy", "Terms", "Support"];
 
 const Footer = () => {
   return (
-    <footer className="border-t border-white/5 bg-surface-900/80 backdrop-blur-xl">
-      <div className="content-container flex flex-col items-center justify-between gap-4 py-6 sm:flex-row">
+    <footer className="px-3 pb-3 pt-2 sm:px-4">
+      <div className="glass mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 rounded-2xl border-hairline px-5 py-4 sm:flex-row sm:py-3">
         <div className="flex items-center gap-3">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 via-brand-400 to-accent-purple text-base text-neutral-50 shadow-soft">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 via-brand-400 to-accent-purple text-base text-on-accent shadow-soft">
             <HiCode />
           </span>
           <span className="text-sm font-semibold text-neutral-200">DevTinder</span>
@@ -17,7 +17,7 @@ const Footer = () => {
           © {new Date().getFullYear()} DevTinder. Made with
           <HiHeart className="text-sm text-accent-pink flex-shrink-0" />
           by
-          <span className="font-semibold text-brand-200">Anuj Pratap Singh</span>
+          <span className="font-semibold text-brand-600">Anuj Pratap Singh</span>
         </p>
 
         <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-neutral-500">

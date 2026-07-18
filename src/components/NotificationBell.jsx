@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState, useRef } from "react";
 import { useSelector } from "react-redux";
 import axios from "axios";
-import { HiBell, HiCheck, HiClock, HiUserAdd } from "react-icons/hi";
-import { BASE_URL } from "../utils/constant";
+import { HiBell, HiCheck, HiClock, HiTrash, HiUserAdd } from "react-icons/hi";
+import { BASE_URL, createSocketConnection } from "../utils/constant";
 import Button from "./ui/Button";
 
 const groupNotifications = (notifications) => {
@@ -36,8 +36,28 @@ const getNotificationMessage = (notification) => {
   if (type === "project.member_removed") {
     return `You were removed from "${payload?.projectTitle || "a project"}"`;
   }
-  
-  return payload?.message || JSON.stringify(payload);
+  if (type === "message.new") {
+    return "You received a new encrypted message";
+  }
+  if (type === "connection.request") {
+    return `You have a new connection request from ${payload?.fromUserName || "someone"}`;
+  }
+  if (type === "connection.response") {
+    const verb =
+      payload?.status === "accepted"
+        ? "accepted"
+        : payload?.status === "rejected"
+        ? "declined"
+        : payload?.status || "responded to";
+    return `Your connection request was ${verb}`;
+  }
+  if (type === "project.message") {
+    return `New message in "${payload?.projectTitle || "your project"}"`;
+  }
+
+  // Fall back to a safe generic line. Never serialize the raw payload — that
+  // would leak internal fields (status, ids, etc.) to the user.
+  return "You have a new notification";
 };
 
 const NotificationBell = () => {
@@ -91,6 +111,22 @@ const NotificationBell = () => {
   }, []);
 
   useEffect(() => {
+    if (!currentUserId) return;
+    const socket = createSocketConnection(currentUserId);
+    const handleNewNotification = (notification) => {
+      setNotifications((prev) => {
+        if (prev.some((n) => n._id === notification._id)) return prev;
+        return [notification, ...prev];
+      });
+      if (notification.type === "connection.request" && !notification.isRead) {
+        setRequestCount((count) => count + 1);
+      }
+    };
+    socket.on("notification:new", handleNewNotification);
+    return () => socket.off("notification:new", handleNewNotification);
+  }, [currentUserId]);
+
+  useEffect(() => {
     const fetchRequestCount = async () => {
       if (!currentUserId) return;
       try {
@@ -137,6 +173,36 @@ const NotificationBell = () => {
     }
   };
 
+  const deleteNotificationItem = async (id) => {
+    try {
+      await axios.delete(`${BASE_URL}/notifications/${id}`, {
+        withCredentials: true,
+      });
+      setNotifications((prev) => prev.filter((notification) => notification._id !== id));
+      setRequestCount((prev) => {
+        const target = notifications.find((n) => n._id === id);
+        if (target?.type === "connection.request" && !target.isRead) {
+          return Math.max(0, prev - 1);
+        }
+        return prev;
+      });
+    } catch (error) {
+      console.error("Unable to delete notification", error);
+    }
+  };
+
+  const clearAllNotifications = async () => {
+    try {
+      await axios.delete(`${BASE_URL}/notifications`, {
+        withCredentials: true,
+      });
+      setNotifications([]);
+      setRequestCount(0);
+    } catch (error) {
+      console.error("Unable to clear notifications", error);
+    }
+  };
+
   useEffect(() => {
     if (open && unreadCount > 0) {
       markAsRead();
@@ -148,7 +214,7 @@ const NotificationBell = () => {
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
-        className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-neutral-200 transition hover:bg-white/10"
+        className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-hairline bg-tint text-neutral-200 transition hover:bg-tint-strong"
         aria-label="Notifications"
       >
         <HiBell className="text-lg" />
@@ -160,17 +226,27 @@ const NotificationBell = () => {
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-3 w-80 rounded-2xl border border-white/10 bg-surface-900/95 p-4 shadow-2xl backdrop-blur-xl">
-          <div className="mb-3 flex items-center justify-between">
+        <div className="absolute right-0 mt-3 w-80 rounded-2xl border border-hairline bg-surface-900/95 p-4 shadow-2xl backdrop-blur-xl">
+          <div className="mb-3 flex items-center justify-between gap-2">
             <p className="text-sm font-semibold text-neutral-100">Notifications</p>
-            <Button
-              variant="ghost"
-              size="xs"
-              disabled={busy || unreadCount === 0}
-              onClick={markAsRead}
-            >
-              <HiCheck className="text-sm" /> Mark read
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="xs"
+                disabled={notifications.length === 0}
+                onClick={clearAllNotifications}
+              >
+                <HiTrash className="text-sm" /> Clear
+              </Button>
+              <Button
+                variant="ghost"
+                size="xs"
+                disabled={busy || unreadCount === 0}
+                onClick={markAsRead}
+              >
+                <HiCheck className="text-sm" /> Mark read
+              </Button>
+            </div>
           </div>
 
           {requestCount > 0 && (
@@ -194,8 +270,16 @@ const NotificationBell = () => {
                   {group.items.map((notification) => (
                     <div
                       key={notification._id}
-                      className={`rounded-xl border px-3 py-2 text-xs text-neutral-200 ${notification.isRead ? "border-white/5 bg-white/3" : "border-brand-400/40 bg-brand-400/10"}`}
+                      className={`relative rounded-xl border px-3 py-2 pr-9 text-xs text-neutral-200 ${notification.isRead ? "border-hairline-soft bg-tint" : "border-brand-400/40 bg-brand-400/10"}`}
                     >
+                      <button
+                        type="button"
+                        onClick={() => deleteNotificationItem(notification._id)}
+                        aria-label="Delete notification"
+                        className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-lg text-neutral-500 transition hover:bg-danger-500/15 hover:text-danger-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger-400/40"
+                      >
+                        <HiTrash className="text-sm" />
+                      </button>
                       <p className="font-medium">
                         {notification.type.replace(".", " ")}
                       </p>

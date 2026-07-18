@@ -21,9 +21,9 @@ const MembershipCards = () => {
   const verifyPremiumUser = async () => {
     try {
       const res = await axios.get(BASE_URL + "/premium/verify", { withCredentials: true });
-       if (res.data.data.isPremium) {
-         dispatch(addUser(res.data.data.user));
-       }
+      if (res.data.data.isPremium) {
+        dispatch(addUser(res.data.data.user));
+      }
     } catch (error) {
       addToast(error.response?.data?.message || "Error verifying premium status.", "error");
     }
@@ -66,44 +66,36 @@ const MembershipCards = () => {
     return (
       <div className="w-full">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold mb-1" style={{ color: "#e0e7ff" }}>Premium</h1>
-          <p className="text-sm" style={{ color: "#475569" }}>Your active membership</p>
+          <h1 className="mb-1 text-2xl font-bold text-neutral-50">Premium</h1>
+          <p className="text-sm text-neutral-400">Your active membership</p>
         </div>
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="max-w-md p-8 rounded-2xl text-center"
-          style={{
-            background: "linear-gradient(135deg, rgba(245,158,11,0.1), rgba(234,179,8,0.05))",
-            border: "1px solid rgba(245,158,11,0.25)",
-            boxShadow: "0 8px 30px rgba(245,158,11,0.1)",
-          }}
+          className="glass relative max-w-md rounded-card border-warning-400/30 p-8 text-center"
         >
-          <div
-            className="w-20 h-20 rounded-2xl flex items-center justify-center text-4xl mx-auto mb-5"
-            style={{ background: "rgba(245,158,11,0.15)", border: "1px solid rgba(245,158,11,0.3)" }}
-          >
-            <FaCrown style={{ color: "#fbbf24" }} />
+          <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-2xl border border-warning-400/30 bg-warning-400/15 text-4xl">
+            <FaCrown className="text-warning-400" />
           </div>
           <div className="premium-badge mx-auto mb-3">
             <HiSparkles /> Active Member
           </div>
-          <h2 className="text-2xl font-bold mt-2" style={{ color: "#fbbf24" }}>
+          <h2 className="mt-2 text-2xl font-bold text-warning-400">
             {membershipType.charAt(0).toUpperCase() + membershipType.slice(1)} Membership
           </h2>
-          <p className="mt-1 text-sm" style={{ color: "#94a3b8" }}>You're enjoying premium benefits!</p>
+          <p className="mt-1 text-sm text-neutral-400">You&apos;re enjoying premium benefits!</p>
 
           <div className="mt-6 space-y-3 text-left">
             {[
-              { icon: <FaComments style={{ color: "#34d399" }} />, text: "Unlimited Chat with Connections" },
-              { icon: <FaCheckCircle style={{ color: "#60a5fa" }} />, text: "Verified Blue Badge on Profile" },
-              { icon: <FaUserPlus style={{ color: "#a78bfa" }} />, text: "Unlimited Connection Requests" },
-              { icon: <FaClock style={{ color: "#fbbf24" }} />, text: "Extended Membership Access" },
+              { icon: <FaComments className="text-success-400" />, text: "Unlimited Chat with Connections" },
+              { icon: <FaCheckCircle className="text-info-400" />, text: "Verified Blue Badge on Profile" },
+              { icon: <FaUserPlus className="text-accent-purple" />, text: "Unlimited Connection Requests" },
+              { icon: <FaClock className="text-warning-400" />, text: "Extended Membership Access" },
             ].map(({ icon, text }, i) => (
-              <div key={i} className="flex items-center gap-3 p-3 rounded-xl" style={{ background: "rgba(255,255,255,0.04)" }}>
+              <div key={i} className="flex items-center gap-3 rounded-xl bg-tint p-3">
                 <span className="text-lg">{icon}</span>
-                <span className="text-sm font-medium" style={{ color: "#c7d2fe" }}>{text}</span>
+                <span className="text-sm font-medium text-brand-600">{text}</span>
               </div>
             ))}
           </div>
@@ -118,18 +110,15 @@ const MembershipCards = () => {
       label: "Silver",
       price: "₹33",
       period: "/month",
-      icon: <FaCrown className="text-4xl" style={{ color: "#94a3b8" }} />,
-      tagColor: { bg: "rgba(148,163,184,0.1)", border: "rgba(148,163,184,0.2)", text: "#94a3b8" },
-      cardBg: "rgba(17,24,39,0.8)",
-      cardBorder: "rgba(148,163,184,0.15)",
-      btnBg: "rgba(148,163,184,0.15)",
-      btnBorder: "rgba(148,163,184,0.3)",
-      btnColor: "#94a3b8",
+      icon: <FaCrown className="text-4xl text-neutral-400" />,
+      priceClass: "text-neutral-300",
+      cardClass: "glass border-hairline",
+      btnClass: "border border-hairline bg-tint text-neutral-200 hover:bg-tint-strong",
       features: [
-        { icon: <FaComments style={{ color: "#94a3b8" }} />, text: "Chat with connections" },
-        { icon: <FaCheckCircle style={{ color: "#60a5fa" }} />, text: "Verified Blue Badge" },
-        { icon: <FaClock style={{ color: "#94a3b8" }} />, text: "3 months access" },
-        { icon: <FaUserPlus style={{ color: "#94a3b8" }} />, text: "100 requests/day" },
+        { icon: <FaComments className="text-neutral-400" />, text: "Chat with connections" },
+        { icon: <FaCheckCircle className="text-info-400" />, text: "Verified Blue Badge" },
+        { icon: <FaClock className="text-neutral-400" />, text: "3 months access" },
+        { icon: <FaUserPlus className="text-neutral-400" />, text: "100 requests/day" },
       ],
     },
     {
@@ -138,17 +127,16 @@ const MembershipCards = () => {
       price: "₹50",
       period: "/month",
       popular: true,
-      icon: <FaCrown className="text-4xl" style={{ color: "#f59e0b" }} />,
-      tagColor: { bg: "rgba(245,158,11,0.1)", border: "rgba(245,158,11,0.2)", text: "#fbbf24" },
-      cardBg: "rgba(17,24,39,0.9)",
-      cardBorder: "rgba(245,158,11,0.25)",
-      btnBg: "linear-gradient(135deg, #f59e0b, #d97706)",
-      btnColor: "white",
+      icon: <FaCrown className="text-4xl text-warning-400" />,
+      priceClass: "text-warning-400",
+      cardClass: "glass-elevated border-warning-400/40",
+      btnClass:
+        "bg-gradient-to-r from-warning-400 to-warning-600 text-white hover:shadow-brand-glow",
       features: [
-        { icon: <FaComments style={{ color: "#fbbf24" }} />, text: "Unlimited chat" },
-        { icon: <FaCheckCircle style={{ color: "#60a5fa" }} />, text: "Verified Blue Badge" },
-        { icon: <FaClock style={{ color: "#fbbf24" }} />, text: "6 months access" },
-        { icon: <FaUserPlus style={{ color: "#fbbf24" }} />, text: "500 requests/day" },
+        { icon: <FaComments className="text-warning-400" />, text: "Unlimited chat" },
+        { icon: <FaCheckCircle className="text-info-400" />, text: "Verified Blue Badge" },
+        { icon: <FaClock className="text-warning-400" />, text: "6 months access" },
+        { icon: <FaUserPlus className="text-warning-400" />, text: "500 requests/day" },
       ],
     },
   ];
@@ -156,11 +144,11 @@ const MembershipCards = () => {
   return (
     <div className="w-full">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold mb-1" style={{ color: "#e0e7ff" }}>Upgrade to Premium</h1>
-        <p className="text-sm" style={{ color: "#475569" }}>Unlock the full DevTinder experience</p>
+        <h1 className="mb-1 text-2xl font-bold text-neutral-50">Upgrade to Premium</h1>
+        <p className="text-sm text-neutral-400">Unlock the full DevTinder experience</p>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-5 max-w-2xl">
+      <div className="flex max-w-2xl flex-col gap-5 sm:flex-row">
         {plans.map((plan, i) => (
           <motion.div
             key={plan.type}
@@ -168,41 +156,30 @@ const MembershipCards = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: i * 0.1 }}
             whileHover={{ y: -5 }}
-            className="flex-1 p-6 rounded-2xl relative"
-            style={{
-              background: plan.cardBg,
-              border: `1px solid ${plan.cardBorder}`,
-              boxShadow: plan.popular ? "0 8px 30px rgba(245,158,11,0.1)" : "0 4px 20px rgba(0,0,0,0.3)",
-            }}
+            className={`relative flex-1 rounded-card p-6 ${plan.cardClass}`}
           >
             {plan.popular && (
-              <div
-                className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-xs font-bold"
-                style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)", color: "white", letterSpacing: "0.05em" }}
-              >
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-gradient-to-r from-warning-400 to-warning-600 px-3 py-1 text-xs font-bold tracking-[0.05em] text-white">
                 MOST POPULAR
               </div>
             )}
 
-            <div className="text-center mb-5">
-              <div
-                className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-3"
-                style={{ background: plan.tagColor.bg, border: `1px solid ${plan.tagColor.border}` }}
-              >
+            <div className="mb-5 text-center">
+              <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-2xl border border-hairline bg-tint">
                 {plan.icon}
               </div>
-              <h2 className="text-xl font-bold" style={{ color: "#e0e7ff" }}>{plan.label} Plan</h2>
+              <h2 className="text-xl font-bold text-neutral-50">{plan.label} Plan</h2>
               <div className="mt-2">
-                <span className="text-3xl font-extrabold" style={{ color: plan.tagColor.text }}>{plan.price}</span>
-                <span className="text-sm" style={{ color: "#64748b" }}>{plan.period}</span>
+                <span className="text-3xl font-extrabold text-neutral-50">{plan.price}</span>
+                <span className={`text-sm ${plan.priceClass}`}>{plan.period}</span>
               </div>
             </div>
 
-            <div className="space-y-2.5 mb-6">
+            <div className="mb-6 space-y-2.5">
               {plan.features.map(({ icon, text }, idx) => (
                 <div key={idx} className="flex items-center gap-2.5">
-                  <span className="text-base flex-shrink-0">{icon}</span>
-                  <span className="text-sm" style={{ color: "#94a3b8" }}>{text}</span>
+                  <span className="flex-shrink-0 text-base">{icon}</span>
+                  <span className="text-sm text-neutral-400">{text}</span>
                 </div>
               ))}
             </div>
@@ -211,13 +188,7 @@ const MembershipCards = () => {
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
               onClick={() => handleBuyClick(plan.type)}
-              className="w-full py-3 rounded-xl font-bold text-sm"
-              style={{
-                background: plan.btnBg,
-                border: plan.btnBorder ? `1.5px solid ${plan.btnBorder}` : "none",
-                color: plan.btnColor,
-                cursor: "pointer",
-              }}
+              className={`w-full rounded-xl py-3 text-sm font-bold ${plan.btnClass}`}
             >
               Get {plan.label}
             </motion.button>

@@ -129,7 +129,7 @@ const AIMatchExplainer = ({ targetUserId, targetName }) => {
                 <button
                   type="button"
                   onClick={handleClose}
-                  className="flex h-7 w-7 items-center justify-center rounded-full bg-white/5 text-neutral-400 transition hover:bg-white/10 hover:text-white"
+                  className="flex h-7 w-7 items-center justify-center rounded-full bg-tint text-neutral-400 transition hover:bg-tint-strong hover:text-white"
                 >
                   ✕
                 </button>

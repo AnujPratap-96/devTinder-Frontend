@@ -2,13 +2,15 @@ import clsx from "clsx";
 import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { FiLogIn } from "react-icons/fi";
-import { HiCode } from "react-icons/hi";
+import { HiCode, HiSun, HiMoon } from "react-icons/hi";
 import { useState } from "react";
+import { useTheme } from "../context/ThemeProvider";
 import NotificationBell from "./NotificationBell";
 
 const Navbar = () => {
   const user = useSelector((store) => store.user);
   const navigate = useNavigate();
+  const { theme, toggleTheme } = useTheme();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const handleClickHome = () => {
@@ -16,18 +18,18 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="sticky top-0 z-50 w-full border-b border-white/5 bg-surface-900/80 backdrop-blur-xl">
-      <div className="content-container flex items-center justify-between py-4">
+    <nav className="fixed top-0 z-50 w-full px-3 pt-3 sm:px-4">
+      <div className="glass mx-auto flex max-w-7xl items-center justify-between rounded-2xl border-hairline px-4 py-2.5">
         <button
           type="button"
           onClick={handleClickHome}
-          className="group flex items-center gap-3 rounded-xl px-2 py-1 text-left transition duration-200 ease-snappy focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300/40 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950"
+          className="group flex items-center gap-3 rounded-xl px-2 py-1 text-left transition duration-200 ease-snappy focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300/40 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
         >
-          <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 via-brand-400 to-accent-purple text-xl font-semibold text-neutral-50 shadow-brand-glow transition-transform duration-200 ease-snappy group-hover:-translate-y-0.5">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 via-brand-400 to-accent-purple text-lg font-semibold text-on-accent shadow-brand-glow transition-transform duration-200 ease-snappy group-hover:-translate-y-0.5">
             <HiCode />
           </span>
           <span className="flex flex-col">
-            <span className="text-lg font-semibold text-neutral-50">
+            <span className="text-base font-semibold text-neutral-50">
               Dev<span className="gradient-text">Tinder</span>
             </span>
             <span className="text-[0.65rem] font-medium uppercase tracking-[0.42em] text-neutral-500">
@@ -37,6 +39,14 @@ const Navbar = () => {
         </button>
 
         <div className="hidden items-center gap-4 sm:flex">
+          <button
+            type="button"
+            onClick={toggleTheme}
+            aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            className="flex h-9 w-9 items-center justify-center rounded-xl border border-hairline bg-tint text-neutral-200 transition duration-200 ease-snappy hover:bg-tint-strong hover:text-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300/40 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
+          >
+            {theme === "dark" ? <HiSun className="text-lg" /> : <HiMoon className="text-lg" />}
+          </button>
           {user ? (
             <>
               <NotificationBell />
@@ -46,7 +56,7 @@ const Navbar = () => {
               <button
                 type="button"
                 onClick={() => navigate("/profile")}
-                className="avatar-ring h-11 w-11 overflow-hidden transition duration-200 ease-snappy hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300/40 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950"
+                className="avatar-ring h-9 w-9 overflow-hidden transition duration-200 ease-snappy hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300/40 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
                 aria-label="View profile"
               >
                 <img
@@ -71,7 +81,7 @@ const Navbar = () => {
           <button
             type="button"
             onClick={() => setIsMenuOpen((prev) => !prev)}
-            className="flex flex-col items-center justify-center gap-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 transition duration-200 ease-snappy focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300/40 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950"
+            className="flex flex-col items-center justify-center gap-1 rounded-xl border border-hairline bg-tint px-3 py-2 transition duration-200 ease-snappy focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300/40 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
             aria-label={isMenuOpen ? "Close menu" : "Open menu"}
           >
             <span
@@ -97,7 +107,15 @@ const Navbar = () => {
       </div>
 
       {isMenuOpen && (
-        <div className="border-t border-white/5 bg-surface-900/95 px-4 py-4 backdrop-blur-xl sm:hidden">
+        <div className="border-t border-hairline-soft bg-surface-900/95 px-4 py-4 backdrop-blur-xl sm:hidden">
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="mb-3 flex w-full items-center justify-between rounded-2xl border border-hairline-soft bg-tint px-4 py-3 text-sm font-medium text-neutral-200 transition duration-200 ease-snappy hover:bg-tint-strong"
+          >
+            <span>{theme === "dark" ? "Light mode" : "Dark mode"}</span>
+            {theme === "dark" ? <HiSun className="text-lg text-warning-400" /> : <HiMoon className="text-lg text-brand-600" />}
+          </button>
           {user ? (
             <button
               type="button"
@@ -105,7 +123,7 @@ const Navbar = () => {
                 navigate("/profile");
                 setIsMenuOpen(false);
               }}
-              className="flex w-full items-center gap-3 rounded-2xl border border-white/5 bg-white/5 p-3 text-left transition duration-200 ease-snappy hover:bg-white/10"
+              className="flex w-full items-center gap-3 rounded-2xl border border-hairline-soft bg-tint p-3 text-left transition duration-200 ease-snappy hover:bg-tint-strong"
             >
               <div className="avatar-ring h-10 w-10 overflow-hidden">
                 <img

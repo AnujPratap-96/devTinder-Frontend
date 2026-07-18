@@ -320,9 +320,9 @@ const EditProfile = ({ user }) => {
       </div>
 
       <div className="flex flex-col gap-8 xl:flex-row">
-        <div className="flex-1 rounded-3xl border border-white/5 bg-surface-900 p-6 sm:p-8 shadow-soft">
-          <h2 className="mb-6 flex items-center gap-3 text-lg font-semibold text-brand-100">
-            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-500/20 text-brand-400">
+        <div className="flex-1 rounded-3xl border border-hairline-soft bg-surface-900 p-6 sm:p-8 shadow-soft">
+          <h2 className="mb-6 flex items-center gap-3 text-lg font-semibold text-brand-500">
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-500/20 text-brand-500">
               <HiCode className="text-lg" />
             </span>
             Profile Information
@@ -385,17 +385,17 @@ const EditProfile = ({ user }) => {
               <label className="mb-1.5 block text-[0.65rem] font-bold uppercase tracking-[0.1em] text-neutral-400">
                 Skills
               </label>
-              <div className="flex min-h-[46px] flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 transition focus-within:ring-2 focus-within:ring-brand-500/50 hover:bg-white/10">
+              <div className="flex min-h-[46px] flex-wrap items-center gap-2 rounded-xl border border-hairline bg-tint px-3 py-2 transition focus-within:ring-2 focus-within:ring-brand-500/50 hover:bg-tint-strong">
                 {skills.map((skill) => (
                   <span
                     key={skill}
-                    className="flex items-center gap-1.5 rounded-full border border-brand-400/20 bg-brand-500/20 px-2.5 py-1 text-xs font-semibold text-brand-200"
+                    className="flex items-center gap-1.5 rounded-full border border-brand-400/20 bg-brand-500/20 px-2.5 py-1 text-xs font-semibold text-brand-600"
                   >
                     {skill}
                     <button
                       type="button"
                       onClick={() => setSkills((prev) => prev.filter((item) => item !== skill))}
-                      className="text-brand-300 transition-colors hover:text-brand-100"
+                      className="text-brand-600 transition-colors hover:text-brand-500"
                     >
                       <HiX className="text-[12px]" />
                     </button>
@@ -420,9 +420,9 @@ const EditProfile = ({ user }) => {
             </div>
           </div>
 
-          <div className="mt-8 border-t border-white/5 pt-8">
-            <h2 className="mb-6 flex items-center gap-3 text-lg font-semibold text-brand-100">
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-500/20 text-brand-400">
+          <div className="mt-8 border-t border-hairline-soft pt-8">
+            <h2 className="mb-6 flex items-center gap-3 text-lg font-semibold text-brand-500">
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-500/20 text-brand-500">
                 <HiCode className="text-lg" />
               </span>
               Social Links
@@ -459,7 +459,7 @@ const EditProfile = ({ user }) => {
             onSkillsAccepted={(newSkills) => setSkills(newSkills)}
           />
 
-          <div className="mt-8 border-t border-white/5 pt-8">
+          <div className="mt-8 border-t border-hairline-soft pt-8">
             <div className="mb-4 flex items-center justify-between">
               <label className="text-[0.65rem] font-bold uppercase tracking-[0.1em] text-neutral-400">
                 Profile Gallery
@@ -505,7 +505,7 @@ const EditProfile = ({ user }) => {
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <Button variant="ghost" onClick={handleLocationUpdate} disabled={updatingLocation}>
-              {updatingLocation ? <span className="loading loading-spinner loading-sm" /> : "Use Current Location"}
+              {updatingLocation ? <span className="spinner h-4 w-4 border-2 text-brand-600" /> : "Use Current Location"}
             </Button>
             <Button
               variant="primary"
@@ -515,7 +515,7 @@ const EditProfile = ({ user }) => {
             >
               {isSaving ? (
                 <>
-                  <span className="loading loading-spinner loading-sm" /> Saving...
+                  <span className="spinner h-4 w-4 border-2 text-brand-600" /> Saving...
                 </>
               ) : (
                 <>
@@ -525,7 +525,7 @@ const EditProfile = ({ user }) => {
             </Button>
           </div>
 
-          <div className="mt-10 rounded-2xl border border-white/5 bg-white/5 p-5">
+          <div className="mt-10 rounded-2xl border border-hairline-soft bg-tint p-5">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-sm font-semibold text-neutral-100">GitHub Integration</p>
@@ -539,7 +539,7 @@ const EditProfile = ({ user }) => {
                   value={githubToken}
                   onChange={(event) => setGithubToken(event.target.value)}
                   placeholder="ghp_xxxxxxxxx"
-                  className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-neutral-100 placeholder:text-neutral-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400"
+                  className="rounded-xl border border-hairline bg-tint px-3 py-2 text-xs text-neutral-100 placeholder:text-neutral-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400"
                 />
                 <Button
                   variant="secondary"
@@ -547,7 +547,7 @@ const EditProfile = ({ user }) => {
                   disabled={syncingGithub}
                   className="justify-center"
                 >
-                  {syncingGithub ? <span className="loading loading-spinner loading-sm" /> : "Token Sync (Full Stats)"}
+                  {syncingGithub ? <span className="spinner h-4 w-4 border-2 text-brand-600" /> : "Token Sync (Full Stats)"}
                 </Button>
                 <Button
                   variant="primary"
@@ -555,13 +555,13 @@ const EditProfile = ({ user }) => {
                   disabled={syncingGithub}
                   className="justify-center gap-2 border-none bg-gradient-to-r from-brand-600 to-accent-purple hover:from-brand-500 hover:to-accent-purple"
                 >
-                  {syncingGithub ? <span className="loading loading-spinner loading-sm" /> : <>✨ Magic AI Sync</>}
+                  {syncingGithub ? <span className="spinner h-4 w-4 border-2 text-brand-600" /> : <>✨ Magic AI Sync</>}
                 </Button>
               </div>
             </div>
 
             {user.githubProfile?.username && (
-              <div className="mt-4 rounded-xl border border-white/5 bg-surface-950/60 p-4 text-xs text-neutral-300">
+              <div className="mt-4 rounded-xl border border-hairline-soft bg-surface-950/60 p-4 text-xs text-neutral-300">
                 <p className="text-sm font-semibold text-neutral-100">{user.githubProfile.username}</p>
                 <div className="mt-2 flex flex-wrap gap-3">
                   <span>Total Stars: {user.githubProfile.stats?.totalStars ?? 0}</span>
@@ -608,7 +608,7 @@ const EditProfile = ({ user }) => {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative z-10 w-full max-w-sm rounded-3xl border border-white/10 bg-surface-900 p-6 shadow-brand-strong"
+              className="relative z-10 w-full max-w-sm rounded-3xl border border-hairline bg-surface-900 p-6 shadow-brand-strong"
             >
               <div className="mb-6 flex items-center justify-between">
                 <h2 className="text-xl font-bold text-neutral-50">Upload Photo</h2>
@@ -616,17 +616,17 @@ const EditProfile = ({ user }) => {
                   type="button"
                   onClick={() => setOpenModal(false)}
                   disabled={isUploading}
-                  className="flex h-8 w-8 items-center justify-center rounded-full bg-white/5 text-neutral-400 transition hover:bg-white/10"
+                  className="flex h-8 w-8 items-center justify-center rounded-full bg-tint text-neutral-400 transition hover:bg-tint-strong"
                 >
                   <HiX className="text-lg" />
                 </button>
               </div>
 
               <label className="flex h-36 w-full cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-brand-400/30 bg-brand-500/5 transition-colors hover:border-brand-400 hover:bg-brand-500/10">
-                <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-brand-500/20 text-brand-400">
+                <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-brand-500/20 text-brand-500">
                   <HiUpload className="text-2xl" />
                 </div>
-                <span className="text-sm font-medium text-brand-300">Click to choose image</span>
+                <span className="text-sm font-medium text-brand-600">Click to choose image</span>
                 <input
                   type="file"
                   accept="image/*"
@@ -636,7 +636,7 @@ const EditProfile = ({ user }) => {
               </label>
 
               {selectedFile && (
-                <div className="mt-5 overflow-hidden rounded-2xl border border-white/10 bg-black/40">
+                <div className="mt-5 overflow-hidden rounded-2xl border border-hairline bg-black/40">
                   <img src={URL.createObjectURL(selectedFile)} alt="preview" className="h-48 w-full object-cover" />
                   <div className="flex items-center justify-center bg-black/60 p-3 text-xs text-white/80">
                     {selectedFile.name}
@@ -661,7 +661,7 @@ const EditProfile = ({ user }) => {
                 >
                   {isUploading ? (
                     <>
-                      <span className="loading loading-spinner loading-sm" /> Uploading...
+                      <span className="spinner h-4 w-4 border-2 text-brand-600" /> Uploading...
                     </>
                   ) : (
                     <>
@@ -688,7 +688,7 @@ const InputField = ({ label, value, onChange, type = "text", placeholder = "", f
       value={value}
       onChange={onChange}
       placeholder={placeholder}
-      className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-neutral-50 outline-none transition placeholder:text-neutral-600 focus-visible:ring-2 focus-visible:ring-brand-500/50 hover:bg-white/10"
+      className="w-full rounded-xl border border-hairline bg-tint px-4 py-3 text-sm text-neutral-50 outline-none transition placeholder:text-neutral-600 focus-visible:ring-2 focus-visible:ring-brand-500/50 hover:bg-tint-strong"
     />
   </div>
 );
@@ -701,7 +701,7 @@ const SelectField = ({ label, value, onChange, options }) => (
     <select
       value={value}
       onChange={onChange}
-      className="w-full cursor-pointer appearance-none rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-neutral-50 outline-none transition focus-visible:ring-2 focus-visible:ring-brand-500/50 hover:bg-white/10"
+      className="w-full cursor-pointer appearance-none rounded-xl border border-hairline bg-tint px-4 py-3 text-sm text-neutral-50 outline-none transition focus-visible:ring-2 focus-visible:ring-brand-500/50 hover:bg-tint-strong"
     >
       {options.map((option) => (
         <option key={option.value} value={option.value} className="bg-surface-900">
@@ -728,7 +728,7 @@ const UserCardPreview = ({ user }) => {
 
   return (
     <motion.div
-      className={`relative h-[400px] w-[280px] overflow-hidden rounded-3xl border border-white/10 bg-surface-950 ${currentTheme.font}`}
+      className={`relative h-[400px] w-[280px] overflow-hidden rounded-3xl border border-hairline bg-surface-950 ${currentTheme.font}`}
       style={{ boxShadow: currentTheme.shadow }}
       whileHover={{ y: -4, scale: 1.01 }}
       transition={{ duration: 0.3 }}
@@ -756,9 +756,9 @@ const UserCardPreview = ({ user }) => {
       <div className="absolute bottom-0 left-0 right-0 p-5">
         <h2 className="mb-1 flex items-center gap-2 text-xl font-bold text-white">
           {user.firstName || "Developer"} {user.lastName || ""}
-          {user.isPremium && <FaCheckCircle className="text-sm text-brand-400" />}
+          {user.isPremium && <FaCheckCircle className="text-sm text-brand-500" />}
         </h2>
-        <div className="mb-3 text-xs font-medium uppercase tracking-wider text-brand-200">
+        <div className="mb-3 text-xs font-medium uppercase tracking-wider text-brand-600">
           {user.age && <span>{user.age} yrs</span>}
           {user.age && user.gender && <span className="mx-1.5">•</span>}
           {user.gender && <span>{user.gender}</span>}

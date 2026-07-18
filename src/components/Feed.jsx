@@ -17,10 +17,10 @@ import ErrorBoundary from "./ErrorBoundary";
 
 const gridComponents = {
   List: forwardRef((props, ref) => (
-    <div {...props} ref={ref} className="grid w-full grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 pb-8" />
+    <div {...props} ref={ref} className="grid w-full grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 pt-6 pb-8" />
   )),
   Item: ({ children, ...props }) => (
-    <div {...props} className="w-full h-full flex">{children}</div>
+    <div {...props} className="w-full">{children}</div>
   )
 };
 
@@ -188,7 +188,7 @@ const Feed = () => {
             placeholder="Search by name or skills (e.g. 'React', 'Node')..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-2xl border border-white/10 bg-surface-900 py-3.5 pl-11 pr-4 text-sm text-neutral-50 shadow-soft outline-none transition-all focus:border-brand-500/50 focus:ring-4 focus:ring-brand-500/10 placeholder:text-neutral-600"
+            className="w-full rounded-2xl border border-hairline bg-surface-900 py-3.5 pl-11 pr-4 text-sm text-neutral-50 shadow-soft outline-none transition-all focus:border-brand-500/50 focus:ring-4 focus:ring-brand-500/10 placeholder:text-neutral-600"
           />
         </div>
       </div>
@@ -225,7 +225,7 @@ const Feed = () => {
                     {selectedResult && (
                       <button
                         onClick={() => setSelectedResult(null)}
-                        className="mb-8 flex items-center gap-2 rounded-xl border border-white/10 bg-white/10 px-6 py-2.5 text-sm font-medium text-neutral-100 shadow-lg backdrop-blur-md transition-all hover:bg-white/20 active:scale-95"
+                        className="mb-8 flex items-center gap-2 rounded-xl border border-hairline bg-tint-strong px-6 py-2.5 text-sm font-medium text-neutral-100 shadow-lg backdrop-blur-md transition-all hover:bg-tint-strong active:scale-95"
                       >
                         <HiArrowLeft className="text-base" /> Back to Search Results
                       </button>
@@ -250,7 +250,7 @@ const Feed = () => {
                   Tailored matches powered by skills, experience, and proximity.
                 </p>
                 {coords && (
-                  <p className="text-xs text-brand-200/80">
+                  <p className="text-xs text-brand-600/80">
                     Showing matches within 50km of your current location
                   </p>
                 )}

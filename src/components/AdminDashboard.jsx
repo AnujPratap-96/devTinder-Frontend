@@ -63,7 +63,7 @@ const AdminDashboard = () => {
   if (loading) {
     return (
       <Card tone="translucent" className="flex h-64 items-center justify-center">
-        <span className="loading loading-spinner loading-lg text-brand-300" />
+        <span className="spinner h-7 w-7 border-[3px] text-brand-600" />
       </Card>
     );
   }
@@ -76,13 +76,13 @@ const AdminDashboard = () => {
             <h2 className="text-lg font-semibold text-neutral-100">Users</h2>
             <p className="text-xs text-neutral-400">Monitor account health and availability.</p>
           </div>
-          <span className="rounded-full bg-white/5 px-2 py-1 text-xs text-neutral-300">
+          <span className="rounded-full bg-tint px-2 py-1 text-xs text-neutral-300">
             {users.length} total
           </span>
         </div>
         <div className="space-y-3">
           {users.map((item) => (
-            <div key={item._id} className="flex items-center justify-between rounded-xl border border-white/5 bg-white/5 p-3">
+            <div key={item._id} className="flex items-center justify-between rounded-xl border border-hairline-soft bg-tint p-3">
               <div>
                 <p className="text-sm font-semibold text-neutral-100">
                   {item.firstName} {item.lastName}
@@ -90,7 +90,7 @@ const AdminDashboard = () => {
                 <p className="text-[11px] text-neutral-500">{item.emailId}</p>
               </div>
               <div className="flex items-center gap-2">
-                <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] text-neutral-300">
+                <span className="rounded-full border border-hairline bg-tint px-2 py-0.5 text-[10px] text-neutral-300">
                   {item.availability}
                 </span>
                 {!item.isBanned && (
@@ -110,7 +110,7 @@ const AdminDashboard = () => {
             <h2 className="text-lg font-semibold text-neutral-100">Reports</h2>
             <p className="text-xs text-neutral-400">User generated reports awaiting review.</p>
           </div>
-          <span className="rounded-full bg-white/5 px-2 py-1 text-xs text-neutral-300">
+          <span className="rounded-full bg-tint px-2 py-1 text-xs text-neutral-300">
             {reports.length}
           </span>
         </div>
@@ -124,7 +124,7 @@ const AdminDashboard = () => {
         ) : (
           <div className="space-y-3">
             {reports.map((report) => (
-              <div key={report._id} className="rounded-xl border border-white/5 bg-white/5 p-3">
+              <div key={report._id} className="rounded-xl border border-hairline-soft bg-tint p-3">
                 <p className="text-sm font-semibold text-neutral-100">{report.reason}</p>
                 <p className="text-xs text-neutral-400">{report.details || "No additional details"}</p>
                 <p className="mt-2 text-[11px] text-neutral-500">

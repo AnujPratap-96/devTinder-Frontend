@@ -20,7 +20,7 @@ const EmptyState = ({
       )}
     >
       {icon && (
-        <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-3xl bg-white/5 text-brand-200 shadow-soft">
+        <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-3xl bg-tint text-brand-600 shadow-soft">
           {icon}
         </div>
       )}

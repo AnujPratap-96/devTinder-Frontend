@@ -1,5 +1,7 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Provider } from "react-redux";
+import { MotionConfig } from "framer-motion";
+import { ThemeProvider } from "./context/ThemeProvider";
 import appStore from "./store/appStore";
 import Home from "./components/Home";
 import Body from "./components/Body";
@@ -25,38 +27,42 @@ import MatchCelebration from "./components/MatchCelebration";
 const App = () => {
   return (
     <Provider store={appStore}>
-      <ToastProvider>
-        <BrowserRouter>
-          <div className="layout-shell bg-mesh">
-            <Routes>
+      <ThemeProvider>
+        <ToastProvider>
+          <MotionConfig reducedMotion="user">
+            <BrowserRouter>
+              <div className="layout-shell bg-mesh">
+                <Routes>
               {/* Routes WITHOUT sidebar */}
               <Route path="/" element={<LandingPage />}>
-<Route path="/" element={<Home />} />
+                <Route index element={<Home />} />
                 <Route path="/login" element={<Login />} />
-                <Route path="/register" element={<Register />} />
-                <Route path="/forgot-password" element={<ForgotPassword />} />
-                <Route path="/verify-otp" element={<OtpVerify />} />
-                <Route path="/complete-signup" element={<Signup />} />
-              </Route>
+                    <Route path="/register" element={<Register />} />
+                    <Route path="/forgot-password" element={<ForgotPassword />} />
+                    <Route path="/verify-otp" element={<OtpVerify />} />
+                    <Route path="/complete-signup" element={<Signup />} />
+                  </Route>
 
-              {/* Routes WITH sidebar wrapped inside Body */}
-              <Route element={<Body />}>
-                <Route path="/feed" element={<Feed />} />
-                <Route path="/profile" element={<Profile />} />
-                <Route path="/connections" element={<Connections />} />
-                <Route path="/requests" element={<Requests />} />
-                <Route path="/premium" element={<Premium />} />
-                <Route path="/messages" element={<Messages />} />
-                <Route path="/chat/:targetUserId" element={<ChatBox />} />
-                <Route path="/projects" element={<Projects />} />
-                <Route path="/bookmarks" element={<Bookmarks />} />
-                <Route path="/admin" element={<AdminDashboard />} />
-              </Route>
-            </Routes>
-          </div>
-          <MatchCelebration />
-        </BrowserRouter>
-      </ToastProvider>
+                  {/* Routes WITH sidebar wrapped inside Body */}
+                  <Route element={<Body />}>
+                    <Route path="/feed" element={<Feed />} />
+                    <Route path="/profile" element={<Profile />} />
+                    <Route path="/connections" element={<Connections />} />
+                    <Route path="/requests" element={<Requests />} />
+                    <Route path="/premium" element={<Premium />} />
+                    <Route path="/messages" element={<Messages />} />
+                    <Route path="/chat/:targetUserId" element={<ChatBox />} />
+                    <Route path="/projects" element={<Projects />} />
+                    <Route path="/bookmarks" element={<Bookmarks />} />
+                    <Route path="/admin" element={<AdminDashboard />} />
+                  </Route>
+                </Routes>
+              </div>
+              <MatchCelebration />
+            </BrowserRouter>
+          </MotionConfig>
+        </ToastProvider>
+      </ThemeProvider>
     </Provider>
   );
 };
