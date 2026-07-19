@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Provider } from "react-redux";
 import { MotionConfig } from "framer-motion";
 import { ThemeProvider } from "./context/ThemeProvider";
@@ -21,7 +21,11 @@ import ForgotPassword from "./components/ForgotPassword";
 import { ToastProvider } from "./context/ToastProvider";
 import Projects from "./components/Projects";
 import Bookmarks from "./components/Bookmarks";
-import AdminDashboard from "./components/AdminDashboard";
+import AdminLayout from "./components/admin/AdminLayout";
+import AdminUsers from "./components/admin/AdminUsers";
+import AdminReports from "./components/admin/AdminReports";
+import AdminBanned from "./components/admin/AdminBanned";
+import AdminPlans from "./components/admin/AdminPlans";
 import MatchCelebration from "./components/MatchCelebration";
 
 const App = () => {
@@ -54,7 +58,13 @@ const App = () => {
                     <Route path="/chat/:targetUserId" element={<ChatBox />} />
                     <Route path="/projects" element={<Projects />} />
                     <Route path="/bookmarks" element={<Bookmarks />} />
-                    <Route path="/admin" element={<AdminDashboard />} />
+                    <Route path="/admin" element={<AdminLayout />}>
+                      <Route index element={<Navigate to="users" replace />} />
+                      <Route path="users" element={<AdminUsers />} />
+                      <Route path="reports" element={<AdminReports />} />
+                      <Route path="banned" element={<AdminBanned />} />
+                      <Route path="plans" element={<AdminPlans />} />
+                    </Route>
                   </Route>
                 </Routes>
               </div>

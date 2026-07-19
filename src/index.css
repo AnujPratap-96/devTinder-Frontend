@@ -13,6 +13,7 @@
    ============================================================ */
 :root,
 [data-theme='dark'] {
+  color-scheme: dark;
   /* Theme-aware channels */
   --c-white: 255 255 255;
   --c-glass: 21 28 48;
@@ -115,6 +116,7 @@
 }
 
 [data-theme='light'] {
+  color-scheme: light;
   --c-white: 15 23 42;
   --c-glass: 255 255 255;
 
