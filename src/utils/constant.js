@@ -28,9 +28,9 @@ export const createSocketConnection = (userId) => {
     const connectionOptions = {
       withCredentials: true,
       transports: ["websocket"],
-      path: isLocal ? "/socket.io" : "/api/socket.io",
+      path: "/socket.io",
     };
-    socketInstance = io(isLocal ? BASE_URL : "/", connectionOptions);
+    socketInstance = io(BASE_URL, connectionOptions);
 
     // Re-register the session on every (re)connect so the server keeps
     // tracking this user as online and can deliver real-time events.
