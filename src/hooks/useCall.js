@@ -46,7 +46,10 @@ export const useCall = () => {
 
     const onCreated = ({ callId }) => dispatch(setCallId(callId));
 
-    const onInvite = (p) => dispatch(setIncoming(p));
+    const onInvite = (p) => {
+      console.log("RECEIVED call:invite", p);
+      dispatch(setIncoming(p));
+    };
 
     const onAccept = async () => {
       try {
