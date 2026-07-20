@@ -19,6 +19,7 @@ import Signup from "./components/Signup";
 import OtpVerify from "./components/Otp";
 import ForgotPassword from "./components/ForgotPassword";
 import { ToastProvider } from "./context/ToastProvider";
+import { CallProvider } from "./components/call/CallProvider";
 import Projects from "./components/Projects";
 import Bookmarks from "./components/Bookmarks";
 import AdminLayout from "./components/admin/AdminLayout";
@@ -35,6 +36,7 @@ const App = () => {
         <ToastProvider>
           <MotionConfig reducedMotion="user">
             <BrowserRouter>
+              <CallProvider>
               <div className="layout-shell bg-mesh">
                 <Routes>
               {/* Routes WITHOUT sidebar */}
@@ -69,6 +71,7 @@ const App = () => {
                 </Routes>
               </div>
               <MatchCelebration />
+              </CallProvider>
             </BrowserRouter>
           </MotionConfig>
         </ToastProvider>

@@ -21,6 +21,7 @@ import { useToast } from "../context/ToastProvider";
 import { getOnlineStatus, formatTimeAgo } from "../utils/timeUtils";
 import { resolvePhotoUrl } from "../utils/avatar";
 import { generateIcebreaker, suggestCollaboration, aiErrorMessage } from "../utils/aiApi";
+import CallButton from "./call/CallButton";
 
 const MESSAGE_LIMIT = 30;
 
@@ -576,6 +577,18 @@ const ChatBox = () => {
                   <>✨ Suggest Activity</>
                 )}
               </button>
+              <CallButton
+                calleeId={targetUserId}
+                type="voice"
+                chatId={matchId}
+                peer={otherUser}
+              />
+              <CallButton
+                calleeId={targetUserId}
+                type="video"
+                chatId={matchId}
+                peer={otherUser}
+              />
               <div className="relative">
               <button
                 type="button"
