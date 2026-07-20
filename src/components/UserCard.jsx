@@ -169,15 +169,21 @@ const SwipeCard = ({ user, searchQuery = "" }) => {
     }
   };
 
-  const bookmarkProfile = async () => {
+  const toggleBookmark = async () => {
     try {
-      await axios.post(
-        `${BASE_URL}/bookmark`,
-        { userId: _id },
-        { withCredentials: true }
-      );
-      setBookmarked(true);
-      addToast("Profile saved", "success");
+      if (bookmarked) {
+        await axios.delete(`${BASE_URL}/bookmark/${_id}`, { withCredentials: true });
+        setBookmarked(false);
+        addToast("Bookmark removed", "success");
+      } else {
+        await axios.post(
+          `${BASE_URL}/bookmark`,
+          { userId: _id },
+          { withCredentials: true }
+        );
+        setBookmarked(true);
+        addToast("Profile saved", "success");
+      }
     } catch (error) {
       addToast(error?.response?.data?.message || "Unable to bookmark", "error");
     }
@@ -331,8 +337,20 @@ const SwipeCard = ({ user, searchQuery = "" }) => {
         <div className="absolute top-6 right-6 z-30 flex gap-2">
           <button
             type="button"
+            onClick={toggleBookmark}
+            className={`rounded-full border p-2 backdrop-blur transition ${
+              bookmarked
+                ? "border-brand-500/60 bg-brand-500/30 text-brand-200"
+                : "border-white/40 bg-black/55 text-white hover:bg-black/75"
+            }`}
+            title={bookmarked ? "Remove bookmark" : "Save profile"}
+          >
+            <HiBookmark className="text-sm" />
+          </button>
+          <button
+            type="button"
             onClick={blockUser}
-            className="rounded-full border border-warning-400/40 bg-warning-500/20 p-2 text-warning-200 transition hover:bg-warning-500/30"
+            className="rounded-full border border-warning-400/50 bg-black/55 p-2 text-warning-200 backdrop-blur transition hover:bg-warning-500/30"
             title="Block user"
           >
             <HiBan className="text-sm" />
@@ -340,7 +358,7 @@ const SwipeCard = ({ user, searchQuery = "" }) => {
           <button
             type="button"
             onClick={reportUser}
-            className="rounded-full border border-neutral-400/40 bg-neutral-500/20 p-2 text-neutral-300 transition hover:bg-neutral-500/30"
+            className="rounded-full border border-white/40 bg-black/55 p-2 text-white backdrop-blur transition hover:bg-black/75"
             title="Report user"
           >
             <HiFlag className="text-sm" />

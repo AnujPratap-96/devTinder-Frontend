@@ -67,6 +67,14 @@ export const suggestCollaboration = async (targetUserId) => {
   return data; // { success, data: { title, description, why } }
 };
 
+/**
+ * Extract a user-facing message from an AI API error.
+ * Prefers the backend's message (e.g. plan-gating / quota text) so every
+ * AI feature surfaces the same, consistent wording instead of a generic string.
+ */
+export const aiErrorMessage = (err) =>
+  err?.response?.data?.message || err?.message || "AI service unavailable. Please try again.";
+
 /** Save a system-level AI config (like Mistral API Key) to the DB */
 export const setAIConfig = async (key, value) => {
   const { data } = await ai.post("/ai/config/set", { key, value });

@@ -20,7 +20,7 @@ import { ensureCrypto, isCryptoReady, encryptMessage, decryptMessage, canEncrypt
 import { useToast } from "../context/ToastProvider";
 import { getOnlineStatus, formatTimeAgo } from "../utils/timeUtils";
 import { resolvePhotoUrl } from "../utils/avatar";
-import { generateIcebreaker, suggestCollaboration } from "../utils/aiApi";
+import { generateIcebreaker, suggestCollaboration, aiErrorMessage } from "../utils/aiApi";
 
 const MESSAGE_LIMIT = 30;
 
@@ -114,7 +114,7 @@ const ChatBox = () => {
       const { data } = await suggestCollaboration(targetUserId);
        setCollabSuggestion(data);
     } catch (err) {
-      addToast("Failed to get collaboration suggestion", "error");
+      addToast(aiErrorMessage(err), "error");
     } finally {
       setCollabLoading(false);
     }
@@ -197,8 +197,8 @@ const ChatBox = () => {
       if (result.success) {
         setIcebreaker(result.data.message);
       }
-    } catch {
-      // silently fail — icebreaker is optional
+    } catch (err) {
+      addToast(aiErrorMessage(err), "error");
     } finally {
       setIcebreakerLoading(false);
     }

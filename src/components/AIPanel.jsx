@@ -1,7 +1,10 @@
 /* eslint-disable react/prop-types */
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import axios from "axios";
 import { motion, AnimatePresence } from "framer-motion";
 import { generateBio, suggestSkills } from "../utils/aiApi";
+import { BASE_URL } from "../utils/constant";
 
 // ─── Sparkle SVG icon ────────────────────────────────────────
 const SparkleIcon = ({ className = "" }) => (
@@ -34,16 +37,31 @@ const LoadingDots = () => (
   </span>
 );
 
+// Reusable upgrade-prompting error box
+const FeatureError = ({ message, onUpgrade }) => (
+  <motion.div
+    initial={{ opacity: 0, y: -4 }}
+    animate={{ opacity: 1, y: 0 }}
+    exit={{ opacity: 0 }}
+    className="mt-3 flex items-start justify-between gap-3 rounded-lg border border-warning-400/30 bg-warning-500/10 px-3 py-2"
+  >
+    <p className="text-xs text-warning-400">{message}</p>
+    <button
+      type="button"
+      onClick={onUpgrade}
+      className="shrink-0 text-xs font-semibold text-warning-300 underline-offset-2 hover:underline"
+    >
+      Upgrade
+    </button>
+  </motion.div>
+);
+
 // ─────────────────────────────────────────────────────────────
 // AIPanel
-// Props:
-//   user         – current user object (for fallback context)
-//   skills       – current skills array (live from parent)
-//   formData     – current form (role, experienceYears)
-//   onBioGenerated(bio)          – parent handler
-//   onSkillsAccepted(skills[])   – parent handler
 // ─────────────────────────────────────────────────────────────
 const AIPanel = ({ user, skills, formData, onBioGenerated, onSkillsAccepted }) => {
+  const navigate = useNavigate();
+
   // Bio state
   const [generatedBio, setGeneratedBio] = useState("");
   const [bioLoading, setBioLoading] = useState(false);
@@ -54,6 +72,45 @@ const AIPanel = ({ user, skills, formData, onBioGenerated, onSkillsAccepted }) =
   const [selectedSuggestions, setSelectedSuggestions] = useState(new Set());
   const [skillsLoading, setSkillsLoading] = useState(false);
   const [skillsError, setSkillsError] = useState("");
+
+  // Entitlement: is the current user allowed to use AI features?
+  const [aiBlocked, setAiBlocked] = useState(false);
+  const [minPlanName, setMinPlanName] = useState("a paid");
+
+  useEffect(() => {
+    let active = true;
+    const check = async () => {
+      if (user?.isAdmin) {
+        if (active) setAiBlocked(false);
+        return;
+      }
+      try {
+        const res = await axios.get(`${BASE_URL}/plans`, { withCredentials: true });
+        const plans = res.data.data.plans ?? [];
+        const myPlan = plans.find((p) => p.slug === (user?.membershipType || "free"));
+        const allowed = Boolean(myPlan && myPlan.limits?.aiCallsPerDay !== 0);
+        if (!allowed) {
+          const minPaid = plans
+            .filter((p) => !p.isFree && p.limits?.aiCallsPerDay !== 0)
+            .sort((a, b) => a.order - b.order)[0];
+          if (active) {
+            setAiBlocked(true);
+            setMinPlanName(minPaid?.name || "a paid");
+          }
+        } else if (active) {
+          setAiBlocked(false);
+        }
+      } catch {
+        /* non-fatal */
+      }
+    };
+    check();
+    return () => {
+      active = false;
+    };
+  }, [user]);
+
+  const goPremium = () => navigate("/premium");
 
   // ── Bio generation ──────────────────────────────────────
   const handleGenerateBio = async () => {
@@ -106,7 +163,8 @@ const AIPanel = ({ user, skills, formData, onBioGenerated, onSkillsAccepted }) =
   const toggleSkill = (skill) => {
     setSelectedSuggestions((prev) => {
       const next = new Set(prev);
-      next.has(skill) ? next.delete(skill) : next.add(skill);
+      if (next.has(skill)) next.delete(skill);
+      else next.add(skill);
       return next;
     });
   };
@@ -136,6 +194,22 @@ const AIPanel = ({ user, skills, formData, onBioGenerated, onSkillsAccepted }) =
         </span>
       </div>
 
+      {/* Plan-required banner (proactive, like the profile's premium gating) */}
+      {aiBlocked && (
+        <div className="flex items-center justify-between gap-3 border-b border-warning-400/30 bg-warning-500/10 px-5 py-3">
+          <p className="text-xs text-warning-400">
+            ✨ AI features require a {minPlanName} plan or higher.
+          </p>
+          <button
+            type="button"
+            onClick={goPremium}
+            className="shrink-0 rounded-lg bg-warning-500 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-warning-600"
+          >
+            Upgrade
+          </button>
+        </div>
+      )}
+
       <div className="flex flex-col divide-y divide-brand-400/10">
         {/* ── Bio Generator Section ── */}
         <div className="p-5">
@@ -143,14 +217,14 @@ const AIPanel = ({ user, skills, formData, onBioGenerated, onSkillsAccepted }) =
             <div className="min-w-0">
               <p className="text-sm font-semibold text-neutral-100">✍️ Bio Generator</p>
               <p className="mt-0.5 text-[11px] text-neutral-400">
-                AI writes a recruiter-friendly bio based on your skills & role.
+                AI writes a recruiter-friendly bio based on your skills &amp; role.
               </p>
             </div>
             <button
               type="button"
               onClick={handleGenerateBio}
-              disabled={bioLoading}
-              className="shrink-0 flex items-center gap-2 rounded-xl border border-brand-400/40 bg-brand-500/15 px-4 py-2 text-xs font-semibold text-brand-600 transition hover:bg-brand-500/25 disabled:opacity-50"
+              disabled={bioLoading || aiBlocked}
+              className="shrink-0 flex items-center gap-2 rounded-xl border border-brand-400/40 bg-brand-500/15 px-4 py-2 text-xs font-semibold text-brand-600 transition hover:bg-brand-500/25 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {bioLoading ? (
                 <>
@@ -165,16 +239,7 @@ const AIPanel = ({ user, skills, formData, onBioGenerated, onSkillsAccepted }) =
           </div>
 
           <AnimatePresence>
-            {bioError && (
-              <motion.p
-                initial={{ opacity: 0, y: -4 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                className="mt-3 rounded-lg border border-danger-400/30 bg-danger-500/10 px-3 py-2 text-xs text-danger-500"
-              >
-                {bioError}
-              </motion.p>
-            )}
+            {bioError && <FeatureError message={bioError} onUpgrade={goPremium} />}
           </AnimatePresence>
 
           <AnimatePresence>
@@ -183,22 +248,22 @@ const AIPanel = ({ user, skills, formData, onBioGenerated, onSkillsAccepted }) =
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}
-                 className="mt-4 rounded-xl border border-brand-400/20 bg-brand-500/5 p-4"
+                className="mt-4 rounded-xl border border-brand-400/20 bg-brand-500/5 p-4"
               >
                 <p className="mb-3 text-sm leading-relaxed text-neutral-200">{generatedBio}</p>
                 <div className="flex gap-2">
                   <button
                     type="button"
                     onClick={handleUseBio}
-                     className="flex-1 rounded-lg bg-brand-500 py-2 text-xs font-bold text-on-accent transition hover:bg-brand-600"
+                    className="flex-1 rounded-lg bg-brand-500 py-2 text-xs font-bold text-on-accent transition hover:bg-brand-600"
                   >
                     ✓ Use This Bio
                   </button>
                   <button
                     type="button"
                     onClick={handleGenerateBio}
-                    disabled={bioLoading}
-                     className="flex-1 rounded-lg border border-brand-400/30 py-2 text-xs font-semibold text-brand-600 transition hover:bg-brand-500/10"
+                    disabled={bioLoading || aiBlocked}
+                    className="flex-1 rounded-lg border border-brand-400/30 py-2 text-xs font-semibold text-brand-600 transition hover:bg-brand-500/10 disabled:opacity-50"
                   >
                     ↻ Regenerate
                   </button>
@@ -220,8 +285,8 @@ const AIPanel = ({ user, skills, formData, onBioGenerated, onSkillsAccepted }) =
             <button
               type="button"
               onClick={handleSuggestSkills}
-              disabled={skillsLoading}
-              className="shrink-0 flex items-center gap-2 rounded-xl border border-brand-400/40 bg-brand-500/15 px-4 py-2 text-xs font-semibold text-brand-600 transition hover:bg-brand-500/25 disabled:opacity-50"
+              disabled={skillsLoading || aiBlocked}
+              className="shrink-0 flex items-center gap-2 rounded-xl border border-brand-400/40 bg-brand-500/15 px-4 py-2 text-xs font-semibold text-brand-600 transition hover:bg-brand-500/25 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {skillsLoading ? (
                 <>
@@ -236,16 +301,7 @@ const AIPanel = ({ user, skills, formData, onBioGenerated, onSkillsAccepted }) =
           </div>
 
           <AnimatePresence>
-            {skillsError && (
-              <motion.p
-                initial={{ opacity: 0, y: -4 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                className="mt-3 rounded-lg border border-danger-400/30 bg-danger-500/10 px-3 py-2 text-xs text-danger-500"
-              >
-                {skillsError}
-              </motion.p>
-            )}
+            {skillsError && <FeatureError message={skillsError} onUpgrade={goPremium} />}
           </AnimatePresence>
 
           <AnimatePresence>
@@ -269,13 +325,14 @@ const AIPanel = ({ user, skills, formData, onBioGenerated, onSkillsAccepted }) =
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                         onClick={() => toggleSkill(skill)}
-                         className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
-                           selected
-                             ? "border-brand-400/60 bg-brand-500/20 text-brand-600"
-                             : "border-hairline bg-tint text-neutral-300 hover:border-brand-400/30 hover:bg-brand-500/10 hover:text-brand-600"
-                         }`}
+                        className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                          selected
+                            ? "border-brand-400/60 bg-brand-500/20 text-brand-600"
+                            : "border-hairline bg-tint text-neutral-300 hover:border-brand-400/30 hover:bg-brand-500/10 hover:text-brand-600"
+                        }`}
                       >
-                        {selected ? "✓ " : "+ "}{skill}
+                        {selected ? "✓ " : "+ "}
+                        {skill}
                       </motion.button>
                     );
                   })}
@@ -287,7 +344,7 @@ const AIPanel = ({ user, skills, formData, onBioGenerated, onSkillsAccepted }) =
                     animate={{ opacity: 1, scale: 1 }}
                     type="button"
                     onClick={handleAddSelected}
-                     className="mt-4 w-full rounded-xl bg-brand-500 py-2.5 text-sm font-bold text-on-accent transition hover:bg-brand-600"
+                    className="mt-4 w-full rounded-xl bg-brand-500 py-2.5 text-sm font-bold text-on-accent transition hover:bg-brand-600"
                   >
                     Add {selectedSuggestions.size} skill{selectedSuggestions.size > 1 ? "s" : ""} to profile
                   </motion.button>

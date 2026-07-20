@@ -11,7 +11,7 @@ import { useToast } from "../context/ToastProvider";
 import Button from "./ui/Button";
 import AIPanel from "./AIPanel";
 import ProfileViews from "./ProfileViews";
-import { syncGitHubData } from "../utils/aiApi";
+import { syncGitHubData, aiErrorMessage } from "../utils/aiApi";
 
 const roleOptions = [
   "frontend",
@@ -304,7 +304,7 @@ const EditProfile = ({ user }) => {
       await refreshUser(); // Refresh to see the saved token/stats
       addToast("AI Magic: Your profile is now code-aware!", "success");
     } catch (error) {
-      addToast("AI Sync failed. Is the username/token correct?", "error");
+      addToast(aiErrorMessage(error), "error");
     } finally {
       setSyncingGithub(false);
     }

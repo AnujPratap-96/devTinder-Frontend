@@ -6,12 +6,13 @@ import confetti from "canvas-confetti";
 import { HiHeart, HiX, HiChat, HiSparkles } from "react-icons/hi";
 import { useNavigate } from "react-router-dom";
 import Button from "./ui/Button";
-import { suggestCollaboration } from "../utils/aiApi";
+import { suggestCollaboration, aiErrorMessage } from "../utils/aiApi";
 
 const MatchCelebration = () => {
   const user = useSelector((store) => store.user);
   const [match, setMatch] = useState(null);
   const [collab, setCollab] = useState(null);
+  const [collabError, setCollabError] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -35,7 +36,7 @@ const MatchCelebration = () => {
       if (other) {
         suggestCollaboration(other._id)
           .then(res => setCollab(res.data))
-          .catch(() => {});
+          .catch(err => setCollabError(aiErrorMessage(err)));
       }
     });
 
@@ -120,6 +121,18 @@ const MatchCelebration = () => {
                 </div>
                 <h4 className="text-sm font-bold text-white mb-1">Project Idea: {collab.title}</h4>
                 <p className="text-[11px] text-neutral-400 italic line-clamp-1">{collab.why}</p>
+              </motion.div>
+            )}
+            {!collab && collabError && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-6 rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4 text-left backdrop-blur-sm"
+              >
+                <div className="mb-1 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-amber-400">
+                  <HiSparkles /> AI Suggestion
+                </div>
+                <p className="text-[11px] text-amber-200">{collabError}</p>
               </motion.div>
             )}
           </AnimatePresence>

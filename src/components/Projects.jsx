@@ -20,7 +20,7 @@ import Card from "./ui/Card";
 import Button from "./ui/Button";
 import { useToast } from "../context/ToastProvider";
 import { addProjects, removeProject, updateProject } from "../store/projectSlice";
-import { generateProjectDescription, suggestProjectTechStack, generateProjectRoadmap, suggestProjectDetails } from "../utils/aiApi";
+import { generateProjectDescription, suggestProjectTechStack, generateProjectRoadmap, suggestProjectDetails, aiErrorMessage } from "../utils/aiApi";
 import { HiTrendingUp } from "react-icons/hi";
 
 const AI_LOADING_TEXT = "AI is thinking...";
@@ -46,7 +46,7 @@ const RoadmapModal = ({ project, onClose }) => {
        setRoadmap(response.data.roadmap);
       if (force) addToast("Roadmap enhanced with AI!", "success");
     } catch (error) {
-      addToast("Failed to generate roadmap", "error");
+      addToast(aiErrorMessage(error), "error");
       if (!force) onClose();
     } finally {
       setLoading(false);
@@ -171,7 +171,7 @@ const EditProjectModal = ({ project, onClose, onSave }) => {
        }));
       addToast("AI has filled in the project details!", "success");
     } catch (error) {
-      addToast("Failed to get suggestions", "error");
+      addToast(aiErrorMessage(error), "error");
     } finally {
       setLoadingSuggestion(false);
     }
@@ -756,7 +756,7 @@ const Projects = () => {
        }));
       addToast("AI has filled in the project details!", "success");
     } catch (error) {
-      addToast("Failed to get suggestions", "error");
+      addToast(aiErrorMessage(error), "error");
     } finally {
       setLoadingSuggestion(false);
     }
