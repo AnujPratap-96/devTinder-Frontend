@@ -36,15 +36,18 @@ const InCallScreen = () => {
             className="h-full w-full object-cover"
           />
         ) : (
-          <div className="flex flex-col items-center gap-4">
-            <img
-              src={resolvePhotoUrl(peer?.photoUrl)}
-              alt={peer?.firstName || "User"}
-              className="h-28 w-28 rounded-full object-cover"
-            />
-            <p className="text-neutral-300">{peer?.firstName || "User"}</p>
-            <p className="text-sm text-neutral-500">Voice call in progress</p>
-          </div>
+          <>
+            <audio ref={remoteRef} autoPlay playsInline />
+            <div className="flex flex-col items-center gap-4">
+              <img
+                src={resolvePhotoUrl(peer?.photoUrl)}
+                alt={peer?.firstName || "User"}
+                className="h-28 w-28 rounded-full object-cover"
+              />
+              <p className="text-neutral-300">{peer?.firstName || "User"}</p>
+              <p className="text-sm text-neutral-500">Voice call in progress</p>
+            </div>
+          </>
         )}
 
         {/* Local PiP */}

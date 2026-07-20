@@ -37,7 +37,11 @@ const callClient = {
       localStream.getTracks().forEach((t) => pc.addTrack(t, localStream));
     }
     pc.ontrack = (e) => {
-      e.streams[0].getTracks().forEach((t) => remoteStream.addTrack(t));
+      if (e.streams[0]) {
+        e.streams[0].getTracks().forEach((t) => remoteStream.addTrack(t));
+      } else if (e.track) {
+        remoteStream.addTrack(e.track);
+      }
       handlers.onRemote?.(remoteStream);
     };
     pc.onicecandidate = (e) => {
