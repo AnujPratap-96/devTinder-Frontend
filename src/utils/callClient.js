@@ -30,6 +30,7 @@ const callClient = {
   },
 
   async createPeer(iceServers) {
+    if (pc) return pc;
     pc = new RTCPeerConnection({ iceServers });
     remoteStream = new MediaStream();
     if (localStream) {

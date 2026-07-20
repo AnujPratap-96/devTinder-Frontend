@@ -16,6 +16,7 @@ import {
 
 export const useCall = () => {
   const user = useSelector((s) => s.user);
+  const status = useSelector((s) => s.call.status);
   const dispatch = useDispatch();
   const store = useStore();
   const { addToast } = useToast();
@@ -150,11 +151,29 @@ export const useCall = () => {
   }, [user?._id, dispatch, addToast, store]);
 
   const startCall = useCallback(
-    (calleeId, type, chatId, peer) => {
+    async (calleeId, type, chatId, peer) => {
       dispatch(startOutgoing({ peer, type, chatId }));
+      try {
+        const ice = await callClient.fetchIceServers();
+        const stream = await callClient.getMedia(type);
+        setLocalStream(stream);
+        await callClient.createPeer(ice);
+      } catch (err) {
+        callClient.close();
+        setLocalStream(null);
+        setRemoteStream(null);
+        dispatch(resetCall());
+        addToast(
+          err?.name === "NotAllowedError"
+            ? "Microphone/camera permission is required to start a call"
+            : "Could not access microphone/camera",
+          "error"
+        );
+        return;
+      }
       socketRef.current?.emit("call:invite", { calleeId, type, chatId });
     },
-    [dispatch]
+    [dispatch, addToast]
   );
 
   const acceptCall = useCallback(async () => {
@@ -202,6 +221,23 @@ export const useCall = () => {
   }, [dispatch]);
 
   const switchCamera = useCallback(() => callClient.switchCamera(), []);
+
+  // Auto-disconnect if the call never reaches an active (connected) state.
+  const endCallRef = useRef(endCall);
+  useEffect(() => {
+    endCallRef.current = endCall;
+  }, [endCall]);
+
+  useEffect(() => {
+    if (status !== "connecting") return;
+    const t = setTimeout(() => {
+      if (store.getState().call.status !== "active") {
+        addToast("Call could not connect. Please try again.", "error");
+        endCallRef.current();
+      }
+    }, 10000);
+    return () => clearTimeout(t);
+  }, [status, store, addToast]);
 
   return {
     startCall,
