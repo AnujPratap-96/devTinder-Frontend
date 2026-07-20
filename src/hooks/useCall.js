@@ -116,7 +116,10 @@ export const useCall = () => {
       addToast("User is not reachable right now", "error");
     };
     const onError = (e) => {
-      dispatch(setError(e?.message));
+      callClient.close();
+      setLocalStream(null);
+      setRemoteStream(null);
+      dispatch(resetCall());
       addToast(e?.message || "Call error", "error");
     };
     const onMissed = () => addToast("You missed a call", "info");
@@ -222,21 +225,30 @@ export const useCall = () => {
 
   const switchCamera = useCallback(() => callClient.switchCamera(), []);
 
-  // Auto-disconnect if the call never reaches an active (connected) state.
+  // Auto-disconnect if the call never reaches an active (connected) state,
+  // within 10s of being initiated (outgoing) or connecting.
   const endCallRef = useRef(endCall);
+  const callDeadlineRef = useRef(null);
   useEffect(() => {
     endCallRef.current = endCall;
   }, [endCall]);
 
   useEffect(() => {
-    if (status !== "connecting") return;
-    const t = setTimeout(() => {
-      if (store.getState().call.status !== "active") {
-        addToast("Call could not connect. Please try again.", "error");
-        endCallRef.current();
+    if ((status === "outgoing" || status === "connecting") && !callDeadlineRef.current) {
+      callDeadlineRef.current = setTimeout(() => {
+        callDeadlineRef.current = null;
+        if (store.getState().call.status !== "active") {
+          addToast("Call could not connect. Please try again.", "error");
+          endCallRef.current();
+        }
+      }, 10000);
+    }
+    if (status === "active" || !status) {
+      if (callDeadlineRef.current) {
+        clearTimeout(callDeadlineRef.current);
+        callDeadlineRef.current = null;
       }
-    }, 10000);
-    return () => clearTimeout(t);
+    }
   }, [status, store, addToast]);
 
   return {
