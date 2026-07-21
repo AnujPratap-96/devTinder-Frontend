@@ -4,7 +4,7 @@ DevTinder is a **MERN stack-based** platform where developers can **connect 🤝
 
 
 ## 🌐 Live Demo
-🔗 [Visit DevTinder](https://devs-tinder.site)
+🔗 [Visit DevTinder](https://dev-tinder-frontend-six-virid.vercel.app)
 
 
 ## 🛠️ Tech Stack
