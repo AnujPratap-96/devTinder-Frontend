@@ -321,6 +321,14 @@ const ChatBox = () => {
   }, [targetUserId, userId]);
 
   useEffect(() => {
+    if (sortedMessages.length > 0) {
+      setTimeout(() => {
+        virtuosoRef.current?.scrollToIndex({ index: sortedMessages.length - 1, align: "end", behavior: "auto" });
+      }, 50);
+    }
+  }, [sortedMessages.length]);
+
+  useEffect(() => {
     initializeSocket();
     return () => {
       pendingTimeoutsRef.current.forEach((clearFn) => clearFn());
