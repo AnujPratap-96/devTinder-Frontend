@@ -13,7 +13,7 @@ import {
   HiDotsVertical,
   HiBan,
   HiFlag,
-  HiOutlineTrash,
+  HiX,
 } from "react-icons/hi";
 import { BASE_URL, createSocketConnection } from "../utils/constant";
 import { ensureCrypto, isCryptoReady, encryptMessage, decryptMessage, canEncryptWith } from "../utils/e2ee";
@@ -24,32 +24,6 @@ import { generateIcebreaker, suggestCollaboration, aiErrorMessage } from "../uti
 import CallButton from "./call/CallButton";
 
 const MESSAGE_LIMIT = 30;
-const SWIPE_THRESHOLD = -80;
-
-const SwipeableBubble = ({ children, isOwn, onDelete, disabled }) => {
-  if (!isOwn || disabled) return children;
-
-  return (
-    <div className="relative overflow-hidden rounded-2xl">
-      <div className="absolute inset-0 flex items-center justify-end rounded-2xl bg-error-500 pr-5">
-        <HiOutlineTrash className="h-5 w-5 text-white" />
-      </div>
-      <motion.div
-        drag="x"
-        dragConstraints={{ left: 0, right: 0 }}
-        dragElastic={0.08}
-        onDragEnd={(_, info) => {
-          if (info.offset.x < SWIPE_THRESHOLD) {
-            onDelete();
-          }
-        }}
-        className="relative z-10 cursor-grab active:cursor-grabbing"
-      >
-        {children}
-      </motion.div>
-    </div>
-  );
-};
 
 const generateClientId = () =>
   typeof crypto !== "undefined" && crypto.randomUUID
@@ -139,7 +113,7 @@ const ChatBox = () => {
     setCollabLoading(true);
     try {
       const { data } = await suggestCollaboration(targetUserId);
-       setCollabSuggestion(data);
+      setCollabSuggestion(data);
     } catch (err) {
       addToast(aiErrorMessage(err), "error");
     } finally {
@@ -166,7 +140,7 @@ const ChatBox = () => {
     const diffMin = Math.floor(diffSec / 60);
     const diffHour = Math.floor(diffMin / 60);
     const diffDay = Math.floor(diffHour / 24);
-    
+
     if (diffSec < 60) return "Just now";
     if (diffMin < 60) return `${diffMin}m ago`;
     if (diffHour < 24) return `${diffHour}h ago`;
@@ -245,15 +219,15 @@ const ChatBox = () => {
         `${BASE_URL}/messages/${matchId}?page=${nextPage}&limit=${MESSAGE_LIMIT}`,
         { withCredentials: true }
       );
-       const decorated = await Promise.all(
-         data.data.messages.map((msg) => decryptIncoming(decorateMessage(msg, userId, targetUserId)))
-       );
-       if (decorated.length) {
-         setMessages((prev) => [...decorated, ...prev]);
-         virtuosoRef.current?.prependItems(decorated.length);
-       }
-       setPage(nextPage);
-       setHasMore(data.data.hasMore);
+      const decorated = await Promise.all(
+        data.data.messages.map((msg) => decryptIncoming(decorateMessage(msg, userId, targetUserId)))
+      );
+      if (decorated.length) {
+        setMessages((prev) => [...decorated, ...prev]);
+        virtuosoRef.current?.prependItems(decorated.length);
+      }
+      setPage(nextPage);
+      setHasMore(data.data.hasMore);
     } catch (err) {
       addToast("Unable to retrieve older messages", "error");
     } finally {
@@ -337,10 +311,6 @@ const ChatBox = () => {
     socket.on("typing:start", (payload) => handleTyping(payload, true));
     socket.on("typing:stop", (payload) => handleTyping(payload, false));
 
-    socket.on("message:deleted", ({ messageId }) => {
-      setMessages((prev) => prev.filter((msg) => msg._id !== messageId));
-    });
-
     socket.on("chat:error", ({ message }) => {
       addToast(message, "error");
     });
@@ -374,7 +344,6 @@ const ChatBox = () => {
       socketRef.current.off("messages:seen");
       socketRef.current.off("typing:start");
       socketRef.current.off("typing:stop");
-      socketRef.current.off("message:deleted");
       socketRef.current.off("chat:error");
     };
   }, [userId, targetUserId, matchId]);
@@ -388,7 +357,7 @@ const ChatBox = () => {
       `${BASE_URL}/messages/seen`,
       { matchId },
       { withCredentials: true }
-    ).catch(() => {});
+    ).catch(() => { });
   }, [sortedMessages, matchId, userId]);
 
 
@@ -522,16 +491,6 @@ const ChatBox = () => {
     socketRef.current.emit("sendMessage", retriedPayload);
   };
 
-  const handleDelete = async (message) => {
-    try {
-      await axios.delete(`${BASE_URL}/messages/${message._id}`, { withCredentials: true });
-      socketRef.current?.emit("message:delete", { messageId: message._id, matchId });
-      setMessages((prev) => prev.filter((msg) => msg._id !== message._id));
-    } catch (err) {
-      addToast(err.response?.data?.message || "Failed to delete message", "error");
-    }
-  };
-
   const handleKeyDown = (event) => {
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
@@ -639,35 +598,35 @@ const ChatBox = () => {
                 peer={otherUser}
               />
               <div className="relative">
-              <button
-                type="button"
-                onClick={() => setShowMenu(!showMenu)}
-                className="p-2 rounded-lg text-neutral-400 hover:text-neutral-200 hover:bg-tint"
-              >
-                <HiDotsVertical className="text-lg" />
-              </button>
-              {showMenu && (
-                <div className="absolute right-0 top-full mt-1 w-40 rounded-lg border border-hairline bg-surface-900 py-1 shadow-xl z-50">
-                  <button
-                    type="button"
-                    onClick={blockUser}
-                    className="w-full px-4 py-2 text-left text-sm text-warning-400 hover:bg-tint flex items-center gap-2"
-                  >
-                    <HiBan className="text-sm" /> Block
-                  </button>
-                  <button
-                    type="button"
-                    onClick={reportUser}
-                    className="w-full px-4 py-2 text-left text-sm text-neutral-400 hover:bg-tint flex items-center gap-2"
-                  >
-                    <HiFlag className="text-sm" /> Report
-                  </button>
-                </div>
-              )}
+                <button
+                  type="button"
+                  onClick={() => setShowMenu(!showMenu)}
+                  className="p-2 rounded-lg text-neutral-400 hover:text-neutral-200 hover:bg-tint"
+                >
+                  <HiDotsVertical className="text-lg" />
+                </button>
+                {showMenu && (
+                  <div className="absolute right-0 top-full mt-1 w-40 rounded-lg border border-hairline bg-surface-900 py-1 shadow-xl z-50">
+                    <button
+                      type="button"
+                      onClick={blockUser}
+                      className="w-full px-4 py-2 text-left text-sm text-warning-400 hover:bg-tint flex items-center gap-2"
+                    >
+                      <HiBan className="text-sm" /> Block
+                    </button>
+                    <button
+                      type="button"
+                      onClick={reportUser}
+                      className="w-full px-4 py-2 text-left text-sm text-neutral-400 hover:bg-tint flex items-center gap-2"
+                    >
+                      <HiFlag className="text-sm" /> Report
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
       </div>
 
       {/* Message list OR empty state */}
@@ -675,78 +634,67 @@ const ChatBox = () => {
         {sortedMessages.length === 0 ? (
           <EmptyChat />
         ) : (
-        <Virtuoso
-          ref={virtuosoRef}
-          data={sortedMessages}
-          followOutput="smooth"
-          startReached={handleLoadOlder}
-          overscan={200}
-          style={{ height: "100%", overflowX: "hidden" }}
-          className="px-0 py-4"
-          components={{
-            Header: () => <div className="h-8" />,
-          }}
-          
-          itemContent={(index, message) => {
-            const showAvatar = !message.isOwn && (index === 0 || sortedMessages[index - 1]?.senderId !== message.senderId);
-            return (
-              <div
-                className={`mb-4 flex w-full gap-3 px-6 ${message.isOwn ? "justify-end" : "justify-start text-left"}`}
-              >
-                {!message.isOwn && (
-                  <div className={`mt-auto h-8 w-8 shrink-0 overflow-hidden rounded-lg border border-hairline-soft transition ${showAvatar ? "opacity-100" : "opacity-0"}`}>
-                    <img
-                      src={resolvePhotoUrl(otherUser?.photoUrl, otherUser?.firstName)}
-                      alt="avatar"
-                      className="h-full w-full object-cover"
-                    />
-                  </div>
-                )}
-                <SwipeableBubble isOwn={message.isOwn} onDelete={() => handleDelete(message)} disabled={message.status === "pending"}>
-                  <motion.div
-                    layout
-                    className={`relative flex max-w-[75%] flex-col rounded-2xl px-3 py-1.5 text-sm shadow-sm transition-all sm:max-w-[70%] group ${
-                      message.isOwn
+          <Virtuoso
+            ref={virtuosoRef}
+            data={sortedMessages}
+            followOutput="smooth"
+            startReached={handleLoadOlder}
+            overscan={200}
+            style={{ height: "100%", overflowX: "hidden" }}
+            className="px-0 py-4"
+            components={{
+              Header: () => <div className="h-8" />,
+            }}
+
+            itemContent={(index, message) => {
+              const showAvatar = !message.isOwn && (index === 0 || sortedMessages[index - 1]?.senderId !== message.senderId);
+              return (
+                <motion.div
+                  layout
+                  className={`mb-4 flex w-full gap-3 px-6 ${message.isOwn ? "justify-end" : "justify-start text-left"}`}
+                >
+                  {!message.isOwn && (
+                    <div className={`mt-auto h-8 w-8 shrink-0 overflow-hidden rounded-lg border border-hairline-soft transition ${showAvatar ? "opacity-100" : "opacity-0"}`}>
+                      <img
+                        src={resolvePhotoUrl(otherUser?.photoUrl, otherUser?.firstName)}
+                        alt="avatar"
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+                  )}
+                  <div
+                    className={`relative flex max-w-[75%] flex-col rounded-2xl px-4 py-2.5 text-sm shadow-sm transition-all sm:max-w-[70%] ${message.isOwn
                         ? "bg-brand-500 text-white rounded-br-none"
                         : "bg-surface-800 text-neutral-100 border border-hairline-soft rounded-bl-none"
-                    }`}
+                      }`}
                   >
                     <p className="break-words whitespace-pre-wrap leading-relaxed">
                       {message.message}
                     </p>
-                    {message.isOwn && message.status !== "pending" && (
+                    <div className={`mt-1 flex items-center gap-1.5 text-[10px] tabular-nums ${message.isOwn ? "justify-end text-white/70" : "text-neutral-400"}`}>
+                      <span>{formatMessageTime(message.createdAt)}</span>
+                      {message.isOwn && (
+                        <>
+                          <span className="opacity-40">•</span>
+                          <span>{getStatusLabel(message, true)}</span>
+                        </>
+                      )}
+                    </div>
+                    {message.status === "failed" && (
                       <button
                         type="button"
-                        onClick={() => handleDelete(message)}
-                        className="absolute bottom-1 right-1 hidden group-hover:flex h-5 w-5 items-center justify-center rounded-full bg-error-500/80 text-white text-[10px] shadow-sm hover:bg-error-600 transition"
+                        onClick={() => handleRetry(message)}
+                        className="mt-1 self-end rounded-md bg-tint-strong px-2 py-0.5 text-[10px] text-white hover:bg-tint-strong"
                       >
-                        <HiOutlineTrash className="h-3 w-3" />
+                        Retry
                       </button>
                     )}
-                    <div className={`mt-0.5 flex items-center gap-1.5 text-[10px] tabular-nums ${message.isOwn ? "justify-end text-white/70" : "text-neutral-400"}`}>
-                    <span>{formatMessageTime(message.createdAt)}</span>
-                    {message.isOwn && (
-                      <>
-                        <span className="opacity-40">•</span>
-                        <span>{getStatusLabel(message, true)}</span>
-                      </>
-                    )}
                   </div>
-                  {message.status === "failed" && (
-                     <button
-                       type="button"
-                       onClick={() => handleRetry(message)}
-                       className="mt-1 self-end rounded-md bg-tint-strong px-2 py-0.5 text-[10px] text-white hover:bg-tint-strong"
-                     >
-                       Retry
-                     </button>
-                  )}
                 </motion.div>
-              </SwipeableBubble>
-            );
-          }}
-        />
-      )}
+              );
+            }}
+          />
+        )}
       </div>
 
       <div className="flex flex-col gap-2 border-t border-hairline-soft px-4 py-3">
@@ -768,7 +716,7 @@ const ChatBox = () => {
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-violet-500 mb-1">AI Icebreaker</p>
                 {icebreakerLoading ? (
                   <div className="flex items-center gap-1.5">
-                    {[0,1,2].map((i) => (
+                    {[0, 1, 2].map((i) => (
                       <motion.span
                         key={i}
                         className="block h-1 w-1 rounded-full bg-violet-400"
@@ -840,11 +788,11 @@ const ChatBox = () => {
               className="relative z-10 w-full max-w-lg overflow-hidden rounded-3xl border border-hairline bg-surface-900 shadow-brand-strong"
             >
               <style>{`
-                .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-                .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-                .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, 0.2); border-radius: 10px; }
-                .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(99, 102, 241, 0.4); }
-              `}</style>
+               .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+               .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+               .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, 0.2); border-radius: 10px; }
+               .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(99, 102, 241, 0.4); }
+             `}</style>
               <div className="relative border-b border-brand-500/10 bg-brand-500/5 px-6 py-5">
                 <button
                   type="button"
@@ -858,12 +806,12 @@ const ChatBox = () => {
               </div>
               <div className="max-h-[50vh] overflow-y-auto p-6 space-y-5 custom-scrollbar">
                 <div className="space-y-2">
-                   <p className="text-[10px] font-black uppercase tracking-widest text-neutral-500">The Mission</p>
-                   <div className="rounded-2xl border border-hairline-soft bg-tint p-4 text-[13px] sm:text-sm leading-relaxed text-neutral-300">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-neutral-500">The Mission</p>
+                  <div className="rounded-2xl border border-hairline-soft bg-tint p-4 text-[13px] sm:text-sm leading-relaxed text-neutral-300">
                     {collabSuggestion.description}
                   </div>
                 </div>
-                
+
                 <div className="space-y-2">
                   <p className="text-[10px] font-black uppercase tracking-widest text-brand-500/60">AI Insight: Why this works</p>
                   <p className="text-[13px] italic text-brand-600 bg-brand-500/5 p-4 rounded-2xl border border-brand-500/10 leading-relaxed">
