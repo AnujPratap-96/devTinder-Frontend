@@ -13,7 +13,7 @@ import {
   HiDotsVertical,
   HiBan,
   HiFlag,
-  HiX,
+  HiOutlineTrash,
 } from "react-icons/hi";
 import { BASE_URL, createSocketConnection } from "../utils/constant";
 import { ensureCrypto, isCryptoReady, encryptMessage, decryptMessage, canEncryptWith } from "../utils/e2ee";
@@ -24,6 +24,32 @@ import { generateIcebreaker, suggestCollaboration, aiErrorMessage } from "../uti
 import CallButton from "./call/CallButton";
 
 const MESSAGE_LIMIT = 30;
+const SWIPE_THRESHOLD = -80;
+
+const SwipeableBubble = ({ children, isOwn, onDelete, disabled }) => {
+  if (!isOwn || disabled) return children;
+
+  return (
+    <div className="relative overflow-hidden rounded-2xl">
+      <div className="absolute inset-0 flex items-center justify-end rounded-2xl bg-error-500 pr-5">
+        <HiOutlineTrash className="h-5 w-5 text-white" />
+      </div>
+      <motion.div
+        drag="x"
+        dragConstraints={{ left: 0, right: 0 }}
+        dragElastic={0.08}
+        onDragEnd={(_, info) => {
+          if (info.offset.x < SWIPE_THRESHOLD) {
+            onDelete();
+          }
+        }}
+        className="relative z-10 cursor-grab active:cursor-grabbing"
+      >
+        {children}
+      </motion.div>
+    </div>
+  );
+};
 
 const generateClientId = () =>
   typeof crypto !== "undefined" && crypto.randomUUID
@@ -664,8 +690,7 @@ const ChatBox = () => {
           itemContent={(index, message) => {
             const showAvatar = !message.isOwn && (index === 0 || sortedMessages[index - 1]?.senderId !== message.senderId);
             return (
-              <motion.div
-                layout
+              <div
                 className={`mb-4 flex w-full gap-3 px-6 ${message.isOwn ? "justify-end" : "justify-start text-left"}`}
               >
                 {!message.isOwn && (
@@ -677,26 +702,28 @@ const ChatBox = () => {
                     />
                   </div>
                 )}
-                <div 
-                  className={`relative flex max-w-[75%] flex-col rounded-2xl px-3 py-1.5 text-sm shadow-sm transition-all sm:max-w-[70%] group ${
-                    message.isOwn 
-                      ? "bg-brand-500 text-white rounded-br-none" 
-                      : "bg-surface-800 text-neutral-100 border border-hairline-soft rounded-bl-none"
-                  }`}
-                >
-                  <p className="break-words whitespace-pre-wrap leading-relaxed">
-                    {message.message}
-                  </p>
-                  {message.isOwn && (
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(message)}
-                      className="absolute -top-2 -right-2 hidden group-hover:flex h-5 w-5 items-center justify-center rounded-full bg-error-500 text-white text-xs shadow-md hover:bg-error-600 transition"
-                    >
-                      ✕
-                    </button>
-                  )}
-                  <div className={`mt-0.5 flex items-center gap-1.5 text-[10px] tabular-nums ${message.isOwn ? "justify-end text-white/70" : "text-neutral-400"}`}>
+                <SwipeableBubble isOwn={message.isOwn} onDelete={() => handleDelete(message)} disabled={message.status === "pending"}>
+                  <motion.div
+                    layout
+                    className={`relative flex max-w-[75%] flex-col rounded-2xl px-3 py-1.5 text-sm shadow-sm transition-all sm:max-w-[70%] group ${
+                      message.isOwn
+                        ? "bg-brand-500 text-white rounded-br-none"
+                        : "bg-surface-800 text-neutral-100 border border-hairline-soft rounded-bl-none"
+                    }`}
+                  >
+                    <p className="break-words whitespace-pre-wrap leading-relaxed">
+                      {message.message}
+                    </p>
+                    {message.isOwn && message.status !== "pending" && (
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(message)}
+                        className="absolute bottom-1 right-1 hidden group-hover:flex h-5 w-5 items-center justify-center rounded-full bg-error-500/80 text-white text-[10px] shadow-sm hover:bg-error-600 transition"
+                      >
+                        <HiOutlineTrash className="h-3 w-3" />
+                      </button>
+                    )}
+                    <div className={`mt-0.5 flex items-center gap-1.5 text-[10px] tabular-nums ${message.isOwn ? "justify-end text-white/70" : "text-neutral-400"}`}>
                     <span>{formatMessageTime(message.createdAt)}</span>
                     {message.isOwn && (
                       <>
@@ -714,8 +741,8 @@ const ChatBox = () => {
                        Retry
                      </button>
                   )}
-                </div>
-              </motion.div>
+                </motion.div>
+              </SwipeableBubble>
             );
           }}
         />
