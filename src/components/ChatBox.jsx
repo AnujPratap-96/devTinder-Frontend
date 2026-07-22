@@ -311,6 +311,10 @@ const ChatBox = () => {
     socket.on("typing:start", (payload) => handleTyping(payload, true));
     socket.on("typing:stop", (payload) => handleTyping(payload, false));
 
+    socket.on("message:deleted", ({ messageId }) => {
+      setMessages((prev) => prev.filter((msg) => msg._id !== messageId));
+    });
+
     socket.on("chat:error", ({ message }) => {
       addToast(message, "error");
     });
@@ -344,6 +348,7 @@ const ChatBox = () => {
       socketRef.current.off("messages:seen");
       socketRef.current.off("typing:start");
       socketRef.current.off("typing:stop");
+      socketRef.current.off("message:deleted");
       socketRef.current.off("chat:error");
     };
   }, [userId, targetUserId, matchId]);
@@ -489,6 +494,16 @@ const ChatBox = () => {
     schedulePendingTimeout(retriedPayload.clientMessageId);
     emitTyping(false);
     socketRef.current.emit("sendMessage", retriedPayload);
+  };
+
+  const handleDelete = async (message) => {
+    try {
+      await axios.delete(`${BASE_URL}/messages/${message._id}`, { withCredentials: true });
+      socketRef.current?.emit("message:delete", { messageId: message._id, matchId });
+      setMessages((prev) => prev.filter((msg) => msg._id !== message._id));
+    } catch (err) {
+      addToast(err.response?.data?.message || "Failed to delete message", "error");
+    }
   };
 
   const handleKeyDown = (event) => {
@@ -663,7 +678,7 @@ const ChatBox = () => {
                   </div>
                 )}
                 <div 
-                  className={`relative flex max-w-[75%] flex-col rounded-2xl px-4 py-2.5 text-sm shadow-sm transition-all sm:max-w-[70%] ${
+                  className={`relative flex max-w-[75%] flex-col rounded-2xl px-3 py-1.5 text-sm shadow-sm transition-all sm:max-w-[70%] group ${
                     message.isOwn 
                       ? "bg-brand-500 text-white rounded-br-none" 
                       : "bg-surface-800 text-neutral-100 border border-hairline-soft rounded-bl-none"
@@ -672,7 +687,16 @@ const ChatBox = () => {
                   <p className="break-words whitespace-pre-wrap leading-relaxed">
                     {message.message}
                   </p>
-                  <div className={`mt-1 flex items-center gap-1.5 text-[10px] tabular-nums ${message.isOwn ? "justify-end text-white/70" : "text-neutral-400"}`}>
+                  {message.isOwn && (
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(message)}
+                      className="absolute -top-2 -right-2 hidden group-hover:flex h-5 w-5 items-center justify-center rounded-full bg-error-500 text-white text-xs shadow-md hover:bg-error-600 transition"
+                    >
+                      ✕
+                    </button>
+                  )}
+                  <div className={`mt-0.5 flex items-center gap-1.5 text-[10px] tabular-nums ${message.isOwn ? "justify-end text-white/70" : "text-neutral-400"}`}>
                     <span>{formatMessageTime(message.createdAt)}</span>
                     {message.isOwn && (
                       <>
