@@ -13,7 +13,7 @@ import { removeUser } from "../store/userSlice";
 import axios from "axios";
 import { BASE_URL, closeSocketConnection } from "../utils/constant";
 import { useToast } from "../context/ToastProvider";
-import { HiBookmark, HiCollection, HiShieldCheck } from "react-icons/hi";
+import { HiBookmark, HiCollection, HiShieldCheck, HiMail } from "react-icons/hi";
 
 const Sidebar = ({ isSidebarOpen, setSidebarOpen }) => {
   const { addToast } = useToast();
@@ -62,6 +62,7 @@ const Sidebar = ({ isSidebarOpen, setSidebarOpen }) => {
     { to: "/messages", icon: AiOutlineMessage, text: "Messages" },
     { to: "/projects", icon: HiCollection, text: "Projects" },
     { to: "/bookmarks", icon: HiBookmark, text: "Bookmarks" },
+    { to: "/invite-friends", icon: HiMail, text: "Invite Friends" },
     { to: "/profile", icon: FaUserEdit, text: "Profile" },
     { to: "/premium", icon: FaCrown, text: "Premium", iconClassName: "text-warning-400 group-hover:text-warning-100" },
   ];

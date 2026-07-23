@@ -22,6 +22,7 @@ import { ToastProvider } from "./context/ToastProvider";
 import { CallProvider } from "./components/call/CallProvider";
 import Projects from "./components/Projects";
 import Bookmarks from "./components/Bookmarks";
+import InviteFriends from "./components/InviteFriends";
 import AdminLayout from "./components/admin/AdminLayout";
 import AdminUsers from "./components/admin/AdminUsers";
 import AdminReports from "./components/admin/AdminReports";
@@ -60,6 +61,7 @@ const App = () => {
                     <Route path="/chat/:targetUserId" element={<ChatBox />} />
                     <Route path="/projects" element={<Projects />} />
                     <Route path="/bookmarks" element={<Bookmarks />} />
+                    <Route path="/invite-friends" element={<InviteFriends />} />
                     <Route path="/admin" element={<AdminLayout />}>
                       <Route index element={<Navigate to="users" replace />} />
                       <Route path="users" element={<AdminUsers />} />
