@@ -1,7 +1,7 @@
 import axios from "axios";
 import { BASE_URL } from "../utils/constant";
 import { useDispatch, useSelector } from "react-redux";
-import { useCallback, useEffect, useState, useTransition, memo, forwardRef } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition, memo, forwardRef } from "react";
 import { addFeed } from "../store/feedSlice";
 import { VirtuosoGrid } from "react-virtuoso";
 import UserCard from "./UserCard";
@@ -63,7 +63,7 @@ const SkeletonCard = () => (
 const Feed = () => {
   const { addToast } = useToast();
   const dispatch = useDispatch();
-  const feed = useSelector((store) => store.feed);
+  const reduxFeed = useSelector((store) => store.feed);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [nextCursor, setNextCursor] = useState(null);
@@ -71,6 +71,7 @@ const Feed = () => {
   const [coords, setCoords] = useState(null);
   const [locationRequested, setLocationRequested] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const seeded = useRef(false);
   
   // Search state
   const [searchQuery, setSearchQuery] = useState("");
@@ -116,7 +117,7 @@ const Feed = () => {
         setFeedItems((prev) => [...prev, ...users]);
       } else {
         setFeedItems(users);
-        dispatch(addFeed(users));
+        dispatch(addFeed({ items: users, nextCursor: next, hasMore: more }));
       }
       setNextCursor(next);
       setHasMore(more);
@@ -149,7 +150,7 @@ const Feed = () => {
         withCredentials: true,
         signal,
       });
-      setSearchResults(res.data.data || []);
+      setSearchResults(res.data.data?.users || []);
     } catch (err) {
       if (axios.isCancel(err)) return;
       console.error("Search error:", err);
@@ -169,8 +170,19 @@ const Feed = () => {
     return () => controller.abort();
   }, [debouncedQuery, fetchSearchResults]);
 
+  // Seed from Redux on mount; re-fetch only when search ends
   useEffect(() => {
-    if (!searchQuery.trim() && !isSearching) {
+    if (!seeded.current && !searchQuery.trim() && !isSearching) {
+      seeded.current = true;
+      if (reduxFeed?.items?.length > 0) {
+        setFeedItems(reduxFeed.items);
+        setNextCursor(reduxFeed.nextCursor);
+        setHasMore(reduxFeed.hasMore);
+        setLoading(false);
+      } else {
+        getFeed({ cursor: null });
+      }
+    } else if (!searchQuery.trim() && !isSearching && seeded.current) {
       getFeed({ cursor: null });
     }
   }, [getFeed, searchQuery, isSearching]);

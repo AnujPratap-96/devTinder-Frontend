@@ -1,4 +1,6 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { addProfileViews } from "../store/profileViewSlice";
 import axios from "axios";
 import { BASE_URL } from "../utils/constant";
 import Card from "./ui/Card";
@@ -10,12 +12,15 @@ import { HiEye, HiArrowDown } from "react-icons/hi";
 const PAGE_SIZE = 10;
 
 const ProfileViews = () => {
+  const dispatch = useDispatch();
+  const reduxViews = useSelector((store) => store.profileViews);
   const [views, setViews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [nextCursor, setNextCursor] = useState(null);
   const [hasMore, setHasMore] = useState(false);
   const { addToast } = useToast();
+  const seeded = useRef(false);
 
   const loadViews = useCallback(async ({ cursor = null, append = false } = {}) => {
     try {
@@ -32,6 +37,7 @@ const ProfileViews = () => {
         setViews((prev) => [...prev, ...items]);
       } else {
         setViews(items);
+        dispatch(addProfileViews({ items, nextCursor: next, hasMore: more }));
       }
       setNextCursor(next);
       setHasMore(more);
@@ -41,11 +47,20 @@ const ProfileViews = () => {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [addToast]);
+  }, [dispatch, addToast]);
 
   useEffect(() => {
-    loadViews({ cursor: null });
-  }, [loadViews]);
+    if (seeded.current) return;
+    seeded.current = true;
+    if (reduxViews?.items?.length > 0) {
+      setViews(reduxViews.items);
+      setNextCursor(reduxViews.nextCursor);
+      setHasMore(reduxViews.hasMore);
+      setLoading(false);
+    } else {
+      loadViews({ cursor: null });
+    }
+  }, [reduxViews?.items?.length]);
 
   if (loading) {
     return (

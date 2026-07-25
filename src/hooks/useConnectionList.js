@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useState } from "react";
+import { useEffect, useCallback, useState, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import axios from "axios";
 import { BASE_URL, createSocketConnection } from "../utils/constant";
@@ -18,6 +18,7 @@ const useConnectionList = () => {
   const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const seeded = useRef(false);
 
   const fetchConnections = useCallback(async ({ cursor = null, append = false } = {}) => {
     try {
@@ -27,14 +28,14 @@ const useConnectionList = () => {
         withCredentials: true,
         params: { limit: PAGE_SIZE, cursor: cursor || undefined },
       });
-      const items = res.data.data || [];
-      const next = res?.data?.nextCursor ?? null;
-      const more = res?.data?.hasMore ?? false;
+      const items = res.data.data?.connections || [];
+      const next = res?.data?.data?.nextCursor ?? null;
+      const more = res?.data?.data?.hasMore ?? false;
       if (append) {
         setConnections((prev) => [...prev, ...items]);
       } else {
         setConnections(items);
-        dispatch(addConnections(items));
+        dispatch(addConnections({ items, nextCursor: next, hasMore: more }));
       }
       setNextCursor(next);
       setHasMore(more);
@@ -52,8 +53,17 @@ const useConnectionList = () => {
   }, [hasMore, loadingMore, nextCursor, fetchConnections]);
 
   useEffect(() => {
-    fetchConnections({ cursor: null });
-  }, [fetchConnections]);
+    if (seeded.current) return;
+    seeded.current = true;
+    if (reduxConnections?.items?.length > 0) {
+      setConnections(reduxConnections.items);
+      setNextCursor(reduxConnections.nextCursor);
+      setHasMore(reduxConnections.hasMore);
+      setLoading(false);
+    } else {
+      fetchConnections({ cursor: null });
+    }
+  }, [reduxConnections?.items?.length]);
 
   useEffect(() => {
     if (!userId) return;

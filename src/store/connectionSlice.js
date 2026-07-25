@@ -1,20 +1,18 @@
 /* eslint-disable no-unused-vars */
 import { createSlice } from "@reduxjs/toolkit";
 
-
 const connectionSlice = createSlice({
   name: "connections",
-  initialState: null,
+  initialState: { items: null, nextCursor: null, hasMore: false },
   reducers: {
     addConnections: (state, action) => action.payload,
     removeConnection: (state, action) => {
-      if (!state) return null;
-      return state.filter((connection) => connection._id !== action.payload);
+      if (!state?.items) return state;
+      return { ...state, items: state.items.filter((connection) => connection._id !== action.payload) };
     },
-    clearConnections: (state) => null,
+    clearConnections: () => ({ items: null, nextCursor: null, hasMore: false }),
   },
 });
 
 export const { addConnections, removeConnection, clearConnections } = connectionSlice.actions;
-
 export default connectionSlice.reducer;

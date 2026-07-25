@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { addRequests, removeRequest } from "../store/requestsSlice";
 import axios from "axios";
@@ -21,6 +21,7 @@ const Requests = () => {
   const [nextCursor, setNextCursor] = useState(null);
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const seeded = useRef(false);
 
   const connectionRequest = useCallback(async ({ cursor = null, append = false } = {}) => {
     try {
@@ -30,14 +31,14 @@ const Requests = () => {
         withCredentials: true,
         params: { limit: PAGE_SIZE, cursor: cursor || undefined },
       });
-      const items = res?.data?.data || [];
-      const next = res?.data?.nextCursor ?? null;
-      const more = res?.data?.hasMore ?? false;
+      const items = res?.data?.data?.requests || [];
+      const next = res?.data?.data?.nextCursor ?? null;
+      const more = res?.data?.data?.hasMore ?? false;
       if (append) {
         setRequests((prev) => [...prev, ...items]);
       } else {
         setRequests(items);
-        dispatch(addRequests(items));
+        dispatch(addRequests({ items, nextCursor: next, hasMore: more }));
       }
       setNextCursor(next);
       setHasMore(more);
@@ -61,8 +62,17 @@ const Requests = () => {
   };
 
   useEffect(() => {
-    connectionRequest({ cursor: null });
-  }, [connectionRequest]);
+    if (seeded.current) return;
+    seeded.current = true;
+    if (reduxRequests?.items?.length > 0) {
+      setRequests(reduxRequests.items);
+      setNextCursor(reduxRequests.nextCursor);
+      setHasMore(reduxRequests.hasMore);
+      setLoading(false);
+    } else {
+      connectionRequest({ cursor: null });
+    }
+  }, [reduxRequests?.items?.length]);
 
   return (
     <div className="w-full space-y-8">

@@ -79,7 +79,7 @@ const socketRef = useRef(null);
 const typingTimeoutRef = useRef(null);
 const pendingTimeoutsRef = useRef(new Map());
 
-const connections = useSelector((state) => state.connections);
+const connections = useSelector((state) => state.connections?.items);
 const user = useSelector((state) => state.user);
 const userId = user?._id;
 const otherUser = connections?.find((conn) => conn._id === targetUserId);

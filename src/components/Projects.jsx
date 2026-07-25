@@ -764,7 +764,7 @@ const PAGE_SIZE = 12;
 
 const Projects = () => {
   const dispatch = useDispatch();
-  const reduxProjects = useSelector((store) => store.projects) || [];
+  const reduxProjects = useSelector((store) => store.projects);
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -819,7 +819,7 @@ const Projects = () => {
         setProjects((prev) => [...prev, ...items]);
       } else {
         setProjects(items);
-        dispatch(addProjects(items));
+        dispatch(addProjects({ items, nextCursor: next, hasMore: more }));
       }
       setNextCursor(next);
       setHasMore(more);
@@ -831,9 +831,20 @@ const Projects = () => {
     }
   }, [dispatch, addToast]);
 
+  const seeded = useRef(false);
+
   useEffect(() => {
-    loadProjects({ cursor: null });
-  }, [loadProjects]);
+    if (seeded.current) return;
+    seeded.current = true;
+    if (reduxProjects?.items?.length > 0) {
+      setProjects(reduxProjects.items);
+      setNextCursor(reduxProjects.nextCursor);
+      setHasMore(reduxProjects.hasMore);
+      setLoading(false);
+    } else {
+      loadProjects({ cursor: null });
+    }
+  }, [reduxProjects?.items?.length]);
 
   const currentUserIdStr = String(currentUserId || "");
   const getUserId = (m) => String(m.userId?._id || m.userId || "");
@@ -871,7 +882,7 @@ const Projects = () => {
     setCreating(true);
     try {
       const { data } = await axios.post(`${BASE_URL}/project`, form, { withCredentials: true });
-       dispatch(addProjects([data.data.project, ...reduxProjects]));
+      dispatch(addProjects({ items: [data.data.project, ...(reduxProjects?.items || [])], nextCursor: reduxProjects?.nextCursor ?? null, hasMore: reduxProjects?.hasMore ?? false }));
       setProjects((prev) => [data.data.project, ...prev]);
       setForm({ title: "", description: "", techStack: [] });
       setShowCreate(false);
