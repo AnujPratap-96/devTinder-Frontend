@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import axios from "axios";
 import {
@@ -13,6 +13,7 @@ import {
   HiGlobeAlt,
   HiPencilAlt,
   HiTrash,
+  HiArrowDown,
 } from "react-icons/hi";
 import { motion, AnimatePresence } from "framer-motion";
 import { BASE_URL } from "../utils/constant";
@@ -573,29 +574,49 @@ const ProjectCard = ({ project, currentUserId, onJoin, onView, onRespond, onRemo
   );
 };
 
+const MESSAGE_PAGE_SIZE = 30;
+
 const ProjectChat = ({ project, currentUserId, onClose }) => {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [nextCursor, setNextCursor] = useState(null);
+  const [hasMore, setHasMore] = useState(false);
   const [newMessage, setNewMessage] = useState("");
   const [sending, setSending] = useState(false);
   const { addToast } = useToast();
   const messagesEndRef = useRef(null);
+  const messagesTopRef = useRef(null);
 
-  const loadMessages = async () => {
+  const loadMessages = async ({ cursor = null, append = false } = {}) => {
     try {
+      if (append) setLoadingMore(true);
+      else setLoading(true);
       const { data } = await axios.get(`${BASE_URL}/project/${project._id}/messages`, {
         withCredentials: true,
+        params: { limit: MESSAGE_PAGE_SIZE, cursor: cursor || undefined },
       });
-       setMessages(data.data.messages || []);
+      const items = data.data.messages || [];
+      const next = data?.data?.nextCursor ?? null;
+      const more = data?.data?.hasMore ?? false;
+      if (append) {
+        const prevLen = messages.length;
+        setMessages((prev) => [...items, ...prev]);
+      } else {
+        setMessages(items);
+      }
+      setNextCursor(next);
+      setHasMore(more);
     } catch (error) {
       addToast("Unable to load messages", "error");
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   };
 
   useEffect(() => {
-    loadMessages();
+    loadMessages({ cursor: null });
   }, [project._id]);
 
   useEffect(() => {
@@ -675,7 +696,21 @@ const ProjectChat = ({ project, currentUserId, onClose }) => {
           ) : messages.length === 0 ? (
             <p className="text-center text-sm text-neutral-500">No messages yet. Start the conversation!</p>
           ) : (
-            messages.map((msg) => {
+            <>
+              {hasMore && (
+                <div ref={messagesTopRef} className="flex justify-center pb-2">
+                  <Button
+                    variant="ghost"
+                    size="xs"
+                    onClick={() => loadMessages({ cursor: nextCursor, append: true })}
+                    disabled={loadingMore}
+                  >
+                    {loadingMore ? <span className="spinner h-3 w-3 border-2 text-brand-600" /> : null}
+                    {loadingMore ? "Loading..." : "Load Older Messages"}
+                  </Button>
+                </div>
+              )}
+              {messages.map((msg) => {
               const senderIdStr = String(msg.senderId?._id || msg.senderId);
               const isOwn = senderIdStr === currentUserId;
               return (
@@ -700,7 +735,8 @@ const ProjectChat = ({ project, currentUserId, onClose }) => {
                   </div>
                 </div>
               );
-            })
+            })}
+            </>
           )}
           <div ref={messagesEndRef} />
         </div>
@@ -724,10 +760,16 @@ const ProjectChat = ({ project, currentUserId, onClose }) => {
   );
 };
 
+const PAGE_SIZE = 12;
+
 const Projects = () => {
   const dispatch = useDispatch();
-  const projects = useSelector((store) => store.projects) || [];
-  const [loading, setLoading] = useState(!projects.length);
+  const reduxProjects = useSelector((store) => store.projects) || [];
+  const [projects, setProjects] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [nextCursor, setNextCursor] = useState(null);
+  const [hasMore, setHasMore] = useState(false);
   const [creating, setCreating] = useState(false);
   const [chatProject, setChatProject] = useState(null);
   const [showCreate, setShowCreate] = useState(false);
@@ -762,22 +804,36 @@ const Projects = () => {
     }
   };
 
-  const loadProjects = async () => {
+  const loadProjects = useCallback(async ({ cursor = null, append = false } = {}) => {
     try {
+      if (append) setLoadingMore(true);
+      else setLoading(true);
       const { data } = await axios.get(`${BASE_URL}/projects`, {
         withCredentials: true,
+        params: { limit: PAGE_SIZE, cursor: cursor || undefined },
       });
-       dispatch(addProjects(data.data.projects ?? []));
+      const items = data.data.projects ?? [];
+      const next = data?.data?.nextCursor ?? null;
+      const more = data?.data?.hasMore ?? false;
+      if (append) {
+        setProjects((prev) => [...prev, ...items]);
+      } else {
+        setProjects(items);
+        dispatch(addProjects(items));
+      }
+      setNextCursor(next);
+      setHasMore(more);
     } catch (error) {
       addToast(error?.response?.data?.message || "Unable to load projects", "error");
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
-  };
+  }, [dispatch, addToast]);
 
   useEffect(() => {
-    loadProjects();
-  }, [dispatch]);
+    loadProjects({ cursor: null });
+  }, [loadProjects]);
 
   const currentUserIdStr = String(currentUserId || "");
   const getUserId = (m) => String(m.userId?._id || m.userId || "");
@@ -815,7 +871,8 @@ const Projects = () => {
     setCreating(true);
     try {
       const { data } = await axios.post(`${BASE_URL}/project`, form, { withCredentials: true });
-       dispatch(addProjects([data.data.project, ...projects]));
+       dispatch(addProjects([data.data.project, ...reduxProjects]));
+      setProjects((prev) => [data.data.project, ...prev]);
       setForm({ title: "", description: "", techStack: [] });
       setShowCreate(false);
       addToast("Project created", "success");
@@ -830,6 +887,7 @@ const Projects = () => {
     try {
       const { data } = await axios.patch(`${BASE_URL}/project/${projectId}`, updatedData, { withCredentials: true });
        dispatch(updateProject(data.data.project));
+      setProjects((prev) => prev.map((p) => (p._id === projectId ? { ...p, ...data.data.project } : p)));
       setEditingProject(null);
       addToast("Project updated", "success");
     } catch (error) {
@@ -842,6 +900,7 @@ const Projects = () => {
     try {
       await axios.delete(`${BASE_URL}/project/${projectId}`, { withCredentials: true });
       dispatch(removeProject(projectId));
+      setProjects((prev) => prev.filter((p) => p._id !== projectId));
       addToast("Project deleted", "success");
     } catch (error) {
       addToast(error?.response?.data?.message || "Unable to delete project", "error");
@@ -920,6 +979,18 @@ const Projects = () => {
                   onShowRoadmap={setRoadmapProject}
                 />
               ))}
+            </div>
+          )}
+          {displayProjects.length > 0 && hasMore && (
+            <div className="mt-8 flex justify-center">
+              <Button
+                variant="secondary"
+                onClick={() => loadProjects({ cursor: nextCursor, append: true })}
+                disabled={loadingMore}
+              >
+                {loadingMore ? <span className="spinner h-4 w-4 border-2 text-brand-600" /> : <HiArrowDown className="text-lg" />}
+                {loadingMore ? "Loading..." : "Load More"}
+              </Button>
             </div>
           )}
         </>

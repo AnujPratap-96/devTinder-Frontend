@@ -9,7 +9,7 @@ import CompactUserItem from "./CompactUserItem";
 import { useToast } from "../context/ToastProvider";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { HiUsers, HiSearch, HiArrowLeft } from "react-icons/hi";
+import { HiUsers, HiSearch, HiArrowLeft, HiArrowDown } from "react-icons/hi";
 import Button from "./ui/Button";
 import Card from "./ui/Card";
 import EmptyState from "./ui/EmptyState";
@@ -65,6 +65,9 @@ const Feed = () => {
   const dispatch = useDispatch();
   const feed = useSelector((store) => store.feed);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [nextCursor, setNextCursor] = useState(null);
+  const [hasMore, setHasMore] = useState(false);
   const [coords, setCoords] = useState(null);
   const [locationRequested, setLocationRequested] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -91,13 +94,14 @@ const Feed = () => {
     setSelectedResult(null);
   }, [debouncedQuery]);
 
-  const getFeed = useCallback(async (force = false) => {
-    if (!force && feed.length > 0) {
-      setLoading(false);
-      return;
-    }
+  const [feedItems, setFeedItems] = useState([]);
+
+  const getFeed = useCallback(async ({ cursor = null, append = false } = {}) => {
     try {
+      if (append) setLoadingMore(true);
+      else setLoading(true);
       const params = new URLSearchParams();
+      if (cursor) params.set("cursor", cursor);
       if (coords?.lat && coords?.lng) {
         params.set("lat", coords.lat);
         params.set("lng", coords.lng);
@@ -105,13 +109,24 @@ const Feed = () => {
       }
       const url = params.toString() ? `${BASE_URL}/feed?${params.toString()}` : `${BASE_URL}/feed`;
       const res = await axios.get(url, { withCredentials: true });
-      dispatch(addFeed(res?.data?.data?.users || []));
+      const users = res?.data?.data?.users || [];
+      const next = res?.data?.data?.nextCursor ?? null;
+      const more = res?.data?.data?.hasMore ?? false;
+      if (append) {
+        setFeedItems((prev) => [...prev, ...users]);
+      } else {
+        setFeedItems(users);
+        dispatch(addFeed(users));
+      }
+      setNextCursor(next);
+      setHasMore(more);
     } catch (err) {
       addToast(err.message || "Error fetching feed. Please try again later.", "error");
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
-  }, [feed.length, dispatch, addToast, coords]);
+  }, [dispatch, addToast, coords]);
 
   // Debounce search query
   useEffect(() => {
@@ -156,7 +171,7 @@ const Feed = () => {
 
   useEffect(() => {
     if (!searchQuery.trim() && !isSearching) {
-      getFeed();
+      getFeed({ cursor: null });
     }
   }, [getFeed, searchQuery, isSearching]);
 
@@ -175,7 +190,7 @@ const Feed = () => {
     );
   }, [locationRequested]);
 
-  const targetUsers = isSearching ? searchResults : feed;
+  const targetUsers = isSearching ? searchResults : feedItems;
 
   return (
     <div className="flex min-h-[80vh] w-full flex-col items-center">
@@ -258,6 +273,18 @@ const Feed = () => {
               <ErrorBoundary>
                 <UserCard key={targetUsers[0]?._id} user={targetUsers[0]} searchQuery={searchQuery} />
               </ErrorBoundary>
+              {hasMore && !isSearching && (
+                <div className="mt-8 flex justify-center">
+                  <Button
+                    variant="secondary"
+                    onClick={() => getFeed({ cursor: nextCursor, append: true })}
+                    disabled={loadingMore}
+                  >
+                    {loadingMore ? <span className="spinner h-4 w-4 border-2 text-brand-600" /> : <HiArrowDown className="text-lg" />}
+                    {loadingMore ? "Loading..." : "Load More"}
+                  </Button>
+                </div>
+              )}
             </>
           )}
         </motion.div>
@@ -278,7 +305,7 @@ const Feed = () => {
                 variant="secondary"
                 onClick={() => {
                   setLoading(true);
-                  getFeed(true);
+                  getFeed({ cursor: null });
                 }}
               >
                 Refresh Feed

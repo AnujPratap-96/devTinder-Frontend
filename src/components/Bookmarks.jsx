@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import axios from "axios";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -8,8 +8,10 @@ import {
   HiFlag,
   HiCode,
   HiExternalLink,
+  HiArrowDown,
 } from "react-icons/hi";
 import { BASE_URL } from "../utils/constant";
+import Button from "./ui/Button";
 import EmptyState from "./ui/EmptyState";
 import { useToast } from "../context/ToastProvider";
 
@@ -57,27 +59,46 @@ const SkeletonCard = () => (
 );
 
 // ─── Main component ────────────────────────────────────────────
+const PAGE_SIZE = 12;
+
 const Bookmarks = () => {
   const [bookmarks, setBookmarks] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [nextCursor, setNextCursor] = useState(null);
+  const [hasMore, setHasMore] = useState(false);
   const [removing, setRemoving] = useState(null);
   const { addToast } = useToast();
 
-  useEffect(() => {
-    const loadBookmarks = async () => {
-      try {
-        const { data } = await axios.get(`${BASE_URL}/bookmarks`, {
-          withCredentials: true,
-        });
-        setBookmarks(data.data.bookmarks ?? []);
-      } catch (error) {
-        addToast(error?.response?.data?.message || "Unable to load bookmarks", "error");
-      } finally {
-        setLoading(false);
+  const loadBookmarks = useCallback(async ({ cursor = null, append = false } = {}) => {
+    try {
+      if (append) setLoadingMore(true);
+      else setLoading(true);
+      const { data } = await axios.get(`${BASE_URL}/bookmarks`, {
+        withCredentials: true,
+        params: { limit: PAGE_SIZE, cursor: cursor || undefined },
+      });
+      const items = data.data.bookmarks ?? [];
+      const next = data?.data?.nextCursor ?? null;
+      const more = data?.data?.hasMore ?? false;
+      if (append) {
+        setBookmarks((prev) => [...prev, ...items]);
+      } else {
+        setBookmarks(items);
       }
-    };
-    loadBookmarks();
+      setNextCursor(next);
+      setHasMore(more);
+    } catch (error) {
+      addToast(error?.response?.data?.message || "Unable to load bookmarks", "error");
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
   }, [addToast]);
+
+  useEffect(() => {
+    loadBookmarks({ cursor: null });
+  }, [loadBookmarks]);
 
   const removeBookmark = async (bookmarkId) => {
     setRemoving(bookmarkId);
@@ -342,6 +363,18 @@ const Bookmarks = () => {
           })}
         </AnimatePresence>
       </div>
+      {hasMore && (
+        <div className="mt-8 flex justify-center">
+          <Button
+            variant="secondary"
+            onClick={() => loadBookmarks({ cursor: nextCursor, append: true })}
+            disabled={loadingMore}
+          >
+            {loadingMore ? <span className="spinner h-4 w-4 border-2 text-brand-600" /> : <HiArrowDown className="text-lg" />}
+            {loadingMore ? "Loading..." : "Load More"}
+          </Button>
+        </div>
+      )}
     </div>
   );
 };

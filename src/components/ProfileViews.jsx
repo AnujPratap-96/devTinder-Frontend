@@ -1,32 +1,51 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import axios from "axios";
 import { BASE_URL } from "../utils/constant";
 import Card from "./ui/Card";
+import Button from "./ui/Button";
 import { useToast } from "../context/ToastProvider";
 import EmptyState from "./ui/EmptyState";
-import { HiEye } from "react-icons/hi";
+import { HiEye, HiArrowDown } from "react-icons/hi";
+
+const PAGE_SIZE = 10;
 
 const ProfileViews = () => {
   const [views, setViews] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [nextCursor, setNextCursor] = useState(null);
+  const [hasMore, setHasMore] = useState(false);
   const { addToast } = useToast();
 
-  useEffect(() => {
-    const loadViews = async () => {
-      try {
-        const { data } = await axios.get(`${BASE_URL}/profile/views`, {
-          withCredentials: true,
-        });
-         setViews(data.data.views ?? []);
-      } catch (error) {
-        addToast(error?.response?.data?.message || "Unable to load profile views", "error");
-      } finally {
-        setLoading(false);
+  const loadViews = useCallback(async ({ cursor = null, append = false } = {}) => {
+    try {
+      if (append) setLoadingMore(true);
+      else setLoading(true);
+      const { data } = await axios.get(`${BASE_URL}/profile/views`, {
+        withCredentials: true,
+        params: { limit: PAGE_SIZE, cursor: cursor || undefined },
+      });
+      const items = data.data.views ?? [];
+      const next = data?.data?.nextCursor ?? null;
+      const more = data?.data?.hasMore ?? false;
+      if (append) {
+        setViews((prev) => [...prev, ...items]);
+      } else {
+        setViews(items);
       }
-    };
-
-    loadViews();
+      setNextCursor(next);
+      setHasMore(more);
+    } catch (error) {
+      addToast(error?.response?.data?.message || "Unable to load profile views", "error");
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
   }, [addToast]);
+
+  useEffect(() => {
+    loadViews({ cursor: null });
+  }, [loadViews]);
 
   if (loading) {
     return (
@@ -76,6 +95,19 @@ const ProfileViews = () => {
           </div>
         ))}
       </div>
+      {hasMore && (
+        <div className="mt-4 flex justify-center">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => loadViews({ cursor: nextCursor, append: true })}
+            disabled={loadingMore}
+          >
+            {loadingMore ? <span className="spinner h-4 w-4 border-2 text-brand-600" /> : <HiArrowDown className="text-lg" />}
+            {loadingMore ? "Loading..." : "Load More"}
+          </Button>
+        </div>
+      )}
     </Card>
   );
 };

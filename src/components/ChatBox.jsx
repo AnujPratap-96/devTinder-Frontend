@@ -86,8 +86,8 @@ const otherUser = connections?.find((conn) => conn._id === targetUserId);
 
 const [matchId, setMatchId] = useState(null);
 const [messages, setMessages] = useState([]);
-const [page, setPage] = useState(1);
-const [hasMore, setHasMore] = useState(true);
+const [nextCursor, setNextCursor] = useState(null);
+const [hasMore, setHasMore] = useState(false);
 const [loadingOlder, setLoadingOlder] = useState(false);
 const [input, setInput] = useState("");
 const [error, setError] = useState(null);
@@ -191,9 +191,9 @@ await ensureCrypto({ userId });
 }
 
 const decorated = await Promise.all(raw.map((msg) => decryptIncoming(msg)));
-setMessages(decorated);
-setPage(1);
-setHasMore(raw.length === MESSAGE_LIMIT);
+        setMessages(decorated);
+        setNextCursor(data.data.nextCursor ?? null);
+        setHasMore(data.data.hasMore ?? false);
 setError(null);
 
 // Fetch icebreaker only on a fresh/empty chat
@@ -221,34 +221,33 @@ setIcebreakerLoading(false);
 };
 
 const handleLoadOlder = async () => {
-if (!matchId || loadingOlder || !hasMore) return;
-setLoadingOlder(true);
-try {
-try {
-await ensureCrypto({ userId });
-} catch {
-/* non-fatal; older messages still load (possibly as placeholders) */
-}
-const nextPage = page + 1;
-const { data } = await axios.get(
-`${BASE_URL}/messages/${matchId}?page=${nextPage}&limit=${MESSAGE_LIMIT}`,
-{ withCredentials: true }
-);
-const decorated = await Promise.all(
-data.data.messages.map((msg) => decryptIncoming(decorateMessage(msg, userId, targetUserId)))
-);
-if (decorated.length) {
-setMessages((prev) => [...decorated, ...prev]);
-virtuosoRef.current?.prependItems(decorated.length);
-}
-setPage(nextPage);
-setHasMore(data.data.hasMore);
-} catch (err) {
-addToast("Unable to retrieve older messages", "error");
-} finally {
-setLoadingOlder(false);
-}
-};
+    if (!matchId || loadingOlder || !hasMore) return;
+    setLoadingOlder(true);
+    try {
+      try {
+        await ensureCrypto({ userId });
+      } catch {
+        /* non-fatal; older messages still load (possibly as placeholders) */
+      }
+      const { data } = await axios.get(
+        `${BASE_URL}/messages/${matchId}?cursor=${nextCursor}&limit=${MESSAGE_LIMIT}`,
+        { withCredentials: true }
+      );
+      const decorated = await Promise.all(
+        data.data.messages.map((msg) => decryptIncoming(decorateMessage(msg, userId, targetUserId)))
+      );
+      if (decorated.length) {
+        setMessages((prev) => [...decorated, ...prev]);
+        virtuosoRef.current?.prependItems(decorated.length);
+      }
+      setNextCursor(data.data.nextCursor ?? null);
+      setHasMore(data.data.hasMore ?? false);
+    } catch (err) {
+      addToast("Unable to retrieve older messages", "error");
+    } finally {
+      setLoadingOlder(false);
+    }
+  };
 
 const upsertMessage = (incoming) => {
 setMessages((prev) => {
