@@ -230,9 +230,11 @@ const SwipeCard = ({ user, searchQuery = "" }) => {
 
   const handleDragEnd = (_, info) => {
     if (relationshipStatus !== "none") return setSwipe("center");
-    if (info.offset.x > 120) {
+    const isRight = info.offset.x > 80 || (info.offset.x > 20 && info.velocity.x > 500);
+    const isLeft = info.offset.x < -80 || (info.offset.x < -20 && info.velocity.x < -500);
+    if (isRight) {
       sendConnectionRequest("interested", _id, "right");
-    } else if (info.offset.x < -120) {
+    } else if (isLeft) {
       sendConnectionRequest("ignored", _id, "left");
     } else {
       setSwipe("center");
@@ -322,7 +324,7 @@ const SwipeCard = ({ user, searchQuery = "" }) => {
         }}
         drag={relationshipStatus === "none"}
         dragElastic={0.4}
-        dragMomentum={true}
+        dragMomentum={false}
         onDragEnd={handleDragEnd}
         variants={swipeVariants}
         animate={swipe}
