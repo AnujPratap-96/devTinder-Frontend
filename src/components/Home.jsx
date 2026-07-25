@@ -113,7 +113,7 @@ const Home = () => {
   };
 
   return (
-    <div className="space-y-24 py-10">
+    <div className="space-y-24 py-10 pt-20 lg:pt-10">
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 -z-10 bg-mesh opacity-60" />
         <div className="absolute -left-40 top-10 -z-10 h-64 w-64 rounded-full bg-brand-500/25 opacity-40 blur-3xl" />
