@@ -1,8 +1,6 @@
 /* eslint-disable react/prop-types */
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useDispatch, useSelector } from "react-redux";
-import { setPlans as setPlansRedux } from "../store/plansSlice";
 import axios from "axios";
 import { motion, AnimatePresence } from "framer-motion";
 import { generateBio, suggestSkills } from "../utils/aiApi";
@@ -63,8 +61,6 @@ const FeatureError = ({ message, onUpgrade }) => (
 // ─────────────────────────────────────────────────────────────
 const AIPanel = ({ user, skills, formData, onBioGenerated, onSkillsAccepted }) => {
   const navigate = useNavigate();
-  const dispatch = useDispatch();
-  const reduxPlans = useSelector((store) => store.plans);
 
   // Bio state
   const [generatedBio, setGeneratedBio] = useState("");
@@ -88,35 +84,31 @@ const AIPanel = ({ user, skills, formData, onBioGenerated, onSkillsAccepted }) =
         if (active) setAiBlocked(false);
         return;
       }
-      let plans = reduxPlans;
-      if (!plans) {
-        try {
-          const res = await axios.get(`${BASE_URL}/plans`, { withCredentials: true });
-          plans = res.data.data.plans ?? [];
-          dispatch(setPlansRedux(plans));
-        } catch {
-          return;
+      try {
+        const res = await axios.get(`${BASE_URL}/plans`, { withCredentials: true });
+        const plans = res.data.data.plans ?? [];
+        const myPlan = plans.find((p) => p.slug === (user?.membershipType || "free"));
+        const allowed = Boolean(myPlan && myPlan.limits?.aiCallsPerDay !== 0);
+        if (!allowed) {
+          const minPaid = plans
+            .filter((p) => !p.isFree && p.limits?.aiCallsPerDay !== 0)
+            .sort((a, b) => a.order - b.order)[0];
+          if (active) {
+            setAiBlocked(true);
+            setMinPlanName(minPaid?.name || "a paid");
+          }
+        } else if (active) {
+          setAiBlocked(false);
         }
-      }
-      const myPlan = plans.find((p) => p.slug === (user?.membershipType || "free"));
-      const allowed = Boolean(myPlan && myPlan.limits?.aiCallsPerDay !== 0);
-      if (!allowed) {
-        const minPaid = plans
-          .filter((p) => !p.isFree && p.limits?.aiCallsPerDay !== 0)
-          .sort((a, b) => a.order - b.order)[0];
-        if (active) {
-          setAiBlocked(true);
-          setMinPlanName(minPaid?.name || "a paid");
-        }
-      } else if (active) {
-        setAiBlocked(false);
+      } catch {
+        /* non-fatal */
       }
     };
     check();
     return () => {
       active = false;
     };
-  }, [user, reduxPlans, dispatch]);
+  }, [user]);
 
   const goPremium = () => navigate("/premium");
 

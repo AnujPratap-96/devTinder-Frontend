@@ -728,7 +728,6 @@ const Projects = () => {
   const dispatch = useDispatch();
   const projects = useSelector((store) => store.projects) || [];
   const [loading, setLoading] = useState(!projects.length);
-  const seeded = useRef(false);
   const [creating, setCreating] = useState(false);
   const [chatProject, setChatProject] = useState(null);
   const [showCreate, setShowCreate] = useState(false);
@@ -777,11 +776,8 @@ const Projects = () => {
   };
 
   useEffect(() => {
-    if (seeded.current) return;
-    seeded.current = true;
-    if (projects.length > 0) return;
     loadProjects();
-  }, [dispatch, projects.length]);
+  }, [dispatch]);
 
   const currentUserIdStr = String(currentUserId || "");
   const getUserId = (m) => String(m.userId?._id || m.userId || "");
