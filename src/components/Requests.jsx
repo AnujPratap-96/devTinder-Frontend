@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { addRequests, removeRequest } from "../store/requestsSlice";
 import axios from "axios";
@@ -14,6 +14,7 @@ const Requests = () => {
   const dispatch = useDispatch();
   const requests = useSelector((store) => store.requests);
   const { addToast } = useToast();
+  const seeded = useRef(false);
 
   const connectionRequest = useCallback(async () => {
     try {
@@ -35,8 +36,11 @@ const Requests = () => {
   };
 
   useEffect(() => {
+    if (seeded.current) return;
+    seeded.current = true;
+    if (requests?.length > 0) return;
     connectionRequest();
-  }, [connectionRequest]);
+  }, [connectionRequest, requests?.length]);
 
   return (
     <div className="w-full space-y-8">

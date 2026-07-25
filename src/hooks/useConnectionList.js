@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import axios from "axios";
 import { BASE_URL, createSocketConnection } from "../utils/constant";
@@ -10,6 +10,7 @@ const useConnectionList = () => {
   const dispatch = useDispatch();
   const connections = useSelector((store) => store.connections);
   const userId = useSelector((store) => store.user?._id);
+  const seeded = useRef(false);
 
   // Memoize fetchConnections so it doesn't get recreated on every render
   const fetchConnections = useCallback(async () => {
@@ -24,8 +25,11 @@ const useConnectionList = () => {
   }, [dispatch, addToast]);
 
   useEffect(() => {
+    if (seeded.current) return;
+    seeded.current = true;
+    if (connections?.length > 0) return;
     fetchConnections();
-  }, [fetchConnections]);
+  }, [fetchConnections, connections?.length]);
 
   // Refresh the conversation list in real-time whenever a message is sent,
   // delivered, or read for this user.

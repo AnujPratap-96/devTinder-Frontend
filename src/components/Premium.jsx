@@ -1,9 +1,10 @@
 import axios from "axios";
 import { FaCrown, FaCheckCircle } from "react-icons/fa";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { BASE_URL } from "../utils/constant";
 import { useSelector, useDispatch } from "react-redux";
 import { addUser } from "../store/userSlice";
+import { setPlans as setPlansRedux } from "../store/plansSlice";
 import { useToast } from "../context/ToastProvider";
 import { motion } from "framer-motion";
 import { HiSparkles, HiShoppingBag } from "react-icons/hi";
@@ -12,13 +13,20 @@ import Spinner from "./ui/Spinner";
 const Premium = () => {
   const { addToast } = useToast();
   const user = useSelector((store) => store.user);
+  const reduxPlans = useSelector((store) => store.plans);
   const dispatch = useDispatch();
-  const [plans, setPlans] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [plans, setPlans] = useState(reduxPlans || []);
+  const [loading, setLoading] = useState(!reduxPlans);
+  const verified = useRef(false);
 
   useEffect(() => {
-    verifyPremiumUser();
-    loadPlans();
+    if (!verified.current && !user?.membershipType) {
+      verifyPremiumUser();
+    }
+    verified.current = true;
+    if (!reduxPlans) {
+      loadPlans();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -36,7 +44,9 @@ const Premium = () => {
   const loadPlans = async () => {
     try {
       const res = await axios.get(BASE_URL + "/plans", { withCredentials: true });
-      setPlans(res.data.data.plans ?? []);
+      const items = res.data.data.plans ?? [];
+      setPlans(items);
+      dispatch(setPlansRedux(items));
     } catch (error) {
       addToast(error.response?.data?.message || "Failed to load plans", "error");
     } finally {
