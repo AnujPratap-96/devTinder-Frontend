@@ -86,7 +86,7 @@ const Sidebar = ({ isSidebarOpen, setSidebarOpen }) => {
   return (
     <aside
       className={clsx(
-        "glass fixed bottom-3 left-3 top-24 z-40 flex w-72 flex-col rounded-3xl border-hairline transition-transform duration-300 ease-snappy lg:translate-x-0",
+        "glass fixed bottom-3 left-3 top-28 z-40 flex w-72 flex-col rounded-3xl border-hairline transition-transform duration-300 ease-snappy lg:top-24 lg:translate-x-0",
         isSidebarOpen ? "translate-x-0" : "-translate-x-[120%]"
       )}
     >
