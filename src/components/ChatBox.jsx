@@ -665,76 +665,99 @@ components={{
 Header: () => <div className="h-8" />,
 }}
 
-itemContent={(index, message) => {
-const showAvatar = !message.isOwn && (index === 0 || sortedMessages[index - 1]?.senderId !== message.senderId);
-return (
-<motion.div
-layout
-className={`mb-4 flex w-full gap-3 px-6 ${message.isOwn ? "justify-end" : "justify-start text-left"}`}
->
-{!message.isOwn && (
-<div className={`mt-auto h-8 w-8 shrink-0 overflow-hidden rounded-lg border border-hairline-soft transition ${showAvatar ? "opacity-100" : "opacity-0"}`}>
-<img
-src={resolvePhotoUrl(otherUser?.photoUrl, otherUser?.firstName)}
-alt="avatar"
-className="h-full w-full object-cover"
-/>
-</div>
-)}
-<div 
-                className={`relative flex max-w-[75%] flex-col rounded-2xl px-3 py-1.5 text-sm shadow-sm transition-all sm:max-w-[70%] ${
-                   message.isOwn 
-                     ? "bg-brand-500 text-white rounded-br-none" 
-                     : "bg-surface-800 text-neutral-100 border border-hairline-soft rounded-bl-none"
-                 }`}
-               >
-                {message.isOwn && (
-                  <div className="absolute top-0.5 right-0.5 z-10 flex items-start gap-0.5">
-                    <button
-                      type="button"
-                      onClick={() => setMenuMessageId(menuMessageId === message._id ? null : message._id)}
-                      className="flex h-5 w-5 items-center justify-center rounded text-[10px] leading-none hover:bg-white/20 transition"
-                    >
-                      ...
-                    </button>
-                    {menuMessageId === message._id && (
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(message)}
-                        className="flex h-5 w-5 items-center justify-center rounded bg-error-500 text-white hover:bg-error-600 transition"
-                        title="Delete"
-                      >
-                        <HiOutlineTrash className="h-3 w-3" />
-                      </button>
+        itemContent={(index, message) => {
+            if (message.messageType === "call") {
+              const details = message.metadata?.callDetails || {};
+              const started = details.status === "started";
+              const icon = details.type === "video" ? "📹" : "📞";
+              const mins = Math.floor((details.durationSec || 0) / 60);
+              const secs = (details.durationSec || 0) % 60;
+              const durationLabel = mins > 0 ? `${mins}:${String(secs).padStart(2, "0")}` : `0:${String(secs).padStart(2, "0")}`;
+              return (
+                <div className="mb-1 flex w-full justify-center px-6">
+                  <div className="flex items-center gap-1.5 rounded-full bg-surface-800/40 px-3 py-1 text-xs text-neutral-400">
+                    <span>{icon}</span>
+                    <span>
+                      {started
+                        ? `${details.type === "video" ? "Video" : "Voice"} call`
+                        : `Call ended`}
+                    </span>
+                    {!started && details.durationSec > 0 && (
+                      <span className="text-neutral-500">· {durationLabel}</span>
                     )}
                   </div>
+                </div>
+              );
+            }
+            const showAvatar = !message.isOwn && (index === 0 || sortedMessages[index - 1]?.senderId !== message.senderId);
+            return (
+              <motion.div
+                layout
+                className={`mb-4 flex w-full gap-3 px-6 ${message.isOwn ? "justify-end" : "justify-start text-left"}`}
+              >
+                {!message.isOwn && (
+                  <div className={`mt-auto h-8 w-8 shrink-0 overflow-hidden rounded-lg border border-hairline-soft transition ${showAvatar ? "opacity-100" : "opacity-0"}`}>
+                    <img
+                      src={resolvePhotoUrl(otherUser?.photoUrl, otherUser?.firstName)}
+                      alt="avatar"
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
                 )}
-                <p className="break-words whitespace-pre-wrap leading-relaxed">
-                  {message.message}
-                </p>
-                <div className={`mt-0.5 flex items-center gap-1.5 text-[10px] tabular-nums ${message.isOwn ? "justify-end text-white/70" : "text-neutral-400"}`}>
-                  <span>{formatMessageTime(message.createdAt)}</span>
+                <div 
+                  className={`relative flex max-w-[75%] flex-col rounded-2xl px-3 py-1.5 text-sm shadow-sm transition-all sm:max-w-[70%] ${
+                     message.isOwn 
+                       ? "bg-brand-500 text-white rounded-br-none" 
+                       : "bg-surface-800 text-neutral-100 border border-hairline-soft rounded-bl-none"
+                   }`}
+                 >
                   {message.isOwn && (
-                    <>
-                      <span className="opacity-40">•</span>
-                      <span>{getStatusLabel(message, true)}</span>
-                    </>
+                    <div className="absolute top-0.5 right-0.5 z-10 flex items-start gap-0.5">
+                      <button
+                        type="button"
+                        onClick={() => setMenuMessageId(menuMessageId === message._id ? null : message._id)}
+                        className="flex h-5 w-5 items-center justify-center rounded text-[10px] leading-none hover:bg-white/20 transition"
+                      >
+                        ...
+                      </button>
+                      {menuMessageId === message._id && (
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(message)}
+                          className="flex h-5 w-5 items-center justify-center rounded bg-error-500 text-white hover:bg-error-600 transition"
+                          title="Delete"
+                        >
+                          <HiOutlineTrash className="h-3 w-3" />
+                        </button>
+                      )}
+                    </div>
+                  )}
+                  <p className="break-words whitespace-pre-wrap leading-relaxed">
+                    {message.message}
+                  </p>
+                  <div className={`mt-0.5 flex items-center gap-1.5 text-[10px] tabular-nums ${message.isOwn ? "justify-end text-white/70" : "text-neutral-400"}`}>
+                    <span>{formatMessageTime(message.createdAt)}</span>
+                    {message.isOwn && (
+                      <>
+                        <span className="opacity-40">•</span>
+                        <span>{getStatusLabel(message, true)}</span>
+                      </>
+                    )}
+                  </div>
+                  {message.status === "failed" && (
+                    <button
+                      type="button"
+                      onClick={() => handleRetry(message)}
+                      className="mt-1 self-end rounded-md bg-tint-strong px-2 py-0.5 text-[10px] text-white hover:bg-tint-strong"
+                    >
+                      Retry
+                    </button>
                   )}
                 </div>
-                {message.status === "failed" && (
-                  <button
-                    type="button"
-                    onClick={() => handleRetry(message)}
-                    className="mt-1 self-end rounded-md bg-tint-strong px-2 py-0.5 text-[10px] text-white hover:bg-tint-strong"
-                  >
-                    Retry
-                  </button>
-                )}
-              </div>
-</motion.div>
-);
-}}
-/>
+              </motion.div>
+            );
+          }}
+        />
 )}
 </div>
 
