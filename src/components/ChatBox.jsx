@@ -78,6 +78,7 @@ const virtuosoRef = useRef(null);
 const socketRef = useRef(null);
 const typingTimeoutRef = useRef(null);
 const pendingTimeoutsRef = useRef(new Map());
+const fileInputRef = useRef(null);
 
 const connections = useSelector((state) => state.connections?.items);
 const user = useSelector((state) => state.user);
@@ -98,6 +99,7 @@ const [icebreaker, setIcebreaker] = useState("");
 const [icebreakerLoading, setIcebreakerLoading] = useState(false);
 const [collabSuggestion, setCollabSuggestion] = useState(null);
 const [collabLoading, setCollabLoading] = useState(false);
+const [uploading, setUploading] = useState(false);
 const { addToast } = useToast();
 
 const blockUser = async () => {
@@ -517,6 +519,24 @@ sendMessage();
 }
 };
 
+const handleFileSelect = async (e) => {
+const file = e.target.files?.[0];
+if (!file) return;
+setUploading(true);
+try {
+const formData = new FormData();
+formData.append("image", file);
+formData.append("matchId", matchId);
+formData.append("targetUserId", targetUserId);
+await axios.post(`${BASE_URL}/chat/upload`, formData, { withCredentials: true });
+} catch (err) {
+addToast(err?.response?.data?.message || "Failed to upload image", "error");
+} finally {
+setUploading(false);
+e.target.value = "";
+}
+};
+
 if (error) {
 return (
 <div className="flex h-[80vh] w-full flex-col items-center justify-center gap-4 rounded-2xl border border-hairline bg-surface-900/70">
@@ -732,9 +752,18 @@ Header: () => <div className="h-8" />,
                       )}
                     </div>
                   )}
-                  <p className="break-words whitespace-pre-wrap leading-relaxed">
-                    {message.message}
-                  </p>
+                  {message.messageType === "image" ? (
+                    <img
+                      src={message.message}
+                      alt="Shared image"
+                      className="max-w-full rounded-lg object-cover"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <p className="break-words whitespace-pre-wrap leading-relaxed">
+                      {message.message}
+                    </p>
+                  )}
                   <div className={`mt-0.5 flex items-center gap-1.5 text-[10px] tabular-nums ${message.isOwn ? "justify-end text-white/70" : "text-neutral-400"}`}>
                     <span>{formatMessageTime(message.createdAt)}</span>
                     {message.isOwn && (
@@ -816,6 +845,32 @@ title="Dismiss"
 )}
 </AnimatePresence>
 <div className="flex items-end gap-3">
+<input
+type="file"
+accept="image/*"
+ref={fileInputRef}
+onChange={handleFileSelect}
+className="hidden"
+/>
+<button
+type="button"
+onClick={() => fileInputRef.current?.click()}
+disabled={uploading}
+className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition ${
+uploading
+? "bg-tint-strong cursor-wait text-neutral-500"
+: "bg-tint-strong text-neutral-400 hover:text-neutral-200"
+}`}
+title="Send image"
+>
+{uploading ? (
+<span className="block h-4 w-4 animate-spin rounded-full border-2 border-neutral-500 border-t-transparent" />
+) : (
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
+<path fillRule="evenodd" d="M1.5 6a2.25 2.25 0 012.25-2.25h16.5A2.25 2.25 0 0122.5 6v12a2.25 2.25 0 01-2.25 2.25H3.75A2.25 2.25 0 011.5 18V6zM3 16.06V18c0 .414.336.75.75.75h16.5A.75.75 0 0021 18v-1.94l-2.69-2.689a1.5 1.5 0 00-2.12 0l-.88.879.97.97a.75.75 0 11-1.06 1.06l-5.16-5.159a1.5 1.5 0 00-2.12 0L3 16.061zm10.125-7.81a1.125 1.125 0 112.25 0 1.125 1.125 0 01-2.25 0z" clipRule="evenodd" />
+</svg>
+)}
+</button>
 <div className="flex-1 rounded-xl border border-hairline bg-tint px-4 py-2">
 <textarea
 value={input}
