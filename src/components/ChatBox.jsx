@@ -13,6 +13,9 @@ HiBan,
 HiFlag,
 HiX,
 HiOutlineTrash,
+HiOutlineLocationMarker,
+HiVolumeUp,
+HiVolumeOff,
 } from "react-icons/hi";
 import { createSocketConnection } from "../utils/constant";
 import { getMessages, getMessagesByMatch, markAsSeen, deleteMessage, uploadChatFile } from "../api/chat";
@@ -23,6 +26,18 @@ import { getOnlineStatus } from "../utils/timeUtils";
 import { resolvePhotoUrl } from "../utils/avatar";
 import { generateIcebreaker, suggestCollaboration, aiErrorMessage } from "../utils/aiApi";
 import CallButton from "./call/CallButton";
+// ── [PHASE-1] chat enhancements (revert: delete this block + every `// [PHASE-1]` block below)
+import {
+  FEATURES,
+  MarkdownMessage,
+  VoiceNoteRecorder,
+  VoiceNotePlayer,
+  MessageReactions,
+  GifPicker,
+  ChatSearchBar,
+  MissedCallCard,
+} from "../features/chat";
+import { getChatPrefs, setChatPref } from "../features/chat/enhancementApi";
 
 const MESSAGE_LIMIT = 30;
 
@@ -133,6 +148,8 @@ const [collabSuggestion, setCollabSuggestion] = useState(null);
 const [collabLoading, setCollabLoading] = useState(false);
 const [uploading, setUploading] = useState(false);
 const [previewImage, setPreviewImage] = useState(null);
+// ── [PHASE-1] chat prefs (pin conversation / mute)
+const [chatPrefs, setChatPrefs] = useState({ pinned: false, muted: false });
 const { addToast } = useToast();
 
 const blockUser = async () => {
@@ -344,6 +361,22 @@ socket.on("message:created", async (msg) => {
   const decrypted = await decryptIncoming(msg, userId);
   const decorated = decorateMessage(decrypted, userId, targetUserId);
 
+  // ── [PHASE-1] Replace optimistic voice note on server confirmation
+  if (decorated.messageType === "audio" && decorated.isOwn) {
+    setMessages((prev) => {
+      const optimisticIndex = prev.findLastIndex(
+        (m) => m.isOptimistic && m.clientMessageId && m.clientMessageId === decorated.clientMessageId
+      );
+      if (optimisticIndex >= 0) {
+        const updated = [...prev];
+        updated[optimisticIndex] = decorated;
+        return updated;
+      }
+      return [...prev, decorated];
+    });
+    return;
+  }
+
   // Replace optimistic image message if this is the server confirmation
   if (decorated.messageType === "image" && decorated.isOwn) {
     setMessages((prev) => {
@@ -381,6 +414,11 @@ socket.on("message:deleted", ({ messageId }) => {
 setMessages((prev) => prev.filter((m) => m._id !== messageId));
 });
 
+// ── [PHASE-1] reactions
+socket.on("message:reacted", ({ messageId, reactions }) => {
+setMessages((prev) => prev.map((m) => (m._id === messageId ? { ...m, reactions } : m)));
+});
+
 socket.on("chat:error", ({ message }) => {
 addToast(message, "error");
 });
@@ -413,6 +451,7 @@ socketRef.current.off("message:ack");
 socketRef.current.off("messages:delivered");
 socketRef.current.off("messages:seen");
 socketRef.current.off("message:deleted");
+socketRef.current.off("message:reacted"); // [PHASE-1]
 socketRef.current.off("typing:start");
 socketRef.current.off("typing:stop");
 socketRef.current.off("chat:error");
@@ -426,6 +465,15 @@ if (!unseen.length) return;
 socketRef.current?.emit("message:seen", { userId, matchId });
   markAsSeen(matchId).catch(() => {});
 }, [sortedMessages, matchId, userId]);
+
+// ── [PHASE-1] load chat prefs (pin/mute)
+useEffect(() => {
+if (!matchId || !FEATURES.chatPrefs) return;
+getChatPrefs().then((data) => {
+const prefs = data.prefs?.[matchId];
+if (prefs) setChatPrefs(prefs);
+}).catch(() => {});
+}, [matchId]);
 
 
 const schedulePendingTimeout = (clientMessageId) => {
@@ -632,6 +680,33 @@ const handleFileSelect = async (e) => {
   }
 };
 
+// ── [PHASE-1] helpers for voice notes / GIFs (additive)
+const addOptimisticMessage = (partial) => {
+  setMessages((prev) => [...prev, decorateMessage(partial, userId, targetUserId)]);
+};
+const removeMessageByClientId = (clientMessageId) => {
+  setMessages((prev) => prev.filter((m) => m.clientMessageId !== clientMessageId));
+};
+const jumpToMessage = (messageId) => {
+  const index = sortedMessages.findIndex((m) => m._id === messageId);
+  if (index >= 0) {
+    virtuosoRef.current?.scrollToIndex({ index, align: "center", behavior: "smooth" });
+  }
+};
+const emitEnhancement = (event, payload) => socketRef.current?.emit(event, payload);
+
+// [PHASE-1] chat prefs handlers
+const toggleChatPin = () => {
+  const next = !chatPrefs.pinned;
+  setChatPrefs((p) => ({ ...p, pinned: next }));
+  setChatPref(matchId, { pinned: next }).catch(() => {});
+};
+const toggleChatMute = () => {
+  const next = !chatPrefs.muted;
+  setChatPrefs((p) => ({ ...p, muted: next }));
+  setChatPref(matchId, { muted: next }).catch(() => {});
+};
+
 if (error) {
 return (
 <div className="flex h-[80vh] w-full flex-col items-center justify-center gap-4 rounded-2xl border border-hairline bg-surface-900/70">
@@ -731,6 +806,30 @@ type="video"
 chatId={matchId}
 peer={otherUser}
 />
+{/* ── [PHASE-1] search / pin / mute */}
+{FEATURES.chatSearch && (
+<ChatSearchBar matchId={matchId} onJump={jumpToMessage} />
+)}
+{FEATURES.chatPrefs && (
+<>
+<button
+type="button"
+onClick={toggleChatPin}
+title={chatPrefs.pinned ? "Unpin conversation" : "Pin conversation"}
+className={`flex h-9 w-9 items-center justify-center rounded-full border transition ${chatPrefs.pinned ? "border-brand-500/60 bg-brand-500/20 text-brand-300" : "border-brand-500/40 bg-brand-500/15 text-brand-300 hover:bg-brand-500/30"}`}
+>
+<HiOutlineLocationMarker className="text-sm" />
+</button>
+<button
+type="button"
+onClick={toggleChatMute}
+title={chatPrefs.muted ? "Unmute notifications" : "Mute notifications"}
+className={`flex h-9 w-9 items-center justify-center rounded-full border transition ${chatPrefs.muted ? "border-brand-500/60 bg-brand-500/20 text-brand-300" : "border-brand-500/40 bg-brand-500/15 text-brand-300 hover:bg-brand-500/30"}`}
+>
+{chatPrefs.muted ? <HiVolumeOff className="text-sm" /> : <HiVolumeUp className="text-sm" />}
+</button>
+</>
+)}
 <div className="relative">
 <button
 type="button"
@@ -765,6 +864,8 @@ className="w-full px-4 py-2 text-left text-sm text-neutral-400 hover:bg-tint fle
 
 {/* Message list OR empty state */}
 <div className="relative min-h-0 flex-1 overflow-hidden">
+{/* ── [PHASE-1] missed-call cards */}
+{FEATURES.missedCalls && <MissedCallCard matchId={matchId} />}
 {sortedMessages.length === 0 ? (
 <EmptyChat />
 ) : (
@@ -802,6 +903,66 @@ Header: () => <div className="h-8" />,
                     )}
                   </div>
                 </div>
+              );
+            }
+
+            // ── [PHASE-1] voice notes (additive branch; renders outside bubble)
+            if (message.messageType === "audio") {
+              const showAvatar = !message.isOwn && (index === 0 || sortedMessages[index - 1]?.senderId !== message.senderId);
+              const isUploading = message.isOptimistic;
+              return (
+                <motion.div layout className={`group mb-4 flex w-full gap-3 px-6 ${message.isOwn ? "justify-end" : "justify-start text-left"}`}>
+                  {!message.isOwn && (
+                    <div className={`mt-auto h-8 w-8 shrink-0 overflow-hidden rounded-lg border border-hairline-soft transition ${showAvatar ? "opacity-100" : "opacity-0"}`}>
+                      <img
+                        src={resolvePhotoUrl(otherUser?.photoUrl, otherUser?.firstName)}
+                        alt="avatar"
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+                  )}
+                  <div className="relative flex flex-col items-end">
+                    <VoiceNotePlayer
+                      src={message.message}
+                      durationSec={message.metadata?.durationSec}
+                      isOwn={message.isOwn}
+                      isPending={isUploading}
+                    />
+                    {message.isOwn && !isUploading && (
+                      <div className="absolute -top-1 -right-1 z-10 flex items-start gap-0.5">
+                        <button
+                          type="button"
+                          onClick={() => setMenuMessageId(menuMessageId === message._id ? null : message._id)}
+                          className="flex h-5 w-5 items-center justify-center rounded text-[10px] leading-none hover:bg-white/20 transition"
+                        >
+                          ...
+                        </button>
+                        {menuMessageId === message._id && (
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(message)}
+                            className="flex h-5 w-5 items-center justify-center rounded bg-error-500 text-white hover:bg-error-600 transition"
+                            title="Delete"
+                          >
+                            <HiOutlineTrash className="h-3 w-3" />
+                          </button>
+                        )}
+                      </div>
+                    )}
+                    <div className={`mt-1 flex items-center gap-1.5 text-[10px] tabular-nums ${message.isOwn ? "justify-end text-white/70" : "text-neutral-400"}`}>
+                      <span>{formatMessageTime(message.createdAt)}</span>
+                      {message.isOwn && (
+                        <>
+                          <span className="opacity-40">•</span>
+                          <span>{getStatusLabel(message, true)}</span>
+                        </>
+                      )}
+                    </div>
+                    {FEATURES.reactions && (
+                      <MessageReactions message={message} matchId={matchId} userId={userId} emit={emitEnhancement} />
+                    )}
+                  </div>
+                </motion.div>
               );
             }
 
@@ -881,6 +1042,9 @@ Header: () => <div className="h-8" />,
                         Retry
                       </button>
                     )}
+                    {FEATURES.reactions && (
+                      <MessageReactions message={message} matchId={matchId} userId={userId} emit={emitEnhancement} />
+                    )}
                   </div>
                 </motion.div>
               );
@@ -929,9 +1093,13 @@ Header: () => <div className="h-8" />,
                       )}
                     </div>
                   )}
-                  <p className="break-words whitespace-pre-wrap leading-relaxed">
-                    {message.message}
-                  </p>
+                  {FEATURES.markdown ? (
+                    <MarkdownMessage text={message.message} />
+                  ) : (
+                    <p className="break-words whitespace-pre-wrap leading-relaxed">
+                      {message.message}
+                    </p>
+                  )}
                   <div className={`mt-1 flex items-center gap-1.5 text-[10px] tabular-nums ${message.isOwn ? "justify-end text-white/70" : "text-neutral-400"}`}>
                     <span>{formatMessageTime(message.createdAt)}</span>
                     {message.isOwn && (
@@ -949,6 +1117,9 @@ Header: () => <div className="h-8" />,
                     >
                       Retry
                     </button>
+                  )}
+                  {FEATURES.reactions && (
+                    <MessageReactions message={message} matchId={matchId} userId={userId} emit={emitEnhancement} />
                   )}
                 </div>
               </motion.div>
@@ -1013,6 +1184,25 @@ title="Dismiss"
 )}
 </AnimatePresence>
 <div className="flex items-end gap-3">
+{/* ── [PHASE-1] GIF picker + voice note recorder (additive) */}
+{FEATURES.gifs && (
+<GifPicker
+matchId={matchId}
+targetUserId={targetUserId}
+userId={userId}
+onOptimistic={addOptimisticMessage}
+onRemove={removeMessageByClientId}
+/>
+)}
+{FEATURES.voiceNotes && (
+<VoiceNoteRecorder
+matchId={matchId}
+targetUserId={targetUserId}
+userId={userId}
+onOptimistic={addOptimisticMessage}
+onRemove={removeMessageByClientId}
+/>
+)}
 <input
 type="file"
 accept="image/*"

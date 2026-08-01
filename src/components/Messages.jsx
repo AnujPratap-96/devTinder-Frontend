@@ -1,27 +1,47 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import useConnectionList from "../hooks/useConnectionList";
 import { motion } from "framer-motion";
-import { HiChat, HiSearch, HiArrowDown } from "react-icons/hi";
-import Card from "./ui/Card";
+import { HiChat, HiSearch, HiArrowDown, HiOutlineLocationMarker } from "react-icons/hi";
 import Button from "./ui/Button";
 import EmptyState from "./ui/EmptyState";
+// ── [PHASE-1] pinned conversations
+import { FEATURES } from "../config/features";
+import { getChatPrefs } from "../features/chat/enhancementApi";
 
 const Messages = () => {
   const { connections, hasMore, loadMore, loadingMore } = useConnectionList();
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
+  // [PHASE-1] pinned conversation ids
+  const [pinnedIds, setPinnedIds] = useState(new Set());
+
+  useEffect(() => {
+    if (!FEATURES.chatPrefs) return;
+    getChatPrefs().then((data) => {
+      const ids = Object.entries(data.prefs ?? {})
+        .filter(([, prefs]) => prefs?.pinned)
+        .map(([matchId]) => matchId);
+      setPinnedIds(new Set(ids));
+    }).catch(() => {});
+  }, []);
 
   const filteredConnections = useMemo(() => {
     if (!connections) return [];
     const normalized = query.trim().toLowerCase();
-    if (!normalized) return connections;
-    return connections.filter((conn) => {
-      const name = `${conn.firstName ?? ""} ${conn.lastName ?? ""}`.toLowerCase();
-      const about = (conn.about ?? "").toLowerCase();
-      return name.includes(normalized) || about.includes(normalized);
-    });
-  }, [connections, query]);
+    const base = normalized
+      ? connections.filter((conn) => {
+          const name = `${conn.firstName ?? ""} ${conn.lastName ?? ""}`.toLowerCase();
+          const about = (conn.about ?? "").toLowerCase();
+          return name.includes(normalized) || about.includes(normalized);
+        })
+      : connections;
+    // [PHASE-1] pinned-first ordering (additive; no-op when no prefs loaded)
+    if (FEATURES.chatPrefs && pinnedIds.size > 0) {
+      return [...base].sort((a, b) => Number(pinnedIds.has(b._id)) - Number(pinnedIds.has(a._id)));
+    }
+    return base;
+  }, [connections, query, pinnedIds]);
 
   const hasConnections = Boolean(connections?.length);
   const hasResults = filteredConnections.length > 0;
@@ -103,6 +123,9 @@ const Messages = () => {
                       </div>
                     )}
 
+                    {pinnedIds.has(conn._id) && (
+                      <HiOutlineLocationMarker className="text-base text-brand-400" title="Pinned conversation" />
+                    )}
                     <HiChat className="text-base text-neutral-700" />
                   </motion.button>
                 </li>

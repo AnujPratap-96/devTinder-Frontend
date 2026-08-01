@@ -3,6 +3,9 @@ import { useSelector } from "react-redux";
 import { useCallContext } from "./CallProvider";
 import CallControls from "./CallControls";
 import { resolvePhotoUrl } from "../../utils/avatar";
+// ── [PHASE-1] live call-quality badge
+import { FEATURES } from "../../config/features";
+import CallQualityBadge from "../../features/chat/CallQualityBadge";
 
 const formatDuration = (secs) => {
   const m = Math.floor(secs / 60);
@@ -50,6 +53,8 @@ const InCallScreen = () => {
             {formatDuration(elapsed)}
           </span>
         )}
+        {/* ── [PHASE-1] call quality badge */}
+        {FEATURES.callQuality && <CallQualityBadge />}
       </div>
 
       {/* Remote */}

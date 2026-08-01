@@ -19,6 +19,8 @@ const callClient = {
   },
   getLocalStream: () => localStream,
   getRemoteStream: () => remoteStream,
+  // [PHASE-1] additive getter for call-quality stats polling
+  getPeer: () => pc,
 
   async getMedia(type) {
     if (localStream) return localStream;
