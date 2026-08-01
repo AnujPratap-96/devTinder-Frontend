@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from "react";
-import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import { BASE_URL } from "../utils/constant";
+import { sendOtp, verifyOtp, resetPassword } from "../api/auth";
 import { useToast } from "../context/ToastProvider";
 import { HiArrowRight, HiArrowLeft, HiEye, HiEyeOff } from "react-icons/hi";
 import AuthShell from "./ui/AuthShell";
@@ -43,11 +42,7 @@ const ForgotPassword = () => {
     }
     setLoading(true);
     try {
-      await axios.post(
-        `${BASE_URL}/send-otp`,
-        { email, purpose: "reset-password" },
-        { withCredentials: true }
-      );
+      await sendOtp(email, "reset-password");
       addToast("OTP sent to your email!", "success");
       setStep(2);
       setResendCooldown(30);
@@ -67,11 +62,7 @@ const ForgotPassword = () => {
     }
     setLoading(true);
     try {
-      await axios.post(
-        `${BASE_URL}/verify-otp`,
-        { email, otp: otpValue, purpose: "reset-password" },
-        { withCredentials: true }
-      );
+      await verifyOtp(email, otpValue, "reset-password");
       addToast("OTP verified!", "success");
       setStep(3);
     } catch (err) {
@@ -93,11 +84,7 @@ const ForgotPassword = () => {
     }
     setLoading(true);
     try {
-      await axios.post(
-        `${BASE_URL}/reset-password`,
-        { email, newPassword },
-        { withCredentials: true }
-      );
+      await resetPassword({ email, newPassword });
       addToast("Password reset successfully!", "success");
       navigate("/");
     } catch (err) {
@@ -139,11 +126,7 @@ const ForgotPassword = () => {
     setOtpInputs(["", "", "", "", "", ""]);
     setOtp("");
     try {
-      await axios.post(
-        `${BASE_URL}/send-otp`,
-        { email, purpose: "reset-password" },
-        { withCredentials: true }
-      );
+      await sendOtp(email, "reset-password");
       addToast("OTP resent!", "success");
       setResendCooldown(30);
     } catch (err) {

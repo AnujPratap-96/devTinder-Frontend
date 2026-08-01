@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
 import { useSelector } from "react-redux";
 import { HiBan } from "react-icons/hi";
-import { BASE_URL } from "../../utils/constant";
+import { getAdminBannedUsers, unbanUser as unbanUserApi } from "../../api/admin";
 import Card from "../ui/Card";
 import Button from "../ui/Button";
 import EmptyState from "../ui/EmptyState";
@@ -17,8 +16,8 @@ const AdminBanned = () => {
 
   const load = async () => {
     try {
-      const res = await axios.get(`${BASE_URL}/admin/banned`, { withCredentials: true });
-      setUsers(res.data.data.users ?? []);
+      const data = await getAdminBannedUsers();
+      setUsers(data.users ?? []);
     } catch (err) {
       addToast(err?.response?.data?.message || "Failed to load banned users", "error");
     } finally {
@@ -28,12 +27,11 @@ const AdminBanned = () => {
 
   useEffect(() => {
     if (user?.isAdmin) load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const unban = async (userId) => {
     try {
-      await axios.post(`${BASE_URL}/admin/unban`, { userId }, { withCredentials: true });
+      await unbanUserApi(userId);
       addToast("User unbanned", "success");
       load();
     } catch (err) {

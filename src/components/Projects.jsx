@@ -1,6 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import axios from "axios";
 import {
   HiCollection,
   HiUserAdd,
@@ -16,7 +15,7 @@ import {
   HiArrowDown,
 } from "react-icons/hi";
 import { motion, AnimatePresence } from "framer-motion";
-import { BASE_URL } from "../utils/constant";
+import { getProjects, createProject as createProjectApi, updateProject as updateProjectApi, deleteProject as deleteProjectApi, getProjectMessages, sendProjectMessage as sendProjectMessageApi, removeProjectMember, joinProject, respondToJoinRequest } from "../api/projects";
 import Card from "./ui/Card";
 import Button from "./ui/Button";
 import { useToast } from "../context/ToastProvider";
@@ -592,13 +591,10 @@ const ProjectChat = ({ project, currentUserId, onClose }) => {
     try {
       if (append) setLoadingMore(true);
       else setLoading(true);
-      const { data } = await axios.get(`${BASE_URL}/project/${project._id}/messages`, {
-        withCredentials: true,
-        params: { limit: MESSAGE_PAGE_SIZE, cursor: cursor || undefined },
-      });
-      const items = data.data.messages || [];
-      const next = data?.data?.nextCursor ?? null;
-      const more = data?.data?.hasMore ?? false;
+      const data = await getProjectMessages(project._id, { limit: MESSAGE_PAGE_SIZE, cursor: cursor || undefined });
+      const items = data.messages || [];
+      const next = data?.nextCursor ?? null;
+      const more = data?.hasMore ?? false;
       if (append) {
         const prevLen = messages.length;
         setMessages((prev) => [...items, ...prev]);
@@ -623,15 +619,11 @@ const ProjectChat = ({ project, currentUserId, onClose }) => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const sendMessage = async () => {
+  const handleSendMessage = async () => {
     if (!newMessage.trim()) return;
     setSending(true);
     try {
-      await axios.post(
-        `${BASE_URL}/project/${project._id}/message`,
-        { message: newMessage },
-        { withCredentials: true }
-      );
+      await sendProjectMessageApi(project._id, { message: newMessage });
       setNewMessage("");
       await loadMessages();
     } catch (error) {
@@ -746,11 +738,11 @@ const ProjectChat = ({ project, currentUserId, onClose }) => {
             <input
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage()}
+              onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSendMessage()}
               placeholder="Type a message..."
               className="flex-1 rounded-xl border border-hairline bg-tint px-4 py-2 text-sm text-neutral-100 outline-none focus-visible:ring-2 focus-visible:ring-brand-400"
             />
-            <Button variant="primary" onClick={sendMessage} disabled={sending || !newMessage.trim()}>
+            <Button variant="primary" onClick={handleSendMessage} disabled={sending || !newMessage.trim()}>
               <HiPaperAirplane className="text-lg" />
             </Button>
           </div>
@@ -808,13 +800,10 @@ const Projects = () => {
     try {
       if (append) setLoadingMore(true);
       else setLoading(true);
-      const { data } = await axios.get(`${BASE_URL}/projects`, {
-        withCredentials: true,
-        params: { limit: PAGE_SIZE, cursor: cursor || undefined },
-      });
-      const items = data.data.projects ?? [];
-      const next = data?.data?.nextCursor ?? null;
-      const more = data?.data?.hasMore ?? false;
+      const data = await getProjects({ limit: PAGE_SIZE, cursor: cursor || undefined });
+      const items = data.projects ?? [];
+      const next = data?.nextCursor ?? null;
+      const more = data?.hasMore ?? false;
       if (append) {
         setProjects((prev) => [...prev, ...items]);
       } else {
@@ -866,7 +855,7 @@ const Projects = () => {
 
   const removeMember = async (projectId, memberId) => {
     try {
-      await axios.delete(`${BASE_URL}/project/${projectId}/member/${memberId}`, { withCredentials: true });
+      await removeProjectMember(projectId, memberId);
       loadProjects();
       addToast("Member removed", "success");
     } catch (error) {
@@ -881,9 +870,9 @@ const Projects = () => {
     }
     setCreating(true);
     try {
-      const { data } = await axios.post(`${BASE_URL}/project`, form, { withCredentials: true });
-      dispatch(addProjects({ items: [data.data.project, ...(reduxProjects?.items || [])], nextCursor: reduxProjects?.nextCursor ?? null, hasMore: reduxProjects?.hasMore ?? false }));
-      setProjects((prev) => [data.data.project, ...prev]);
+      const data = await createProjectApi(form);
+      dispatch(addProjects({ items: [data.project, ...(reduxProjects?.items || [])], nextCursor: reduxProjects?.nextCursor ?? null, hasMore: reduxProjects?.hasMore ?? false }));
+      setProjects((prev) => [data.project, ...prev]);
       setForm({ title: "", description: "", techStack: [] });
       setShowCreate(false);
       addToast("Project created", "success");
@@ -896,9 +885,9 @@ const Projects = () => {
 
   const handleEditSave = async (projectId, updatedData) => {
     try {
-      const { data } = await axios.patch(`${BASE_URL}/project/${projectId}`, updatedData, { withCredentials: true });
-       dispatch(updateProject(data.data.project));
-      setProjects((prev) => prev.map((p) => (p._id === projectId ? { ...p, ...data.data.project } : p)));
+      const data = await updateProjectApi(projectId, updatedData);
+      dispatch(updateProject(data.project));
+      setProjects((prev) => prev.map((p) => (p._id === projectId ? { ...p, ...data.project } : p)));
       setEditingProject(null);
       addToast("Project updated", "success");
     } catch (error) {
@@ -909,7 +898,7 @@ const Projects = () => {
   const handleDelete = async (projectId) => {
     if (!window.confirm("Are you sure you want to delete this project?")) return;
     try {
-      await axios.delete(`${BASE_URL}/project/${projectId}`, { withCredentials: true });
+      await deleteProjectApi(projectId);
       dispatch(removeProject(projectId));
       setProjects((prev) => prev.filter((p) => p._id !== projectId));
       addToast("Project deleted", "success");
@@ -920,7 +909,7 @@ const Projects = () => {
 
   const requestJoin = async (projectId) => {
     try {
-      await axios.post(`${BASE_URL}/project/request`, { projectId }, { withCredentials: true });
+      await joinProject(projectId);
       loadProjects();
       addToast("Join request sent", "success");
     } catch (error) {
@@ -930,8 +919,8 @@ const Projects = () => {
 
   const respondToRequest = async (projectId, requestId, action) => {
     try {
-      const { data } = await axios.post(`${BASE_URL}/project/request/respond`, { projectId, requestId, action }, { withCredentials: true });
-       dispatch(updateProject(data.data.project));
+      const data = await respondToJoinRequest(projectId, requestId, action);
+      dispatch(updateProject(data.project));
       addToast(`Request ${action}ed`, "success");
     } catch (error) {
       addToast(error?.response?.data?.message || "Unable to respond", "error");

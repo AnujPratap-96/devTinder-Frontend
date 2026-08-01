@@ -3,10 +3,9 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { setPlans as setPlansRedux } from "../store/plansSlice";
-import axios from "axios";
 import { motion, AnimatePresence } from "framer-motion";
 import { generateBio, suggestSkills } from "../utils/aiApi";
-import { BASE_URL } from "../utils/constant";
+import { getPlans } from "../api/plans";
 
 // ─── Sparkle SVG icon ────────────────────────────────────────
 const SparkleIcon = ({ className = "" }) => (
@@ -91,8 +90,8 @@ const AIPanel = ({ user, skills, formData, onBioGenerated, onSkillsAccepted }) =
       let plans = reduxPlans;
       if (!plans) {
         try {
-          const res = await axios.get(`${BASE_URL}/plans`, { withCredentials: true });
-          plans = res.data.data.plans ?? [];
+          const data = await getPlans();
+          plans = data.plans ?? [];
           dispatch(setPlansRedux(plans));
         } catch {
           return;

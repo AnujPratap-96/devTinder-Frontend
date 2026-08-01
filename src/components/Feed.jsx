@@ -1,8 +1,7 @@
-import axios from "axios";
-import { BASE_URL } from "../utils/constant";
 import { useDispatch, useSelector } from "react-redux";
 import { useCallback, useEffect, useRef, useState, useTransition, memo, forwardRef } from "react";
 import { addFeed } from "../store/feedSlice";
+import { getFeed, searchUsers } from "../api/feed";
 import { VirtuosoGrid } from "react-virtuoso";
 import UserCard from "./UserCard";
 import CompactUserItem from "./CompactUserItem";
@@ -97,22 +96,21 @@ const Feed = () => {
 
   const [feedItems, setFeedItems] = useState([]);
 
-  const getFeed = useCallback(async ({ cursor = null, append = false } = {}) => {
+  const fetchFeed = useCallback(async ({ cursor = null, append = false } = {}) => {
     try {
       if (append) setLoadingMore(true);
       else setLoading(true);
-      const params = new URLSearchParams();
-      if (cursor) params.set("cursor", cursor);
+      const params = {};
+      if (cursor) params.cursor = cursor;
       if (coords?.lat && coords?.lng) {
-        params.set("lat", coords.lat);
-        params.set("lng", coords.lng);
-        params.set("radius", "50");
+        params.lat = coords.lat;
+        params.lng = coords.lng;
+        params.radius = 50;
       }
-      const url = params.toString() ? `${BASE_URL}/feed?${params.toString()}` : `${BASE_URL}/feed`;
-      const res = await axios.get(url, { withCredentials: true });
-      const users = res?.data?.data?.users || [];
-      const next = res?.data?.data?.nextCursor ?? null;
-      const more = res?.data?.data?.hasMore ?? false;
+      const data = await getFeed(params);
+      const users = data?.users || [];
+      const next = data?.nextCursor ?? null;
+      const more = data?.hasMore ?? false;
       if (append) {
         setFeedItems((prev) => [...prev, ...users]);
       } else {
@@ -146,13 +144,11 @@ const Feed = () => {
     setIsSearching(true);
     setLoading(true);
     try {
-      const res = await axios.get(`${BASE_URL}/search?q=${encodeURIComponent(q.trim())}`, {
-        withCredentials: true,
-        signal,
-      });
-      setSearchResults(res.data.data?.users || []);
+      const data = await searchUsers(q.trim(), signal);
+      setSearchResults(data?.users || []);
     } catch (err) {
-      if (axios.isCancel(err)) return;
+      if (err?.name === "CanceledError" || err?.code === "ERR_CANCELED") return;
+      if (err?.constructor?.name === "Cancel") return;
       console.error("Search error:", err);
     } finally {
       setLoading(false);
@@ -180,12 +176,12 @@ const Feed = () => {
         setHasMore(reduxFeed.hasMore);
         setLoading(false);
       } else {
-        getFeed({ cursor: null });
+        fetchFeed({ cursor: null });
       }
     } else if (!searchQuery.trim() && !isSearching && seeded.current) {
-      getFeed({ cursor: null });
+      fetchFeed({ cursor: null });
     }
-  }, [getFeed, searchQuery, isSearching]);
+  }, [fetchFeed, searchQuery, isSearching]);
 
   useEffect(() => {
     const hasGeolocation = "geolocation" in navigator;
@@ -289,7 +285,7 @@ const Feed = () => {
                 <div className="mt-8 flex justify-center">
                   <Button
                     variant="secondary"
-                    onClick={() => getFeed({ cursor: nextCursor, append: true })}
+                    onClick={() => fetchFeed({ cursor: nextCursor, append: true })}
                     disabled={loadingMore}
                   >
                     {loadingMore ? <span className="spinner h-4 w-4 border-2 text-brand-600" /> : <HiArrowDown className="text-lg" />}
@@ -317,7 +313,7 @@ const Feed = () => {
                 variant="secondary"
                 onClick={() => {
                   setLoading(true);
-                  getFeed({ cursor: null });
+                  fetchFeed({ cursor: null });
                 }}
               >
                 Refresh Feed

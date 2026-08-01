@@ -1,9 +1,17 @@
-import { BASE_URL, createSocketConnection } from "../utils/constant";
+import { BASE_URL } from "../config/constants";
 
 let pc = null;
 let localStream = null;
 let remoteStream = null;
 let handlers = {};
+
+// Free public TURN fallback (Open Relay Project) — used when the backend
+// returns no TURN servers (e.g. local dev). Mirrors the backend default.
+const FALLBACK_TURN_SERVERS = [
+  { urls: "turn:openrelay.metered.ca:80", username: "openrelayproject", credential: "openrelayproject" },
+  { urls: "turn:openrelay.metered.ca:443", username: "openrelayproject", credential: "openrelayproject" },
+  { urls: "turn:openrelay.metered.ca:443?transport=tcp", username: "openrelayproject", credential: "openrelayproject" },
+];
 
 const callClient = {
   setHandlers(h) {
@@ -47,6 +55,7 @@ const callClient = {
     pc.onicecandidate = (e) => {
       if (e.candidate) handlers.onIce?.(e.candidate);
     };
+    pc.oniceconnectionstatechange = () => handlers.onIceState?.(pc.iceConnectionState);
     pc.onconnectionstatechange = () => handlers.onState?.(pc.connectionState);
     return pc;
   },
@@ -71,8 +80,19 @@ const callClient = {
   async addIce(candidate) {
     try {
       if (pc && candidate) await pc.addIceCandidate(candidate);
-    } catch (err) {
+    } catch {
       // late/duplicate candidates are non-fatal
+    }
+  },
+
+  async restartIce() {
+    if (!pc) return null;
+    try {
+      const offer = await pc.createOffer({ iceRestart: true });
+      await pc.setLocalDescription(offer);
+      return pc.localDescription;
+    } catch {
+      return null;
     }
   },
 
@@ -117,9 +137,15 @@ const callClient = {
         `${BASE_URL}/calls/turn-credentials`,
         { withCredentials: true }
       );
-      return data.data.iceServers;
+      const servers = data?.data?.iceServers || [];
+      const hasTurn = servers.some((s) => String(s.urls || "").includes("turn:"));
+      if (!hasTurn) return [...servers, ...FALLBACK_TURN_SERVERS];
+      return servers;
     } catch {
-      return [{ urls: "stun:stun.l.google.com:19302" }];
+      return [
+        { urls: "stun:stun.l.google.com:19302" },
+        ...FALLBACK_TURN_SERVERS,
+      ];
     }
   },
 
@@ -127,7 +153,9 @@ const callClient = {
     if (pc) {
       try {
         pc.close();
-      } catch {}
+      } catch {
+        // peer already closed
+      }
       pc = null;
     }
     this.stopMedia();

@@ -1,7 +1,6 @@
 import { useRef, useState } from "react";
-import axios from "axios";
-import { BASE_URL } from "../utils/constant";
 import { useNavigate } from "react-router-dom";
+import { register } from "../api/auth";
 import { useToast } from "../context/ToastProvider";
 import { HiArrowRight, HiMail } from "react-icons/hi";
 import AuthShell from "./ui/AuthShell";
@@ -18,13 +17,9 @@ const Register = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await axios.post(
-        BASE_URL + "/register",
-        { emailId: emailRef.current.value },
-        { withCredentials: true }
-      );
+      const data = await register(emailRef.current.value);
       addToast("OTP sent successfully!", "success");
-      localStorage.setItem("signup_token", res.data.data.token);
+      localStorage.setItem("signup_token", data.token);
       localStorage.setItem("signup_email", emailRef.current.value);
       navigate("/verify-otp");
     } catch (err) {

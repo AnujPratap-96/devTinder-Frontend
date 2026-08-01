@@ -1,10 +1,10 @@
-import axios from "axios";
 import { FaCrown, FaCheckCircle } from "react-icons/fa";
 import { useEffect, useState, useRef } from "react";
-import { BASE_URL } from "../utils/constant";
 import { useSelector, useDispatch } from "react-redux";
 import { addUser } from "../store/userSlice";
 import { setPlans as setPlansRedux } from "../store/plansSlice";
+import { getPlans, createPaymentOrder } from "../api/plans";
+import { verifyPremium } from "../api/auth";
 import { useToast } from "../context/ToastProvider";
 import { motion } from "framer-motion";
 import { HiSparkles, HiShoppingBag } from "react-icons/hi";
@@ -38,9 +38,9 @@ const Premium = () => {
 
   const verifyPremiumUser = async () => {
     try {
-      const res = await axios.get(BASE_URL + "/premium/verify", { withCredentials: true });
-      if (res.data.data.isPremium) {
-        dispatch(addUser(res.data.data.user));
+      const data = await verifyPremium();
+      if (data.isPremium) {
+        dispatch(addUser(data.user));
       }
     } catch {
       // non-fatal
@@ -49,8 +49,8 @@ const Premium = () => {
 
   const loadPlans = async () => {
     try {
-      const res = await axios.get(BASE_URL + "/plans", { withCredentials: true });
-      const items = res.data.data.plans ?? [];
+      const data = await getPlans();
+      const items = data.plans ?? [];
       setPlans(items);
       dispatch(setPlansRedux(items));
     } catch (error) {
@@ -62,12 +62,8 @@ const Premium = () => {
 
   const handleBuyClick = async (slug) => {
     try {
-      const order = await axios.post(
-        BASE_URL + "/payment/create",
-        { membershipType: slug },
-        { withCredentials: true }
-      );
-      const { payment, keyId } = order.data.data;
+      const result = await createPaymentOrder(slug);
+      const { payment, keyId } = result;
       const notes = payment?.notes ?? {};
       const options = {
         key: keyId,

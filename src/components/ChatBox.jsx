@@ -2,13 +2,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
-import axios from "axios";
 import { Virtuoso } from "react-virtuoso";
 import { motion, AnimatePresence } from "framer-motion";
 import {
 HiArrowLeft,
 HiPaperAirplane,
-HiCheck,
 HiOutlineExclamation,
 HiDotsVertical,
 HiBan,
@@ -16,10 +14,12 @@ HiFlag,
 HiX,
 HiOutlineTrash,
 } from "react-icons/hi";
-import { BASE_URL, createSocketConnection } from "../utils/constant";
+import { createSocketConnection } from "../utils/constant";
+import { getMessages, getMessagesByMatch, markAsSeen, deleteMessage, uploadChatFile } from "../api/chat";
+import { blockUser as blockUserApi, reportUser as reportUserApi } from "../api/connections";
 import { ensureCrypto, isCryptoReady, encryptMessage, decryptMessage, canEncryptWith } from "../utils/e2ee";
 import { useToast } from "../context/ToastProvider";
-import { getOnlineStatus, formatTimeAgo } from "../utils/timeUtils";
+import { getOnlineStatus } from "../utils/timeUtils";
 import { resolvePhotoUrl } from "../utils/avatar";
 import { generateIcebreaker, suggestCollaboration, aiErrorMessage } from "../utils/aiApi";
 import CallButton from "./call/CallButton";
@@ -30,6 +30,34 @@ const generateClientId = () =>
 typeof crypto !== "undefined" && crypto.randomUUID
 ? crypto.randomUUID()
 : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+// Client-side image compression for faster uploads
+const compressImage = (file, maxWidth = 1280, maxHeight = 1280, quality = 0.8) => {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      img.src = e.target.result;
+    };
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      let { width, height } = img;
+      if (width > maxWidth || height > maxHeight) {
+        const ratio = Math.min(maxWidth / width, maxHeight / height);
+        width *= ratio;
+        height *= ratio;
+      }
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, width, height);
+      canvas.toBlob((blob) => {
+        resolve(new File([blob], file.name, { type: file.type, lastModified: Date.now() }));
+      }, file.type, quality);
+    };
+    reader.readAsDataURL(file);
+  });
+};
 
 const getStatusLabel = (message, isMine) => {
 if (!isMine) return null;
@@ -48,27 +76,31 @@ return <span className="text-neutral-500">…</span>;
 return <span className="text-neutral-400">Sent</span>;
 };
 
-const decorateMessage = (payload, userId, targetUserId) => ({
-...payload,
-sender: payload.senderId === userId ? "me" : "them",
-isOwn: payload.senderId === userId,
-counterpartId: payload.senderId === userId ? targetUserId : payload.senderId,
-receiverId: payload.receiverId,
-});
+const decorateMessage = (payload, userId, targetUserId) => {
+  const senderId = payload.senderId?._id ?? payload.senderId;
+  return {
+    ...payload,
+    sender: senderId === userId ? "me" : "them",
+    isOwn: senderId === userId,
+    counterpartId: senderId === userId ? targetUserId : senderId,
+    receiverId: payload.receiverId,
+  };
+};
 
 // Decrypt an incoming message for display. If it isn't encrypted, or we can't
 // decrypt it (e.g. missing peer key), return it with a safe placeholder so the
 // UI never crashes on ciphertext.
-const decryptIncoming = async (msg) => {
-if (!msg?.isEncrypted) return msg;
-if (!isCryptoReady()) return { ...msg, message: "[encrypted message]" };
-try {
-const peer = msg.senderId === userId ? msg.receiverId : msg.senderId;
-const plain = await decryptMessage(peer, msg.message);
-return { ...msg, message: plain };
-} catch {
-return { ...msg, message: "[encrypted message]" };
-}
+const decryptIncoming = async (msg, userId) => {
+  if (!msg?.isEncrypted) return msg;
+  if (!isCryptoReady()) return { ...msg, message: "[encrypted message]" };
+  try {
+    const senderId = msg.senderId?._id ?? msg.senderId;
+    const peer = senderId === userId ? msg.receiverId : msg.senderId;
+    const plain = await decryptMessage(peer, msg.message);
+    return { ...msg, message: plain };
+  } catch {
+    return { ...msg, message: "[encrypted message]" };
+  }
 };
 
 const ChatBox = () => {
@@ -100,12 +132,13 @@ const [icebreakerLoading, setIcebreakerLoading] = useState(false);
 const [collabSuggestion, setCollabSuggestion] = useState(null);
 const [collabLoading, setCollabLoading] = useState(false);
 const [uploading, setUploading] = useState(false);
+const [previewImage, setPreviewImage] = useState(null);
 const { addToast } = useToast();
 
 const blockUser = async () => {
 try {
-await axios.post(`${BASE_URL}/block`, { userId: targetUserId }, { withCredentials: true });
-addToast("User blocked", "success");
+      await blockUserApi(targetUserId);
+      addToast("User blocked", "success");
 setShowMenu(false);
 navigate("/messages");
 } catch (error) {
@@ -127,8 +160,8 @@ setCollabLoading(false);
 
 const reportUser = async () => {
 try {
-await axios.post(`${BASE_URL}/report`, { userId: targetUserId, reason: "Inappropriate behavior" }, { withCredentials: true });
-addToast("User reported", "success");
+      await reportUserApi(targetUserId, "Inappropriate behavior");
+      addToast("User reported", "success");
 setShowMenu(false);
 } catch (error) {
 addToast(error?.response?.data?.message || "Unable to report user", "error");
@@ -137,8 +170,8 @@ addToast(error?.response?.data?.message || "Unable to report user", "error");
 
 const handleDelete = async (message) => {
 try {
-await axios.delete(`${BASE_URL}/messages/${message._id}`, { withCredentials: true });
-setMessages((prev) => prev.filter((m) => m._id !== message._id));
+      await deleteMessage(message._id);
+      setMessages((prev) => prev.filter((m) => m._id !== message._id));
 setMenuMessageId(null);
 if (socketRef.current && matchId) {
 socketRef.current.emit("message:delete", { messageId: message._id, matchId });
@@ -176,12 +209,10 @@ if (!userId || !targetUserId) return;
 try {
 // Load messages first — this is the critical path and must never depend
 // on crypto succeeding. E2E init happens afterwards and is non-fatal.
-const { data } = await axios.get(`${BASE_URL}/chat/${targetUserId}?limit=${MESSAGE_LIMIT}`, {
-withCredentials: true,
-});
-setMatchId(data.data.chat.matchId);
+const data = await getMessages(targetUserId, { limit: MESSAGE_LIMIT });
+      setMatchId(data.chat.matchId);
 
-const raw = (data.data.messages ?? []).map((msg) =>
+      const raw = (data.messages ?? []).map((msg) =>
 decorateMessage(msg, userId, targetUserId)
 );
 
@@ -192,10 +223,10 @@ await ensureCrypto({ userId });
 /* fall back to plaintext/placeholder display */
 }
 
-const decorated = await Promise.all(raw.map((msg) => decryptIncoming(msg)));
+const decorated = await Promise.all(raw.map((msg) => decryptIncoming(msg, userId)));
         setMessages(decorated);
-        setNextCursor(data.data.nextCursor ?? null);
-        setHasMore(data.data.hasMore ?? false);
+        setNextCursor(data.nextCursor ?? null);
+        setHasMore(data.hasMore ?? false);
 setError(null);
 
 // Fetch icebreaker only on a fresh/empty chat
@@ -231,12 +262,9 @@ const handleLoadOlder = async () => {
       } catch {
         /* non-fatal; older messages still load (possibly as placeholders) */
       }
-      const { data } = await axios.get(
-        `${BASE_URL}/messages/${matchId}?cursor=${nextCursor}&limit=${MESSAGE_LIMIT}`,
-        { withCredentials: true }
-      );
+      const data = await getMessagesByMatch(matchId, { cursor: nextCursor, limit: MESSAGE_LIMIT });
       const decorated = await Promise.all(
-        data.data.messages.map((msg) => decryptIncoming(decorateMessage(msg, userId, targetUserId)))
+        data.messages.map((msg) => decryptIncoming(decorateMessage(msg, userId, targetUserId), userId))
       );
       if (decorated.length) {
         setMessages((prev) => [...decorated, ...prev]);
@@ -244,7 +272,7 @@ const handleLoadOlder = async () => {
       }
       setNextCursor(data.data.nextCursor ?? null);
       setHasMore(data.data.hasMore ?? false);
-    } catch (err) {
+    } catch {
       addToast("Unable to retrieve older messages", "error");
     } finally {
       setLoadingOlder(false);
@@ -268,7 +296,7 @@ return [...prev, incoming];
 const handleAck = async (payload) => {
 pendingTimeoutsRef.current.get(payload.clientMessageId)?.();
 pendingTimeoutsRef.current.delete(payload.clientMessageId);
-const decrypted = await decryptIncoming(payload);
+const decrypted = await decryptIncoming(payload, userId);
 upsertMessage(decorateMessage(decrypted, userId, targetUserId));
 };
 
@@ -313,8 +341,30 @@ setMatchId(serverMatchId);
 });
 
 socket.on("message:created", async (msg) => {
-const decrypted = await decryptIncoming(msg);
-upsertMessage(decorateMessage(decrypted, userId, targetUserId));
+  const decrypted = await decryptIncoming(msg, userId);
+  const decorated = decorateMessage(decrypted, userId, targetUserId);
+
+  // Replace optimistic image message if this is the server confirmation
+  if (decorated.messageType === "image" && decorated.isOwn) {
+    setMessages((prev) => {
+      // Find the most recent optimistic image from this user
+      const optimisticIndex = prev.findLastIndex(
+        (m) =>
+          m.isOptimistic &&
+          m.messageType === "image" &&
+          m.isOwn
+      );
+      if (optimisticIndex >= 0) {
+        const updated = [...prev];
+        updated[optimisticIndex] = decorated;
+        return updated;
+      }
+      // No optimistic message to replace - add the server message normally
+      return [...prev, decorated];
+    });
+    return; // Don't call upsertMessage again
+  }
+  upsertMessage(decorated);
 });
 
 socket.on("message:ack", (msg) => {
@@ -374,11 +424,7 @@ if (!matchId || !userId) return;
 const unseen = sortedMessages.filter((msg) => !msg.seen && !msg.isOwn);
 if (!unseen.length) return;
 socketRef.current?.emit("message:seen", { userId, matchId });
-axios.patch(
-`${BASE_URL}/messages/seen`,
-{ matchId },
-{ withCredentials: true }
-).catch(() => {});
+  markAsSeen(matchId).catch(() => {});
 }, [sortedMessages, matchId, userId]);
 
 
@@ -520,21 +566,70 @@ sendMessage();
 };
 
 const handleFileSelect = async (e) => {
-const file = e.target.files?.[0];
-if (!file) return;
-setUploading(true);
-try {
-const formData = new FormData();
-formData.append("image", file);
-formData.append("matchId", matchId);
-formData.append("targetUserId", targetUserId);
-await axios.post(`${BASE_URL}/chat/upload`, formData, { withCredentials: true });
-} catch (err) {
-addToast(err?.response?.data?.message || "Failed to upload image", "error");
-} finally {
-setUploading(false);
-e.target.value = "";
-}
+  const file = e.target.files?.[0];
+  if (!file) return;
+  setUploading(true);
+
+  // Compress image client-side before upload for faster transfers
+  const compressedFile = await compressImage(file);
+
+  // Optimistic preview: create blob URL for immediate display
+  const blobUrl = URL.createObjectURL(compressedFile);
+  const clientMessageId = generateClientId();
+  let uploadProgress = 0;
+
+  const optimisticMessage = decorateMessage(
+    {
+      matchId,
+      userId,
+      targetUserId,
+      clientMessageId,
+      message: blobUrl,
+      messageType: "image",
+      delivered: false,
+      seen: false,
+      status: "pending",
+      createdAt: new Date().toISOString(),
+      receiverId: targetUserId,
+      senderId: userId,
+      isOptimistic: true,
+      uploadProgress: 0,
+    },
+    userId,
+    targetUserId
+  );
+  setMessages((prev) => [...prev, optimisticMessage]);
+  virtuosoRef.current?.scrollToIndex({ index: "END", behavior: "auto" });
+
+  try {
+    const formData = new FormData();
+    formData.append("image", compressedFile);
+    formData.append("matchId", matchId);
+    formData.append("targetUserId", targetUserId);
+
+    await uploadChatFile(formData, (progressEvent) => {
+      if (progressEvent.total) {
+        uploadProgress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.clientMessageId === clientMessageId
+              ? { ...msg, uploadProgress }
+              : msg
+          )
+        );
+      }
+    });
+    // The actual message will come via socket "message:created" event
+  } catch (err) {
+    // Remove optimistic message on failure
+    setMessages((prev) => prev.filter((msg) => msg.clientMessageId !== clientMessageId));
+    addToast(err?.response?.data?.message || "Failed to upload image", "error");
+  } finally {
+    setUploading(false);
+    e.target.value = "";
+    // Clean up blob URL after a delay (give time for socket to deliver real message)
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+  }
 };
 
 if (error) {
@@ -709,6 +804,88 @@ Header: () => <div className="h-8" />,
                 </div>
               );
             }
+
+            // Images render outside the bubble with fixed 40x40 dimensions
+            if (message.messageType === "image") {
+              const showAvatar = !message.isOwn && (index === 0 || sortedMessages[index - 1]?.senderId !== message.senderId);
+              const isUploading = message.isOptimistic || (message.uploadProgress !== undefined && message.uploadProgress < 100);
+              return (
+                <motion.div layout className={`mb-4 flex w-full gap-3 px-6 ${message.isOwn ? "justify-end" : "justify-start text-left"}`}>
+                  {!message.isOwn && (
+                    <div className={`mt-auto h-8 w-8 shrink-0 overflow-hidden rounded-lg border border-hairline-soft transition ${showAvatar ? "opacity-100" : "opacity-0"}`}>
+                      <img
+                        src={resolvePhotoUrl(otherUser?.photoUrl, otherUser?.firstName)}
+                        alt="avatar"
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+                  )}
+                  <div className="relative flex flex-col">
+                    {isUploading ? (
+                      <div className="w-[40px] h-[40px] rounded-lg bg-neutral-700/50 flex items-center justify-center">
+                        <span className="block h-4 w-4 animate-spin rounded-full border-2 border-brand-400 border-t-transparent" />
+                      </div>
+                    ) : (
+                      <img
+                        src={message.message}
+                        alt="Shared image"
+                        onClick={() => !isUploading && setPreviewImage(message.message)}
+                        className={`w-[40px] h-[40px] rounded-lg object-cover cursor-zoom-in ${message.isOwn ? "rounded-tr-none" : "rounded-tl-none"} ${isUploading ? "pointer-events-none" : ""}`}
+                        loading="lazy"
+                      />
+                    )}
+                    {message.isOwn && (
+                      <div className="absolute top-0.5 right-0.5 z-10 flex items-start gap-0.5">
+                        <button
+                          type="button"
+                          onClick={() => setMenuMessageId(menuMessageId === message._id ? null : message._id)}
+                          className="flex h-5 w-5 items-center justify-center rounded text-[10px] leading-none hover:bg-white/20 transition"
+                        >
+                          ...
+                        </button>
+                        {menuMessageId === message._id && (
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(message)}
+                            className="flex h-5 w-5 items-center justify-center rounded bg-error-500 text-white hover:bg-error-600 transition"
+                            title="Delete"
+                          >
+                            <HiOutlineTrash className="h-3 w-3" />
+                          </button>
+                        )}
+                      </div>
+                    )}
+                    <div className={`mt-1 flex items-center gap-1.5 text-[10px] tabular-nums ${message.isOwn ? "justify-end text-white/70" : "text-neutral-400"}`}>
+                      {message.uploadProgress !== undefined && message.uploadProgress < 100 && (
+                        <>
+                          <span className="text-brand-400">{message.uploadProgress}%</span>
+                          <div className="h-1 w-16 bg-neutral-600 rounded">
+                            <div className="h-full bg-brand-400 rounded transition-all" style={{ width: `${message.uploadProgress}%` }} />
+                          </div>
+                        </>
+                      )}
+                      <span>{formatMessageTime(message.createdAt)}</span>
+                      {message.isOwn && (
+                        <>
+                          <span className="opacity-40">•</span>
+                          <span>{getStatusLabel(message, true)}</span>
+                        </>
+                      )}
+                    </div>
+                    {message.status === "failed" && (
+                      <button
+                        type="button"
+                        onClick={() => handleRetry(message)}
+                        className="mt-1 self-end rounded-md bg-tint-strong px-2 py-0.5 text-[10px] text-white hover:bg-tint-strong"
+                      >
+                        Retry
+                      </button>
+                    )}
+                  </div>
+                </motion.div>
+              );
+            }
+
             const showAvatar = !message.isOwn && (index === 0 || sortedMessages[index - 1]?.senderId !== message.senderId);
             return (
               <motion.div
@@ -731,7 +908,7 @@ Header: () => <div className="h-8" />,
                        : "bg-surface-800 text-neutral-100 border border-hairline-soft rounded-bl-none"
                    }`}
                  >
-                  {message.isOwn && (
+{message.isOwn && (
                     <div className="absolute top-0.5 right-0.5 z-10 flex items-start gap-0.5">
                       <button
                         type="button"
@@ -752,19 +929,10 @@ Header: () => <div className="h-8" />,
                       )}
                     </div>
                   )}
-                  {message.messageType === "image" ? (
-                    <img
-                      src={message.message}
-                      alt="Shared image"
-                      className="max-w-full rounded-lg object-cover"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <p className="break-words whitespace-pre-wrap leading-relaxed">
-                      {message.message}
-                    </p>
-                  )}
-                  <div className={`mt-0.5 flex items-center gap-1.5 text-[10px] tabular-nums ${message.isOwn ? "justify-end text-white/70" : "text-neutral-400"}`}>
+                  <p className="break-words whitespace-pre-wrap leading-relaxed">
+                    {message.message}
+                  </p>
+                  <div className={`mt-1 flex items-center gap-1.5 text-[10px] tabular-nums ${message.isOwn ? "justify-end text-white/70" : "text-neutral-400"}`}>
                     <span>{formatMessageTime(message.createdAt)}</span>
                     {message.isOwn && (
                       <>
@@ -787,8 +955,8 @@ Header: () => <div className="h-8" />,
             );
           }}
         />
-)}
-</div>
+      )}
+    </div>
 
 <div className="flex flex-col gap-2 border-t border-hairline-soft px-4 py-3">
 {typingUsers.size > 0 && (
@@ -934,7 +1102,7 @@ className="absolute right-4 top-4 rounded-full p-2 text-neutral-500 transition h
 <div className="space-y-2">
 <p className="text-[10px] font-black uppercase tracking-widest text-brand-500/60">AI Insight: Why this works</p>
 <p className="text-[13px] italic text-brand-600 bg-brand-500/5 p-4 rounded-2xl border border-brand-500/10 leading-relaxed">
-"{collabSuggestion.why}"
+        &quot;{collabSuggestion.why}&quot;
 </p>
 </div>
 
@@ -957,6 +1125,44 @@ Dismiss
 </button>
 </div>
 </div>
+</motion.div>
+</div>
+)}
+</AnimatePresence>
+
+{/* Image preview popup */}
+<AnimatePresence>
+{previewImage && (
+<div
+className="fixed inset-0 z-[110] flex items-center justify-center p-4"
+onClick={() => setPreviewImage(null)}
+>
+<motion.div
+initial={{ opacity: 0 }}
+animate={{ opacity: 1 }}
+exit={{ opacity: 0 }}
+className="absolute inset-0 bg-neutral-950/80 backdrop-blur-sm"
+/>
+<motion.div
+initial={{ opacity: 0, scale: 0.9, y: 20 }}
+animate={{ opacity: 1, scale: 1, y: 0 }}
+exit={{ opacity: 0, scale: 0.9, y: 20 }}
+onClick={(e) => e.stopPropagation()}
+className="relative z-10 overflow-hidden rounded-2xl border border-hairline bg-surface-900 shadow-brand-strong"
+>
+<img
+src={previewImage}
+alt="Image preview"
+className="max-h-[60vh] max-w-[85vw] object-contain"
+/>
+<button
+type="button"
+onClick={() => setPreviewImage(null)}
+className="absolute right-3 top-3 rounded-full bg-neutral-950/60 p-2 text-neutral-200 transition hover:bg-neutral-950/90 hover:text-white"
+title="Close"
+>
+<HiX className="text-lg" />
+</button>
 </motion.div>
 </div>
 )}

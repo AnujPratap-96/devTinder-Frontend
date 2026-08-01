@@ -2,8 +2,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { HiX, HiCode, HiChat, HiCheckCircle } from "react-icons/hi";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
-import axios from "axios";
-import { BASE_URL } from "../utils/constant";
+import { endorseSkill } from "../api/connections";
 import { useToast } from "../context/ToastProvider";
 import Button from "./ui/Button";
 
@@ -20,13 +19,9 @@ const ConnectionModal = ({ user, isOpen, onClose }) => {
 
   const handleEndorse = async (skill) => {
     try {
-      const { data } = await axios.post(
-        `${BASE_URL}/user/endorse`,
-        { targetUserId: user._id, skill },
-        { withCredentials: true }
-      );
-       setLocalUser((prev) => ({ ...prev, endorsements: data.data.endorsements }));
-       addToast(data.data.message, "success");
+      const data = await endorseSkill(user._id, skill);
+      setLocalUser((prev) => ({ ...prev, endorsements: data.endorsements }));
+      addToast(data.message, "success");
     } catch (error) {
       addToast(error?.response?.data?.message || "Endorsement failed", "error");
     }

@@ -2,8 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { HiMenuAlt3 } from "react-icons/hi";
-import axios from "axios";
-import { BASE_URL } from "../utils/constant";
+import { viewProfile } from "../api/profile";
 import { addUser, removeUser } from "../store/userSlice";
 import Navbar from "./Navbar";
 import Sidebar from "./Sidebar";
@@ -45,12 +44,8 @@ const Body = () => {
     const resolveUser = async () => {
       if (user) return;
       try {
-        const res = await axios.get(`${BASE_URL}/profile/view`, {
-          withCredentials: true,
-        });
-        if (res.data) {
-          dispatch(addUser(res.data.data.user));
-        }
+        const data = await viewProfile();
+        dispatch(addUser(data.user));
       } catch (err) {
         const status = err?.response?.status;
         if (status === 401) {

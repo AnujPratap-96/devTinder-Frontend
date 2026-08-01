@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState, useRef, useCallback } from "react";
 import { useSelector } from "react-redux";
-import axios from "axios";
 import { HiBell, HiCheck, HiClock, HiTrash, HiUserAdd } from "react-icons/hi";
-import { BASE_URL, createSocketConnection } from "../utils/constant";
+import { createSocketConnection } from "../utils/constant";
+import { getNotifications, markNotificationsRead, deleteNotification, clearAllNotifications as clearAllApi } from "../api/notifications";
+import { getProjects } from "../api/projects";
 import Button from "./ui/Button";
 
 const groupNotifications = (notifications) => {
@@ -101,15 +102,12 @@ const NotificationBell = () => {
   const fetchNotifications = useCallback(async ({ cursor = null, append = false } = {}) => {
     try {
       if (append) setLoadingMore(true);
-      const { data } = await axios.get(`${BASE_URL}/notifications`, {
-        withCredentials: true,
-        params: { limit: PAGE_SIZE, cursor: cursor || undefined },
-      });
-      const ordered = (data.data.notifications ?? []).sort(
+      const data = await getNotifications({ limit: PAGE_SIZE, cursor: cursor || undefined });
+      const ordered = (data.notifications ?? []).sort(
         (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
       );
-      const next = data?.data?.nextCursor ?? null;
-      const more = data?.data?.hasMore ?? false;
+      const next = data?.nextCursor ?? null;
+      const more = data?.hasMore ?? false;
       if (append) {
         setNotifications((prev) => [...prev, ...ordered]);
       } else {
@@ -148,24 +146,20 @@ const NotificationBell = () => {
     const fetchRequestCount = async () => {
       if (!currentUserId) return;
       try {
-        const { data: notifData } = await axios.get(`${BASE_URL}/notifications`, {
-          withCredentials: true,
-        });
-         const connectionRequests = notifData.data.notifications?.filter(
-           (n) => n.type === "connection.request" && !n.isRead
-         )?.length || 0;
+      const notifData = await getNotifications();
+      const connectionRequests = notifData.notifications?.filter(
+        (n) => n.type === "connection.request" && !n.isRead
+      )?.length || 0;
 
-         const { data: projectData } = await axios.get(`${BASE_URL}/projects`, {
-           withCredentials: true,
-         });
-         let projectRequests = 0;
-         const userIdStr = String(currentUserId);
-         projectData.data.projects?.forEach((project) => {
-          const ownerIdStr = String(project.ownerId?._id || project.ownerId || "");
-          if (ownerIdStr === userIdStr) {
-            projectRequests += project.joinRequests?.filter((r) => r.status === "pending").length || 0;
-          }
-        });
+      const projectData = await getProjects();
+      let projectRequests = 0;
+      const userIdStr = String(currentUserId);
+      projectData.projects?.forEach((project) => {
+        const ownerIdStr = String(project.ownerId?._id || project.ownerId || "");
+        if (ownerIdStr === userIdStr) {
+          projectRequests += project.joinRequests?.filter((r) => r.status === "pending").length || 0;
+        }
+      });
         
         setRequestCount(connectionRequests + projectRequests);
       } catch (error) {
@@ -178,11 +172,7 @@ const NotificationBell = () => {
   const markAsRead = async () => {
     try {
       setBusy(true);
-      await axios.patch(
-        `${BASE_URL}/notifications/read`,
-        {},
-        { withCredentials: true }
-      );
+      await markNotificationsRead();
       setNotifications((prev) => prev.map((notification) => ({ ...notification, isRead: true })));
     } catch (error) {
       console.error("Unable to mark notifications as read", error);
@@ -193,9 +183,7 @@ const NotificationBell = () => {
 
   const deleteNotificationItem = async (id) => {
     try {
-      await axios.delete(`${BASE_URL}/notifications/${id}`, {
-        withCredentials: true,
-      });
+      await deleteNotification(id);
       setNotifications((prev) => prev.filter((notification) => notification._id !== id));
       setRequestCount((prev) => {
         const target = notifications.find((n) => n._id === id);
@@ -211,9 +199,7 @@ const NotificationBell = () => {
 
   const clearAllNotifications = async () => {
     try {
-      await axios.delete(`${BASE_URL}/notifications`, {
-        withCredentials: true,
-      });
+      await clearAllApi();
       setNotifications([]);
       setRequestCount(0);
     } catch (error) {

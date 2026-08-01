@@ -1,9 +1,8 @@
 import { useRef, useState } from "react";
-import axios from "axios";
 import { useDispatch } from "react-redux";
 import { addUser } from "../store/userSlice";
 import { useNavigate } from "react-router-dom";
-import { BASE_URL } from "../utils/constant";
+import { login } from "../api/auth";
 import { ensureCrypto } from "../utils/e2ee";
 import { useToast } from "../context/ToastProvider";
 import { HiEye, HiEyeOff, HiArrowRight, HiMail } from "react-icons/hi";
@@ -26,18 +25,13 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await axios.post(
-        BASE_URL + "/login",
-        {
-          emailId: emailRef.current.value,
-          password: passwordRef.current.value,
-        },
-        { withCredentials: true }
-      );
-      dispatch(addUser(res.data.data.user));
+      const data = await login({
+        emailId: emailRef.current.value,
+        password: passwordRef.current.value,
+      });
+      dispatch(addUser(data.user));
       addToast("Login successful!", "success");
-      // Provision/restore end-to-end encryption keys (device-bound).
-      ensureCrypto({ userId: res.data.data.user._id }).catch(() => {});
+      ensureCrypto({ userId: data.user._id }).catch(() => {});
       navigate("/feed");
     } catch (err) {
       addToast(err?.response?.data?.ERROR || "Something went wrong!", "error");

@@ -1,12 +1,12 @@
 /* eslint-disable react/prop-types */
 import { motion, useMotionValue, useTransform } from "framer-motion";
 import { useState, useEffect } from "react";
-import { BASE_URL } from "../utils/constant";
-import axios from "axios";
 import { removeUserFromFeed } from "../store/feedSlice";
 import { useDispatch } from "react-redux";
 import { useToast } from "../context/ToastProvider";
 import { useTheme } from "../context/ThemeProvider";
+import { sendRequest } from "../api/requests";
+import { blockUser as blockUserApi, reportUser as reportUserApi, bookmarkUser, removeBookmark, endorseSkill, recordProfileView } from "../api/connections";
 import { HiHeart, HiX, HiCode, HiLightningBolt, HiLocationMarker, HiBan, HiFlag, HiBookmark, HiCheck, HiArrowLeft } from "react-icons/hi";
 import AIMatchExplainer from "./AIMatchExplainer";
 import Button from "./ui/Button";
@@ -119,11 +119,9 @@ const SwipeCard = ({ user, searchQuery = "" }) => {
   const likeOpacity = useTransform(x, [20, 120], [0, 1]);
   const nopeOpacity = useTransform(x, [-120, -20], [1, 0]);
 
-  // Record view on mount
   useEffect(() => {
     if (_id) {
-      axios.post(`${BASE_URL}/profile/view/${_id}`, {}, { withCredentials: true })
-        .catch(err => console.error("Error recording profile view:", err));
+      recordProfileView(_id).catch(err => console.error("Error recording profile view:", err));
     }
   }, [_id]);
 
@@ -138,11 +136,7 @@ const SwipeCard = ({ user, searchQuery = "" }) => {
 
   const sendConnectionRequest = async (status, userId, direction) => {
     try {
-      await axios.post(
-        `${BASE_URL}/request/send/${status}/${userId}`,
-        {},
-        { withCredentials: true }
-      );
+      await sendRequest(status, userId);
       setSwipe(direction);
       addToast(status === "interested" ? "💚 Connection sent!" : "✕ Skipped", status === "interested" ? "success" : "info");
       setTimeout(() => {
@@ -157,11 +151,7 @@ const SwipeCard = ({ user, searchQuery = "" }) => {
   const respondToRequest = async (status, userId) => {
     try {
       const action = status === "accepted" ? "interested" : "ignored";
-      await axios.post(
-        `${BASE_URL}/request/send/${action}/${userId}`,
-        {},
-        { withCredentials: true }
-      );
+      await sendRequest(action, userId);
       addToast(status === "accepted" ? "Connection Accepted!" : "Ignored", "success");
       dispatch(removeUserFromFeed(userId));
     } catch (err) {
@@ -172,15 +162,11 @@ const SwipeCard = ({ user, searchQuery = "" }) => {
   const toggleBookmark = async () => {
     try {
       if (bookmarked) {
-        await axios.delete(`${BASE_URL}/bookmark/${_id}`, { withCredentials: true });
+        await removeBookmark(_id);
         setBookmarked(false);
         addToast("Bookmark removed", "success");
       } else {
-        await axios.post(
-          `${BASE_URL}/bookmark`,
-          { userId: _id },
-          { withCredentials: true }
-        );
+        await bookmarkUser(_id);
         setBookmarked(true);
         addToast("Profile saved", "success");
       }
@@ -191,11 +177,7 @@ const SwipeCard = ({ user, searchQuery = "" }) => {
 
   const blockUser = async () => {
     try {
-      await axios.post(
-        `${BASE_URL}/block`,
-        { userId: _id },
-        { withCredentials: true }
-      );
+      await blockUserApi(_id);
       addToast("User blocked", "success");
       dispatch(removeUserFromFeed(_id));
     } catch (error) {
@@ -205,11 +187,7 @@ const SwipeCard = ({ user, searchQuery = "" }) => {
 
   const reportUser = async () => {
     try {
-      await axios.post(
-        `${BASE_URL}/report`,
-        { userId: _id, reason: "Inappropriate behavior" },
-        { withCredentials: true }
-      );
+      await reportUserApi(_id, "Inappropriate behavior");
       addToast("User reported", "success");
     } catch (error) {
       addToast(error?.response?.data?.message || "Unable to report user", "error");
@@ -220,9 +198,9 @@ const SwipeCard = ({ user, searchQuery = "" }) => {
 
   const handleEndorse = async (skill) => {
     try {
-      const res = await axios.post(`${BASE_URL}/user/endorse`, { targetUserId: _id, skill }, { withCredentials: true });
+      const data = await endorseSkill(_id, skill);
       addToast(`Endorsed for ${skill} 👍`, "success");
-       setLocalEndorsements(res.data.data || []);
+      setLocalEndorsements(data || []);
     } catch (err) {
       addToast(err?.response?.data?.message || "Failed to endorse", "error");
     }

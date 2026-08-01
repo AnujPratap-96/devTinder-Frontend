@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { addRequests, removeRequest } from "../store/requestsSlice";
-import axios from "axios";
-import { BASE_URL } from "../utils/constant";
+import { getReceivedRequests, reviewRequest } from "../api/requests";
 import { useToast } from "../context/ToastProvider";
 import { motion } from "framer-motion";
 import { HiCheck, HiX, HiBell, HiCode, HiArrowDown } from "react-icons/hi";
@@ -23,17 +22,14 @@ const Requests = () => {
   const [loadingMore, setLoadingMore] = useState(false);
   const seeded = useRef(false);
 
-  const connectionRequest = useCallback(async ({ cursor = null, append = false } = {}) => {
+  const fetchRequests = useCallback(async ({ cursor = null, append = false } = {}) => {
     try {
       if (append) setLoadingMore(true);
       else setLoading(true);
-      const res = await axios.get(`${BASE_URL}/user/requests/received`, {
-        withCredentials: true,
-        params: { limit: PAGE_SIZE, cursor: cursor || undefined },
-      });
-      const items = res?.data?.data?.requests || [];
-      const next = res?.data?.data?.nextCursor ?? null;
-      const more = res?.data?.data?.hasMore ?? false;
+      const data = await getReceivedRequests({ limit: PAGE_SIZE, cursor: cursor || undefined });
+      const items = data?.requests || [];
+      const next = data?.nextCursor ?? null;
+      const more = data?.hasMore ?? false;
       if (append) {
         setRequests((prev) => [...prev, ...items]);
       } else {
@@ -50,9 +46,9 @@ const Requests = () => {
     }
   }, [dispatch, addToast]);
 
-  const reviewRequest = async (status, _id) => {
+  const handleReviewRequest = async (status, _id) => {
     try {
-      const req = await axios.post(BASE_URL + "/request/review/" + status + "/" + _id, {}, { withCredentials: true });
+      await reviewRequest(status, _id);
       dispatch(removeRequest(_id));
       setRequests((prev) => prev.filter((r) => r._id !== _id));
       addToast(status === "accepted" ? "Connection accepted! 🎉" : "Request rejected", status === "accepted" ? "success" : "info");
@@ -70,7 +66,7 @@ const Requests = () => {
       setHasMore(reduxRequests.hasMore);
       setLoading(false);
     } else {
-      connectionRequest({ cursor: null });
+      fetchRequests({ cursor: null });
     }
   }, [reduxRequests?.items?.length]);
 
@@ -158,7 +154,7 @@ const Requests = () => {
                       size="sm"
                       className="flex-1"
                       type="button"
-                      onClick={() => reviewRequest("accepted", request._id)}
+                      onClick={() => handleReviewRequest("accepted", request._id)}
                     >
                       <HiCheck className="text-base" /> Accept
                     </Button>
@@ -170,7 +166,7 @@ const Requests = () => {
                       size="sm"
                       className="flex-1"
                       type="button"
-                      onClick={() => reviewRequest("rejected", request._id)}
+                      onClick={() => handleReviewRequest("rejected", request._id)}
                     >
                       <HiX className="text-base" /> Decline
                     </Button>
@@ -183,7 +179,7 @@ const Requests = () => {
             <div className="mt-8 flex justify-center">
               <Button
                 variant="secondary"
-                onClick={() => connectionRequest({ cursor: nextCursor, append: true })}
+                onClick={() => fetchRequests({ cursor: nextCursor, append: true })}
                 disabled={loadingMore}
               >
                 {loadingMore ? <span className="spinner h-4 w-4 border-2 text-brand-600" /> : <HiArrowDown className="text-lg" />}
@@ -204,7 +200,7 @@ const Requests = () => {
             description="When other developers want to connect with you, their requests will appear here."
             tone="translucent"
             action={
-              <Button variant="secondary" size="sm" onClick={() => connectionRequest({ cursor: null })}>
+              <Button variant="secondary" size="sm" onClick={() => fetchRequests({ cursor: null })}>
                 Refresh requests
               </Button>
             }

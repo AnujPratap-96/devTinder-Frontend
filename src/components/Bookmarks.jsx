@@ -1,5 +1,4 @@
 import { useEffect, useState, useCallback } from "react";
-import axios from "axios";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   HiBookmark,
@@ -10,10 +9,11 @@ import {
   HiExternalLink,
   HiArrowDown,
 } from "react-icons/hi";
-import { BASE_URL } from "../utils/constant";
+import { getBookmarks } from "../api/bookmarks";
 import Button from "./ui/Button";
 import EmptyState from "./ui/EmptyState";
 import { useToast } from "../context/ToastProvider";
+import { blockUser as blockUserApi, reportUser as reportUserApi, removeBookmark as removeBookmarkApi } from "../api/connections";
 
 // ─── Availability badge colours ───────────────────────────────
 const availabilityConfig = {
@@ -74,13 +74,10 @@ const Bookmarks = () => {
     try {
       if (append) setLoadingMore(true);
       else setLoading(true);
-      const { data } = await axios.get(`${BASE_URL}/bookmarks`, {
-        withCredentials: true,
-        params: { limit: PAGE_SIZE, cursor: cursor || undefined },
-      });
-      const items = data.data.bookmarks ?? [];
-      const next = data?.data?.nextCursor ?? null;
-      const more = data?.data?.hasMore ?? false;
+      const data = await getBookmarks({ limit: PAGE_SIZE, cursor: cursor || undefined });
+      const items = data.bookmarks ?? [];
+      const next = data?.nextCursor ?? null;
+      const more = data?.hasMore ?? false;
       if (append) {
         setBookmarks((prev) => [...prev, ...items]);
       } else {
@@ -103,9 +100,7 @@ const Bookmarks = () => {
   const removeBookmark = async (bookmarkId) => {
     setRemoving(bookmarkId);
     try {
-      await axios.delete(`${BASE_URL}/bookmark/${bookmarkId}`, {
-        withCredentials: true,
-      });
+      await removeBookmarkApi(bookmarkId);
       setBookmarks((prev) => prev.filter((b) => b._id !== bookmarkId));
       addToast("Bookmark removed", "success");
     } catch (error) {
@@ -117,11 +112,7 @@ const Bookmarks = () => {
 
   const blockUser = async (userId, bookmarkId) => {
     try {
-      await axios.post(
-        `${BASE_URL}/block`,
-        { userId },
-        { withCredentials: true }
-      );
+      await blockUserApi(currentUser._id);
       setBookmarks((prev) => prev.filter((b) => b._id !== bookmarkId));
       addToast("User blocked and removed from bookmarks", "success");
     } catch (error) {
@@ -131,11 +122,7 @@ const Bookmarks = () => {
 
   const reportUser = async (userId) => {
     try {
-      await axios.post(
-        `${BASE_URL}/report`,
-        { userId, reason: "Inappropriate behavior" },
-        { withCredentials: true }
-      );
+      await reportUserApi(currentUser._id, reason, details);
       addToast("User reported", "success");
     } catch (error) {
       addToast(error?.response?.data?.message || "Unable to report user", "error");

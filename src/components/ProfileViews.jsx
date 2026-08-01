@@ -1,8 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { addProfileViews } from "../store/profileViewSlice";
-import axios from "axios";
-import { BASE_URL } from "../utils/constant";
+import { getProfileViews } from "../api/profileViews";
 import Card from "./ui/Card";
 import Button from "./ui/Button";
 import { useToast } from "../context/ToastProvider";
@@ -26,13 +25,10 @@ const ProfileViews = () => {
     try {
       if (append) setLoadingMore(true);
       else setLoading(true);
-      const { data } = await axios.get(`${BASE_URL}/profile/views`, {
-        withCredentials: true,
-        params: { limit: PAGE_SIZE, cursor: cursor || undefined },
-      });
-      const items = data.data.views ?? [];
-      const next = data?.data?.nextCursor ?? null;
-      const more = data?.data?.hasMore ?? false;
+      const data = await getProfileViews({ limit: PAGE_SIZE, cursor: cursor || undefined });
+      const items = data.views ?? [];
+      const next = data?.nextCursor ?? null;
+      const more = data?.hasMore ?? false;
       if (append) {
         setViews((prev) => [...prev, ...items]);
       } else {

@@ -7,8 +7,7 @@ import Card from "./ui/Card";
 import EmptyState from "./ui/EmptyState";
 import { useState, useRef, useEffect } from "react";
 import ConnectionModal from "./ConnectionModal";
-import axios from "axios";
-import { BASE_URL } from "../utils/constant";
+import { blockUser as blockUserApi, reportUser as reportUserApi } from "../api/connections";
 import { useToast } from "../context/ToastProvider";
 import { useDispatch } from "react-redux";
 import { removeConnection } from "../store/connectionSlice";
@@ -37,7 +36,7 @@ const Connections = () => {
   const handleBlock = async (userId) => {
     if (!window.confirm("Are you sure you want to block this user? This will remove them from your connections.")) return;
     try {
-      await axios.post(`${BASE_URL}/block`, { userId }, { withCredentials: true });
+      await blockUserApi(userId);
       dispatch(removeConnection(userId));
       addToast("User blocked successfully", "success");
       setOpenMenu(null);
@@ -49,15 +48,7 @@ const Connections = () => {
   const handleReport = async () => {
     if (!reportData.reason) return addToast("Please select a reason", "error");
     try {
-      await axios.post(
-        `${BASE_URL}/report`,
-        { 
-          userId: reportModal.userId, 
-          reason: reportData.reason, 
-          details: reportData.details 
-        },
-        { withCredentials: true }
-      );
+      await reportUserApi(reportModal.userId, reportData.reason, reportData.details);
       addToast("Report submitted. Thank you for keeping DevTinder safe.", "success");
       setReportModal({ isOpen: false, userId: null, name: "" });
       setReportData({ reason: "", details: "" });

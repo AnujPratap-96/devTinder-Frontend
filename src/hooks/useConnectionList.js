@@ -1,7 +1,7 @@
 import { useEffect, useCallback, useState, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import axios from "axios";
-import { BASE_URL, createSocketConnection } from "../utils/constant";
+import { createSocketConnection } from "../utils/constant";
+import { getConnections } from "../api/connections";
 import { addConnections } from "../store/connectionSlice";
 import { useToast } from "../context/ToastProvider";
 
@@ -24,13 +24,10 @@ const useConnectionList = () => {
     try {
       if (append) setLoadingMore(true);
       else setLoading(true);
-      const res = await axios.get(`${BASE_URL}/user/connections`, {
-        withCredentials: true,
-        params: { limit: PAGE_SIZE, cursor: cursor || undefined },
-      });
-      const items = res.data.data?.connections || [];
-      const next = res?.data?.data?.nextCursor ?? null;
-      const more = res?.data?.data?.hasMore ?? false;
+      const data = await getConnections({ limit: PAGE_SIZE, cursor: cursor || undefined });
+      const items = data?.connections || [];
+      const next = data?.nextCursor ?? null;
+      const more = data?.hasMore ?? false;
       if (append) {
         setConnections((prev) => [...prev, ...items]);
       } else {

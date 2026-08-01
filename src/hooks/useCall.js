@@ -10,7 +10,6 @@ import {
   setCallId,
   toggleMute as toggleMuteAction,
   toggleCamera as toggleCameraAction,
-  setError,
   resetCall,
 } from "../store/callSlice";
 
@@ -23,6 +22,8 @@ export const useCall = () => {
   const socketRef = useRef(null);
   const [localStream, setLocalStream] = useState(null);
   const [remoteStream, setRemoteStream] = useState(null);
+  const [reconnecting, setReconnecting] = useState(false);
+  const iceRestartingRef = useRef(false);
 
   useEffect(() => {
     if (!user?._id) return undefined;
@@ -36,8 +37,32 @@ export const useCall = () => {
         if (callId) socket.emit("call:ice-candidate", { callId, candidate });
       },
       onState: (state) => {
-        if (state === "failed" || state === "disconnected") {
+        const ctx = store.getState().call;
+        if (ctx.status === "active" && (state === "failed" || state === "disconnected")) {
           dispatch(setStatus("connecting"));
+        } else if (state === "connected" && store.getState().call.status === "connecting") {
+          dispatch(setStatus("active"));
+        }
+      },
+      onIceState: (state) => {
+        const ctx = store.getState().call;
+        if (ctx.status !== "active" || !ctx.callId) return;
+        if (state === "disconnected" || state === "failed") {
+          if (iceRestartingRef.current) return;
+          iceRestartingRef.current = true;
+          setReconnecting(true);
+          addToast("Network changed — reconnecting call…", "info");
+          callClient.restartIce().then((sdp) => {
+            if (sdp) {
+              socket.emit("call:offer", { callId: ctx.callId, sdp });
+            }
+          });
+          setTimeout(() => {
+            iceRestartingRef.current = false;
+            setReconnecting(false);
+          }, 8000);
+        } else if (state === "connected") {
+          setReconnecting(false);
         }
       },
     });
@@ -261,5 +286,6 @@ export const useCall = () => {
     switchCamera,
     localStream,
     remoteStream,
+    reconnecting,
   };
 };

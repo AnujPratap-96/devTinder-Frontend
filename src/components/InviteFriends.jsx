@@ -1,12 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import axios from "axios";
 import { motion, AnimatePresence } from "framer-motion";
 import { HiMail, HiCheckCircle, HiXCircle, HiClock, HiBan, HiUserAdd, HiArrowRight, HiCollection, HiPaperAirplane } from "react-icons/hi";
 import { FiSend, FiPlus } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { useToast } from "../context/ToastProvider";
-import { BASE_URL } from "../utils/constant";
+import { getInviteStats, getInvites, sendInvite, cancelInvite } from "../api/invite";
 import Card from "./ui/Card";
 import Button from "./ui/Button";
 import Spinner from "./ui/Spinner";
@@ -43,8 +42,8 @@ const InviteFriends = () => {
 
   const fetchStats = useCallback(async () => {
     try {
-      const { data } = await axios.get(`${BASE_URL}/invite/stats`, { withCredentials: true });
-      setStats(data.data);
+      const data = await getInviteStats();
+      setStats(data);
     } catch (err) {
       if (err?.response?.status !== 429) {
         addToast("Failed to load invite stats", "error");
@@ -57,8 +56,8 @@ const InviteFriends = () => {
       const params = { limit: 20 };
       if (cursor) params.cursor = cursor;
       if (append) setLoadingMore(true);
-      const { data } = await axios.get(`${BASE_URL}/invite/history`, { params, withCredentials: true });
-      const { invites: page, nextCursor: next, hasMore: more } = data.data;
+      const data = await getInvites(params);
+      const { invites: page, nextCursor: next, hasMore: more } = data;
       setInvites((prev) => (append ? [...prev, ...page] : page));
       setNextCursor(next);
       setHasMore(more);
@@ -97,10 +96,10 @@ const InviteFriends = () => {
     setError("");
     setSending(true);
     try {
-      const { data } = await axios.post(`${BASE_URL}/invite/send`, { email: trimmed }, { withCredentials: true });
+      const data = await sendInvite(trimmed);
       addToast("Invitation sent successfully!", "success");
       setEmail("");
-      const newInvite = data?.data?.invite;
+      const newInvite = data?.invite;
       if (newInvite) {
         setInvites((prev) => [newInvite, ...prev]);
       }
@@ -115,7 +114,7 @@ const InviteFriends = () => {
 
   const handleCancel = async (inviteId) => {
     try {
-      await axios.post(`${BASE_URL}/invite/cancel/${inviteId}`, {}, { withCredentials: true });
+      await cancelInvite(inviteId);
       addToast("Invite cancelled", "info");
       setInvites((prev) => prev.map((inv) => inv._id === inviteId ? { ...inv, status: "cancelled" } : inv));
       setStats((prev) => prev ? { ...prev, pending: Math.max(0, prev.pending - 1) } : prev);
