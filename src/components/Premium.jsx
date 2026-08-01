@@ -10,6 +10,20 @@ import { motion } from "framer-motion";
 import { HiSparkles, HiShoppingBag } from "react-icons/hi";
 import Spinner from "./ui/Spinner";
 
+// Load Razorpay checkout script on demand (only when a payment is started)
+const loadRazorpay = () =>
+  new Promise((resolve, reject) => {
+    if (window.Razorpay) {
+      resolve(window.Razorpay);
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.onload = () => resolve(window.Razorpay);
+    script.onerror = () => reject(new Error("Payment gateway failed to load"));
+    document.body.appendChild(script);
+  });
+
 const Premium = () => {
   const { addToast } = useToast();
   const user = useSelector((store) => store.user);
@@ -62,6 +76,7 @@ const Premium = () => {
 
   const handleBuyClick = async (slug) => {
     try {
+      await loadRazorpay();
       const result = await createPaymentOrder(slug);
       const { payment, keyId } = result;
       const notes = payment?.notes ?? {};

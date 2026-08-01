@@ -68,7 +68,7 @@ const MessageReactions = ({ message, matchId, userId, emit }) => {
       <button
         type="button"
         onClick={() => setPickerOpen((v) => !v)}
-        className={`absolute top-full z-10 mt-1 flex h-5 w-5 items-center justify-center rounded-full bg-tint-strong text-neutral-400 opacity-0 transition hover:text-brand-400 group-hover:opacity-100 ${
+        className={`pointer-events-none group-hover:pointer-events-auto absolute top-full z-10 mt-1 flex h-5 w-5 items-center justify-center rounded-full bg-tint-strong text-neutral-400 opacity-0 transition hover:text-brand-400 group-hover:opacity-100 ${
           message.isOwn ? "right-2" : "left-2"
         }`}
         title="Add reaction"

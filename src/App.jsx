@@ -1,34 +1,43 @@
+import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Provider } from "react-redux";
 import { MotionConfig } from "framer-motion";
 import { ThemeProvider } from "./context/ThemeProvider";
 import appStore from "./store/appStore";
-import Home from "./components/Home";
 import Body from "./components/Body";
 import LandingPage from "./components/LandingPage";
+import Home from "./components/Home";
 import Login from "./components/Login";
-import Profile from "./components/Profile";
-import Connections from "./components/Connections";
-import Feed from "./components/Feed";
-import Requests from "./components/Requests";
-import Premium from "./components/Premium";
-import ChatBox from "./components/ChatBox";
-import Messages from "./components/Messages";
-import Register from "./components/Register";
-import Signup from "./components/Signup";
-import OtpVerify from "./components/Otp";
-import ForgotPassword from "./components/ForgotPassword";
+import MatchCelebration from "./components/MatchCelebration";
 import { ToastProvider } from "./context/ToastProvider";
 import { CallProvider } from "./components/call/CallProvider";
-import Projects from "./components/Projects";
-import Bookmarks from "./components/Bookmarks";
-import InviteFriends from "./components/InviteFriends";
-import AdminLayout from "./components/admin/AdminLayout";
-import AdminUsers from "./components/admin/AdminUsers";
-import AdminReports from "./components/admin/AdminReports";
-import AdminBanned from "./components/admin/AdminBanned";
-import AdminPlans from "./components/admin/AdminPlans";
-import MatchCelebration from "./components/MatchCelebration";
+
+// ── Route-level code splitting (heavy pages load on demand only)
+const Feed = lazy(() => import("./components/Feed"));
+const Profile = lazy(() => import("./components/Profile"));
+const Connections = lazy(() => import("./components/Connections"));
+const Requests = lazy(() => import("./components/Requests"));
+const Premium = lazy(() => import("./components/Premium"));
+const Messages = lazy(() => import("./components/Messages"));
+const ChatBox = lazy(() => import("./components/ChatBox"));
+const Register = lazy(() => import("./components/Register"));
+const Signup = lazy(() => import("./components/Signup"));
+const OtpVerify = lazy(() => import("./components/Otp"));
+const ForgotPassword = lazy(() => import("./components/ForgotPassword"));
+const Projects = lazy(() => import("./components/Projects"));
+const Bookmarks = lazy(() => import("./components/Bookmarks"));
+const InviteFriends = lazy(() => import("./components/InviteFriends"));
+const AdminLayout = lazy(() => import("./components/admin/AdminLayout"));
+const AdminUsers = lazy(() => import("./components/admin/AdminUsers"));
+const AdminReports = lazy(() => import("./components/admin/AdminReports"));
+const AdminBanned = lazy(() => import("./components/admin/AdminBanned"));
+const AdminPlans = lazy(() => import("./components/admin/AdminPlans"));
+
+const PageFallback = () => (
+  <div className="flex min-h-[60vh] items-center justify-center">
+    <span className="block h-8 w-8 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
+  </div>
+);
 
 const App = () => {
   return (
@@ -39,6 +48,7 @@ const App = () => {
             <BrowserRouter>
               <CallProvider>
               <div className="layout-shell bg-mesh">
+                <Suspense fallback={<PageFallback />}>
                 <Routes>
               {/* Routes WITHOUT sidebar */}
               <Route path="/" element={<LandingPage />}>
@@ -71,6 +81,7 @@ const App = () => {
                     </Route>
                   </Route>
                 </Routes>
+                </Suspense>
               </div>
               <MatchCelebration />
               </CallProvider>
