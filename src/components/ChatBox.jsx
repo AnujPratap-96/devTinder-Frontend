@@ -911,7 +911,7 @@ Header: () => <div className="h-8" />,
               const showAvatar = !message.isOwn && (index === 0 || sortedMessages[index - 1]?.senderId !== message.senderId);
               const isUploading = message.isOptimistic;
               return (
-                <motion.div layout className={`group mb-4 flex w-full gap-3 px-6 ${message.isOwn ? "justify-end" : "justify-start text-left"}`}>
+                <motion.div layout className={`group mb-1 flex w-full gap-2 px-3 ${message.isOwn ? "justify-end" : "justify-start text-left"}`}>
                   {!message.isOwn && (
                     <div className={`mt-auto h-8 w-8 shrink-0 overflow-hidden rounded-lg border border-hairline-soft transition ${showAvatar ? "opacity-100" : "opacity-0"}`}>
                       <img
@@ -928,33 +928,34 @@ Header: () => <div className="h-8" />,
                       isOwn={message.isOwn}
                       isPending={isUploading}
                     />
-                    {message.isOwn && !isUploading && (
-                      <div className="absolute -top-1 -right-1 z-10 flex items-start gap-0.5">
-                        <button
-                          type="button"
-                          onClick={() => setMenuMessageId(menuMessageId === message._id ? null : message._id)}
-                          className="flex h-5 w-5 items-center justify-center rounded text-[10px] leading-none hover:bg-white/20 transition"
-                        >
-                          ...
-                        </button>
-                        {menuMessageId === message._id && (
-                          <button
-                            type="button"
-                            onClick={() => handleDelete(message)}
-                            className="flex h-5 w-5 items-center justify-center rounded bg-error-500 text-white hover:bg-error-600 transition"
-                            title="Delete"
-                          >
-                            <HiOutlineTrash className="h-3 w-3" />
-                          </button>
-                        )}
-                      </div>
-                    )}
                     <div className={`mt-1 flex items-center gap-1.5 text-[10px] tabular-nums ${message.isOwn ? "justify-end text-white/70" : "text-neutral-400"}`}>
                       <span>{formatMessageTime(message.createdAt)}</span>
                       {message.isOwn && (
                         <>
                           <span className="opacity-40">•</span>
                           <span>{getStatusLabel(message, true)}</span>
+                          {!isUploading && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => setMenuMessageId(menuMessageId === message._id ? null : message._id)}
+                                className="flex h-4 w-4 items-center justify-center rounded text-[10px] leading-none hover:bg-white/20 transition"
+                                title="Message options"
+                              >
+                                ...
+                              </button>
+                              {menuMessageId === message._id && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleDelete(message)}
+                                  className="flex h-4 w-4 items-center justify-center rounded bg-error-500 text-white hover:bg-error-600 transition"
+                                  title="Delete"
+                                >
+                                  <HiOutlineTrash className="h-2.5 w-2.5" />
+                                </button>
+                              )}
+                            </>
+                          )}
                         </>
                       )}
                     </div>
@@ -971,7 +972,7 @@ Header: () => <div className="h-8" />,
               const showAvatar = !message.isOwn && (index === 0 || sortedMessages[index - 1]?.senderId !== message.senderId);
               const isUploading = message.isOptimistic || (message.uploadProgress !== undefined && message.uploadProgress < 100);
               return (
-                <motion.div layout className={`mb-4 flex w-full gap-3 px-6 ${message.isOwn ? "justify-end" : "justify-start text-left"}`}>
+                <motion.div layout className={`group mb-1 flex w-full gap-2 px-3 ${message.isOwn ? "justify-end" : "justify-start text-left"}`}>
                   {!message.isOwn && (
                     <div className={`mt-auto h-8 w-8 shrink-0 overflow-hidden rounded-lg border border-hairline-soft transition ${showAvatar ? "opacity-100" : "opacity-0"}`}>
                       <img
@@ -1054,7 +1055,7 @@ Header: () => <div className="h-8" />,
             return (
               <motion.div
                 layout
-                className={`mb-4 flex w-full gap-3 px-6 ${message.isOwn ? "justify-end" : "justify-start text-left"}`}
+                className={`group mb-1 flex w-full gap-2 px-3 ${message.isOwn ? "justify-end" : "justify-start text-left"}`}
               >
                 {!message.isOwn && (
                   <div className={`mt-auto h-8 w-8 shrink-0 overflow-hidden rounded-lg border border-hairline-soft transition ${showAvatar ? "opacity-100" : "opacity-0"}`}>
@@ -1066,7 +1067,7 @@ Header: () => <div className="h-8" />,
                   </div>
                 )}
                 <div 
-                  className={`relative flex max-w-[75%] flex-col rounded-2xl px-3 py-1.5 text-sm shadow-sm transition-all sm:max-w-[70%] ${
+                  className={`relative flex max-w-[75%] flex-col rounded-2xl px-3 py-1 text-[15px] shadow-sm transition-all sm:max-w-[70%] ${
                      message.isOwn 
                        ? "bg-brand-500 text-white rounded-br-none" 
                        : "bg-surface-800 text-neutral-100 border border-hairline-soft rounded-bl-none"
@@ -1096,7 +1097,7 @@ Header: () => <div className="h-8" />,
                   {FEATURES.markdown ? (
                     <MarkdownMessage text={message.message} />
                   ) : (
-                    <p className="break-words whitespace-pre-wrap leading-relaxed">
+                    <p className="break-words whitespace-pre-wrap leading-snug">
                       {message.message}
                     </p>
                   )}
@@ -1118,10 +1119,10 @@ Header: () => <div className="h-8" />,
                       Retry
                     </button>
                   )}
-                  {FEATURES.reactions && (
-                    <MessageReactions message={message} matchId={matchId} userId={userId} emit={emitEnhancement} />
-                  )}
                 </div>
+                {FEATURES.reactions && (
+                  <MessageReactions message={message} matchId={matchId} userId={userId} emit={emitEnhancement} />
+                )}
               </motion.div>
             );
           }}

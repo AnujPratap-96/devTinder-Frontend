@@ -135,7 +135,7 @@ const renderLine = (line, key) => {
     );
   }
   return (
-    <p key={key} className="mt-1 break-words whitespace-pre-wrap first:mt-0">
+    <p key={key} className="mt-0.5 break-words whitespace-pre-wrap first:mt-0">
       {renderInline(line)}
     </p>
   );

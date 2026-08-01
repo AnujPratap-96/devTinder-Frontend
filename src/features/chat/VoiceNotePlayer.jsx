@@ -59,7 +59,7 @@ const VoiceNotePlayer = ({ src, durationSec, isOwn, isPending }) => {
 
   return (
     <div
-      className={`flex min-w-[180px] max-w-[240px] items-center gap-2 rounded-xl px-2.5 py-2 ${
+      className={`flex min-w-[160px] max-w-[220px] items-center gap-2 rounded-full py-1.5 pl-1.5 pr-3 ${
         isOwn ? "bg-brand-600/40" : "bg-tint-strong"
       }`}
     >
@@ -68,15 +68,15 @@ const VoiceNotePlayer = ({ src, durationSec, isOwn, isPending }) => {
         type="button"
         onClick={toggle}
         disabled={isPending}
-        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white transition ${
+        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-white transition ${
           isOwn ? "bg-brand-500" : "bg-neutral-700 hover:bg-neutral-600"
         } ${isPending ? "opacity-50" : ""}`}
       >
         {playing ? <HiPause className="text-sm" /> : <HiPlay className="ml-0.5 text-sm" />}
       </button>
-      <div className="min-w-0 flex-1">
+      <div className="flex min-w-0 flex-1 items-center gap-2">
         <div
-          className={`h-1.5 w-full cursor-pointer overflow-hidden rounded-full ${isOwn ? "bg-white/25" : "bg-neutral-600"}`}
+          className={`h-1 flex-1 cursor-pointer overflow-hidden rounded-full ${isOwn ? "bg-white/25" : "bg-neutral-600"}`}
           onClick={onProgressClick}
         >
           <div
@@ -84,9 +84,9 @@ const VoiceNotePlayer = ({ src, durationSec, isOwn, isPending }) => {
             style={{ width: `${pct}%` }}
           />
         </div>
-        <p className={`mt-1 text-[10px] tabular-nums ${isOwn ? "text-white/70" : "text-neutral-400"}`}>
-          {isPending ? "Uploading…" : `${formatTime(display || 0)} / ${formatTime(duration)}`}
-        </p>
+        <span className={`shrink-0 text-[10px] tabular-nums ${isOwn ? "text-white/70" : "text-neutral-400"}`}>
+          {isPending ? "Sending…" : formatTime(display)}
+        </span>
       </div>
     </div>
   );
