@@ -32,8 +32,17 @@ const callClient = {
   async getMedia(type) {
     if (localStream) return localStream;
     localStream = await navigator.mediaDevices.getUserMedia({
-      audio: true,
-      video: type === "video",
+      // Explicit AEC/NS/AGC — some browsers (Windows/Chrome with speaker
+      // mics) ship these OFF for `audio: true`, which is what causes the
+      // "my echo in their ears" feedback loop during voice calls.
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+      },
+      video: type === "video"
+        ? { width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 24, max: 30 } }
+        : false,
     });
     return localStream;
   },

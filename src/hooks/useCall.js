@@ -272,7 +272,9 @@ export const useCall = () => {
   const switchCamera = useCallback(() => callClient.switchCamera(), []);
 
   // Auto-disconnect if the call never reaches an active (connected) state,
-  // within 10s of being initiated (outgoing) or connecting.
+  // within 20s of being initiated (outgoing) or connecting. 10s was too
+  // aggressive: a network blip mid-call triggers an ICE restart that can take
+  // several seconds, and the old deadline killed the call instead.
   const endCallRef = useRef(endCall);
   const callDeadlineRef = useRef(null);
   useEffect(() => {
@@ -287,7 +289,7 @@ export const useCall = () => {
           addToast("Call could not connect. Please try again.", "error");
           endCallRef.current();
         }
-      }, 10000);
+      }, 20000);
     }
     if (status === "active" || !status) {
       if (callDeadlineRef.current) {
