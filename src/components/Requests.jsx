@@ -1,33 +1,55 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { addRequests, removeRequest } from "../store/requestsSlice";
-import axios from "axios";
-import { BASE_URL } from "../utils/constant";
+import { getReceivedRequests, reviewRequest } from "../api/requests";
 import { useToast } from "../context/ToastProvider";
 import { motion } from "framer-motion";
-import { HiCheck, HiX, HiBell, HiCode } from "react-icons/hi";
+import { HiCheck, HiX, HiBell, HiCode, HiArrowDown } from "react-icons/hi";
 import Button from "./ui/Button";
 import Card from "./ui/Card";
 import EmptyState from "./ui/EmptyState";
+import { optimizePhotoUrl } from "../utils/avatar";
+
+const PAGE_SIZE = 12;
 
 const Requests = () => {
   const dispatch = useDispatch();
-  const requests = useSelector((store) => store.requests);
+  const reduxRequests = useSelector((store) => store.requests);
+  const { items: reduxItems, nextCursor: reduxNextCursor, hasMore: reduxHasMore } = reduxRequests;
   const { addToast } = useToast();
+  const [requests, setRequests] = useState([]);
+  const [nextCursor, setNextCursor] = useState(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const seeded = useRef(false);
 
-  const connectionRequest = useCallback(async () => {
+  const fetchRequests = useCallback(async ({ cursor = null, append = false } = {}) => {
     try {
-      const res = await axios.get(BASE_URL + "/user/requests/received", { withCredentials: true });
-       dispatch(addRequests(res?.data?.data || []));
+      if (append) setLoadingMore(true);
+      const data = await getReceivedRequests({ limit: PAGE_SIZE, cursor: cursor || undefined });
+      const items = data?.requests || [];
+      const next = data?.nextCursor ?? null;
+      const more = data?.hasMore ?? false;
+      if (append) {
+        setRequests((prev) => [...prev, ...items]);
+      } else {
+        setRequests(items);
+        dispatch(addRequests({ items, nextCursor: next, hasMore: more }));
+      }
+      setNextCursor(next);
+      setHasMore(more);
     } catch (error) {
       addToast(error?.response?.data?.message || "Error fetching requests. Please try again later.");
+    } finally {
+      setLoadingMore(false);
     }
   }, [dispatch, addToast]);
 
-  const reviewRequest = async (status, _id) => {
+  const handleReviewRequest = async (status, _id) => {
     try {
-      await axios.post(BASE_URL + "/request/review/" + status + "/" + _id, {}, { withCredentials: true });
+      await reviewRequest(status, _id);
       dispatch(removeRequest(_id));
+      setRequests((prev) => prev.filter((r) => r._id !== _id));
       addToast(status === "accepted" ? "Connection accepted! 🎉" : "Request rejected", status === "accepted" ? "success" : "info");
     } catch (error) {
       addToast(error?.response?.data?.message || "Error updating request status.", "error");
@@ -35,8 +57,16 @@ const Requests = () => {
   };
 
   useEffect(() => {
-    connectionRequest();
-  }, [connectionRequest]);
+    if (seeded.current) return;
+    seeded.current = true;
+    if (reduxItems?.length > 0) {
+      setRequests(reduxItems);
+      setNextCursor(reduxNextCursor);
+      setHasMore(reduxHasMore);
+    } else {
+      fetchRequests({ cursor: null });
+    }
+  }, [reduxItems, reduxNextCursor, reduxHasMore, fetchRequests]);
 
   return (
     <div className="w-full space-y-8">
@@ -51,97 +81,113 @@ const Requests = () => {
       </div>
 
       {requests?.length > 0 ? (
-        <div className={`grid grid-cols-1 gap-5 sm:grid-cols-2 ${requests.length >= 3 ? 'lg:grid-cols-3' : 'lg:grid-cols-2 max-w-4xl mx-auto'}`}>
-          {requests?.map((request, index) => {
-            if (!request.fromUserId) return null;
-            const { firstName, lastName, photoUrl, age, gender, about, skills } = request.fromUserId;
+        <>
+          <div className={`grid grid-cols-1 gap-5 sm:grid-cols-2 ${requests.length >= 3 ? 'lg:grid-cols-3' : 'lg:grid-cols-2 max-w-4xl mx-auto'}`}>
+            {requests?.map((request, index) => {
+              if (!request.fromUserId) return null;
+              const { firstName, lastName, photoUrl, age, gender, about, skills } = request.fromUserId;
 
-            return (
-              <Card
-                as={motion.div}
-                key={request._id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: index * 0.07 }}
-                whileHover={{ y: -4, scale: 1.01 }}
-                tone="muted"
-                padding="md"
-                interactive
-                className="flex h-full flex-col gap-4"
-              >
-                {/* Avatar + Info */}
-                <div className="flex items-center gap-3">
-                  <div className="avatar-ring h-14 w-14 overflow-hidden">
-                    <img
-                      alt={`${firstName}'s profile`}
-                      className="h-full w-full object-cover"
-                      src={photoUrl?.[0] || "https://via.placeholder.com/150"}
-                    />
-                  </div>
-                  <div className="min-w-0">
-                    <h2 className="text-body-sm font-semibold text-neutral-50">
-                      {firstName} {lastName}
-                    </h2>
-                    {age && gender && (
-                      <p className="mt-0.5 text-body-xs text-neutral-400">
-                        {age} · {gender.charAt(0).toUpperCase() + gender.slice(1)}
-                      </p>
-                    )}
-                    <div className="mt-2 inline-flex items-center gap-1.5 rounded-pill border border-warning-400/30 bg-warning-500/10 px-2.5 py-0.5 text-[0.65rem] font-semibold uppercase tracking-[0.28em] text-warning-400">
-                      <HiBell className="text-sm" /> Wants to connect
+              return (
+                <Card
+                  as={motion.div}
+                  key={request._id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: index * 0.07 }}
+                  whileHover={{ y: -4, scale: 1.01 }}
+                  tone="muted"
+                  padding="md"
+                  interactive
+                  className="flex h-full flex-col gap-4"
+                >
+                  {/* Avatar + Info */}
+                  <div className="flex items-center gap-3">
+                    <div className="avatar-ring h-14 w-14 overflow-hidden">
+                      <img
+                        alt={`${firstName}'s profile`}
+                        className="h-full w-full object-cover"
+                        src={optimizePhotoUrl(photoUrl?.[0]) || "https://via.placeholder.com/150"}
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    </div>
+                    <div className="min-w-0">
+                      <h2 className="text-body-sm font-semibold text-neutral-50">
+                        {firstName} {lastName}
+                      </h2>
+                      {age && gender && (
+                        <p className="mt-0.5 text-body-xs text-neutral-400">
+                          {age} · {gender.charAt(0).toUpperCase() + gender.slice(1)}
+                        </p>
+                      )}
+                      <div className="mt-2 inline-flex items-center gap-1.5 rounded-pill border border-warning-400/30 bg-warning-500/10 px-2.5 py-0.5 text-[0.65rem] font-semibold uppercase tracking-[0.28em] text-warning-400">
+                        <HiBell className="text-sm" /> Wants to connect
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* About */}
-                {about && (
-                  <p className="line-clamp-3 text-body-xs leading-relaxed text-neutral-300">
-                    {about}
-                  </p>
-                )}
+                  {/* About */}
+                  {about && (
+                    <p className="line-clamp-3 text-body-xs leading-relaxed text-neutral-300">
+                      {about}
+                    </p>
+                  )}
 
-                {/* Skills */}
-                {skills?.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5">
-                    {skills.slice(0, 3).map((skill, i) => (
-                      <span key={i} className="inline-flex items-center gap-1 rounded-pill border border-brand-400/30 bg-brand-500/10 px-2.5 py-1 text-[0.7rem] font-medium text-brand-500">
-                        <HiCode className="text-sm text-brand-600" /> {skill}
-                      </span>
-                    ))}
+                  {/* Skills */}
+                  {skills?.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {skills.slice(0, 3).map((skill, i) => (
+                        <span key={i} className="inline-flex items-center gap-1 rounded-pill border border-brand-400/30 bg-brand-500/10 px-2.5 py-1 text-[0.7rem] font-medium text-brand-500">
+                          <HiCode className="text-sm text-brand-600" /> {skill}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Action Buttons */}
+                  <div className="mt-auto flex gap-2">
+                    <Button
+                      as={motion.button}
+                      whileHover={{ scale: 1.03 }}
+                      whileTap={{ scale: 0.96 }}
+                      variant="success"
+                      size="sm"
+                      className="flex-1"
+                      type="button"
+                      onClick={() => handleReviewRequest("accepted", request._id)}
+                    >
+                      <HiCheck className="text-base" /> Accept
+                    </Button>
+                    <Button
+                      as={motion.button}
+                      whileHover={{ scale: 1.03 }}
+                      whileTap={{ scale: 0.96 }}
+                      variant="danger"
+                      size="sm"
+                      className="flex-1"
+                      type="button"
+                      onClick={() => handleReviewRequest("rejected", request._id)}
+                    >
+                      <HiX className="text-base" /> Decline
+                    </Button>
                   </div>
-                )}
-
-                {/* Action Buttons */}
-                <div className="mt-auto flex gap-2">
-                  <Button
-                    as={motion.button}
-                    whileHover={{ scale: 1.03 }}
-                    whileTap={{ scale: 0.96 }}
-                    variant="success"
-                    size="sm"
-                    className="flex-1"
-                    type="button"
-                    onClick={() => reviewRequest("accepted", request._id)}
-                  >
-                    <HiCheck className="text-base" /> Accept
-                  </Button>
-                  <Button
-                    as={motion.button}
-                    whileHover={{ scale: 1.03 }}
-                    whileTap={{ scale: 0.96 }}
-                    variant="danger"
-                    size="sm"
-                    className="flex-1"
-                    type="button"
-                    onClick={() => reviewRequest("rejected", request._id)}
-                  >
-                    <HiX className="text-base" /> Decline
-                  </Button>
-                </div>
-              </Card>
-            );
-          })}
-        </div>
+                </Card>
+              );
+            })}
+          </div>
+          {hasMore && (
+            <div className="mt-8 flex justify-center">
+              <Button
+                variant="secondary"
+                onClick={() => fetchRequests({ cursor: nextCursor, append: true })}
+                disabled={loadingMore}
+              >
+                {loadingMore ? <span className="spinner h-4 w-4 border-2 text-brand-600" /> : <HiArrowDown className="text-lg" />}
+                {loadingMore ? "Loading..." : "Load More"}
+              </Button>
+            </div>
+          )}
+        </>
       ) : (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -154,7 +200,7 @@ const Requests = () => {
             description="When other developers want to connect with you, their requests will appear here."
             tone="translucent"
             action={
-              <Button variant="secondary" size="sm" onClick={connectionRequest}>
+              <Button variant="secondary" size="sm" onClick={() => fetchRequests({ cursor: null })}>
                 Refresh requests
               </Button>
             }

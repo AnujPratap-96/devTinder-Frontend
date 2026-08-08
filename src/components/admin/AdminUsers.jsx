@@ -1,8 +1,7 @@
 /* eslint-disable react/prop-types */
 import { useEffect, useState, useCallback, useRef } from "react";
-import axios from "axios";
 import { useSelector } from "react-redux";
-import { BASE_URL } from "../../utils/constant";
+import { getAdminUsers, getAdminUserDetail, banUser as banUserApi } from "../../api/admin";
 import Card from "../ui/Card";
 import Button from "../ui/Button";
 import EmptyState from "../ui/EmptyState";
@@ -62,19 +61,16 @@ const AdminUsers = () => {
       try {
         if (append) setLoadingMore(true);
         else setLoading(true);
-        const res = await axios.get(`${BASE_URL}/admin/users`, {
-          withCredentials: true,
-          params: {
-            limit: PAGE_SIZE,
-            cursor: cursor || undefined,
-            search: search || undefined,
-            role: role || undefined,
-            availability: availability || undefined,
-            banned: banned || undefined,
-          },
+        const data = await getAdminUsers({
+          limit: PAGE_SIZE,
+          cursor: cursor || undefined,
+          search: search || undefined,
+          role: role || undefined,
+          availability: availability || undefined,
+          banned: banned || undefined,
         });
-        if (id !== reqId.current) return; // stale response
-        const { users: page, nextCursor: next, hasMore: more } = res.data.data;
+        if (id !== reqId.current) return;
+        const { users: page, nextCursor: next, hasMore: more } = data;
         setUsers((prev) => (append ? [...prev, ...page] : page));
         setNextCursor(next);
         setHasMore(more);
@@ -101,8 +97,8 @@ const AdminUsers = () => {
     try {
       setDetailLoading(true);
       setSelected({ _id: userId });
-      const res = await axios.get(`${BASE_URL}/admin/users/${userId}`, { withCredentials: true });
-      setSelected(res.data.data.user);
+      const data = await getAdminUserDetail(userId);
+      setSelected(data.user);
     } catch (err) {
       addToast(err?.response?.data?.message || "Failed to load user", "error");
       setSelected(null);
@@ -113,7 +109,7 @@ const AdminUsers = () => {
 
   const banUser = async (userId) => {
     try {
-      await axios.post(`${BASE_URL}/admin/ban`, { userId }, { withCredentials: true });
+      await banUserApi(userId);
       addToast("User banned", "success");
       loadPage({ cursor: null });
     } catch (err) {

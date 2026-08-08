@@ -1,12 +1,11 @@
 /* eslint-disable react/prop-types */
 import { useEffect, useMemo, useState } from "react";
-import axios from "axios";
 import { useDispatch } from "react-redux";
 import { motion, AnimatePresence } from "framer-motion";
 import { HiUpload, HiX, HiCode, HiSave, HiCamera } from "react-icons/hi";
 import { FaCheckCircle, FaGithub, FaLinkedin, FaGlobe } from "react-icons/fa";
 import { addUser } from "../store/userSlice";
-import { BASE_URL } from "../utils/constant";
+import { viewProfile, editProfile, uploadImage, updateLocation, syncGitHub } from "../api/profile";
 import { useToast } from "../context/ToastProvider";
 import Button from "./ui/Button";
 import AIPanel from "./AIPanel";
@@ -170,10 +169,8 @@ const EditProfile = ({ user }) => {
   };
 
   const refreshUser = async () => {
-    const res = await axios.get(`${BASE_URL}/profile/view`, {
-      withCredentials: true,
-    });
-    dispatch(addUser(res?.data?.user));
+    const data = await viewProfile();
+    dispatch(addUser(data.user));
   };
 
   const saveProfile = async () => {
@@ -186,10 +183,8 @@ const EditProfile = ({ user }) => {
         skills,
         socialLinks: formData.socialLinks,
       };
-      const res = await axios.patch(`${BASE_URL}/profile/edit`, payload, {
-        withCredentials: true,
-      });
-      dispatch(addUser(res?.data?.data?.user));
+      const data = await editProfile(payload);
+      dispatch(addUser(data.user));
       addToast("Profile updated", "success");
     } catch (error) {
       addToast(error?.response?.data?.message || "Unable to update profile", "error");
@@ -205,20 +200,15 @@ const EditProfile = ({ user }) => {
       const form = new FormData();
       form.append("image", selectedFile);
       form.append("index", selectedIndex);
-      const res = await axios.patch(`${BASE_URL}/profile/upload-image`, form, {
-        withCredentials: true,
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      if (res.status === 200) {
-        const updatedGallery = [...gallery];
-        updatedGallery[selectedIndex] = res.data.data.secureUrl;
-        setGallery(updatedGallery);
-        dispatch(addUser({ ...user, photoUrl: updatedGallery }));
-        addToast("Image uploaded", "success");
-        setOpenModal(false);
-        setSelectedFile(null);
-        setSelectedIndex(null);
-      }
+      const result = await uploadImage(form);
+      const updatedGallery = [...gallery];
+      updatedGallery[selectedIndex] = result.secureUrl;
+      setGallery(updatedGallery);
+      dispatch(addUser({ ...user, photoUrl: updatedGallery }));
+      addToast("Image uploaded", "success");
+      setOpenModal(false);
+      setSelectedFile(null);
+      setSelectedIndex(null);
     } catch (error) {
       addToast(error?.response?.data?.message || "Image upload failed", "error");
     } finally {
@@ -232,20 +222,13 @@ const EditProfile = ({ user }) => {
       return;
     }
     setUpdatingLocation(true);
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        try {
-          await axios.patch(
-            `${BASE_URL}/profile/location`,
-            {
-              lat: position.coords.latitude,
-              lng: position.coords.longitude,
-            },
-            { withCredentials: true }
-          );
-          await refreshUser();
-          addToast("Location updated", "success");
-        } catch (error) {
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          try {
+            await updateLocation(position.coords.latitude, position.coords.longitude);
+            await refreshUser();
+            addToast("Location updated", "success");
+          } catch (error) {
           addToast(error?.response?.data?.message || "Unable to update location", "error");
         } finally {
           setUpdatingLocation(false);
@@ -271,11 +254,7 @@ const EditProfile = ({ user }) => {
       // Use the unified AI route for both, or keep /github/sync?
       // Considering the user wants persistence, I'll point to /ai/github-sync
       // because it handles saving the token.
-      await axios.post(
-        `${BASE_URL}/ai/github-sync`,
-        { githubToken: githubToken.trim() },
-        { withCredentials: true }
-      );
+      await syncGitHub(githubToken.trim());
       await refreshUser();
       addToast("GitHub profile synced securely", "success");
       // Don't clear it, it's saved now!

@@ -1,7 +1,6 @@
 import { useRef, useState, useEffect } from "react";
-import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import { BASE_URL } from "../utils/constant";
+import { completeSignup } from "../api/auth";
 import { useToast } from "../context/ToastProvider";
 import { HiArrowRight, HiEye, HiEyeOff } from "react-icons/hi";
 import AuthShell from "./ui/AuthShell";
@@ -31,22 +30,16 @@ const Signup = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await axios.post(
-        BASE_URL + "/complete-signup",
-        {
-          password: passwordRef.current.value,
-          firstName: firstNameRef.current.value,
-          lastName: lastNameRef.current.value,
-          age: Number(ageRef.current.value),
-          gender: genderRef.current.value,
-        },
-        { withCredentials: true }
-      );
-      if (res.status === 200) {
-        addToast("Signup successful!", "success");
-        localStorage.removeItem("signup_token");
-        navigate("/login");
-      }
+      await completeSignup({
+        password: passwordRef.current.value,
+        firstName: firstNameRef.current.value,
+        lastName: lastNameRef.current.value,
+        age: Number(ageRef.current.value),
+        gender: genderRef.current.value,
+      });
+      addToast("Signup successful!", "success");
+      localStorage.removeItem("signup_token");
+      navigate("/login");
     } catch (err) {
       addToast(err?.response?.data?.message || "Something went wrong!", "error");
     } finally {

@@ -14,7 +14,7 @@
 // with a strict CSP. The server never receives the private key.
 
 import axios from "axios";
-import { BASE_URL } from "./constant";
+import { BASE_URL } from "../config/constants";
 
 const DB_NAME = "devtinder-e2ee";
 const STORE = "keys";

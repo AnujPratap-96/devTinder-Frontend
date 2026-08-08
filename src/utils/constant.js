@@ -1,4 +1,4 @@
-export const BASE_URL = location.hostname === "localhost" ? "http://localhost:3000" : "https://devtinder-1zr8.onrender.com";
+const BASE_URL = location.hostname === "localhost" ? "http://localhost:3000" : "https://devtinder-1zr8.onrender.com";
 
 import io from "socket.io-client";
 
@@ -24,11 +24,17 @@ export const createSocketConnection = (userId) => {
   }
 
   if (!socketInstance) {
-    const isLocal = location.hostname === "localhost";
     const connectionOptions = {
       withCredentials: true,
       transports: ["websocket"],
       path: "/socket.io",
+      // Render free tier sleeps idle instances — keep retrying until the
+      // instance wakes up, so online status and realtime events recover.
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      timeout: 20000,
     };
     socketInstance = io(BASE_URL, connectionOptions);
 

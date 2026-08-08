@@ -1,10 +1,11 @@
 /* eslint-disable react/prop-types */
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import { useDispatch, useSelector } from "react-redux";
+import { setPlans as setPlansRedux } from "../store/plansSlice";
 import { motion, AnimatePresence } from "framer-motion";
 import { generateBio, suggestSkills } from "../utils/aiApi";
-import { BASE_URL } from "../utils/constant";
+import { getPlans } from "../api/plans";
 
 // ─── Sparkle SVG icon ────────────────────────────────────────
 const SparkleIcon = ({ className = "" }) => (
@@ -61,6 +62,8 @@ const FeatureError = ({ message, onUpgrade }) => (
 // ─────────────────────────────────────────────────────────────
 const AIPanel = ({ user, skills, formData, onBioGenerated, onSkillsAccepted }) => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const reduxPlans = useSelector((store) => store.plans);
 
   // Bio state
   const [generatedBio, setGeneratedBio] = useState("");
@@ -84,31 +87,35 @@ const AIPanel = ({ user, skills, formData, onBioGenerated, onSkillsAccepted }) =
         if (active) setAiBlocked(false);
         return;
       }
-      try {
-        const res = await axios.get(`${BASE_URL}/plans`, { withCredentials: true });
-        const plans = res.data.data.plans ?? [];
-        const myPlan = plans.find((p) => p.slug === (user?.membershipType || "free"));
-        const allowed = Boolean(myPlan && myPlan.limits?.aiCallsPerDay !== 0);
-        if (!allowed) {
-          const minPaid = plans
-            .filter((p) => !p.isFree && p.limits?.aiCallsPerDay !== 0)
-            .sort((a, b) => a.order - b.order)[0];
-          if (active) {
-            setAiBlocked(true);
-            setMinPlanName(minPaid?.name || "a paid");
-          }
-        } else if (active) {
-          setAiBlocked(false);
+      let plans = reduxPlans;
+      if (!plans) {
+        try {
+          const data = await getPlans();
+          plans = data.plans ?? [];
+          dispatch(setPlansRedux(plans));
+        } catch {
+          return;
         }
-      } catch {
-        /* non-fatal */
+      }
+      const myPlan = plans.find((p) => p.slug === (user?.membershipType || "free"));
+      const allowed = Boolean(myPlan && myPlan.limits?.aiCallsPerDay !== 0);
+      if (!allowed) {
+        const minPaid = plans
+          .filter((p) => !p.isFree && p.limits?.aiCallsPerDay !== 0)
+          .sort((a, b) => a.order - b.order)[0];
+        if (active) {
+          setAiBlocked(true);
+          setMinPlanName(minPaid?.name || "a paid");
+        }
+      } else if (active) {
+        setAiBlocked(false);
       }
     };
     check();
     return () => {
       active = false;
     };
-  }, [user]);
+  }, [user, reduxPlans, dispatch]);
 
   const goPremium = () => navigate("/premium");
 

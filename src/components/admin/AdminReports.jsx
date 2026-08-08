@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
 import { useSelector } from "react-redux";
 import { HiExclamationCircle } from "react-icons/hi";
-import { BASE_URL } from "../../utils/constant";
+import { getAdminReports, updateReportStatus } from "../../api/admin";
 import Card from "../ui/Card";
 import Button from "../ui/Button";
 import EmptyState from "../ui/EmptyState";
@@ -25,8 +24,8 @@ const AdminReports = () => {
 
   const load = async () => {
     try {
-      const res = await axios.get(`${BASE_URL}/admin/reports`, { withCredentials: true });
-      setReports(res.data.data.reports ?? []);
+      const data = await getAdminReports();
+      setReports(data.reports ?? []);
     } catch (err) {
       addToast(err?.response?.data?.message || "Failed to load reports", "error");
     } finally {
@@ -36,12 +35,11 @@ const AdminReports = () => {
 
   useEffect(() => {
     if (user?.isAdmin) load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const resolve = async (id, status) => {
     try {
-      await axios.patch(`${BASE_URL}/admin/reports/${id}`, { status }, { withCredentials: true });
+      await updateReportStatus(id, status);
       addToast("Report updated", "success");
       load();
     } catch (err) {

@@ -1,8 +1,7 @@
-import axios from "axios";
-import { BASE_URL } from "../utils/constant";
 import { useDispatch, useSelector } from "react-redux";
-import { useCallback, useEffect, useState, useTransition, memo, forwardRef } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition, memo, forwardRef } from "react";
 import { addFeed } from "../store/feedSlice";
+import { getFeed, searchUsers } from "../api/feed";
 import { VirtuosoGrid } from "react-virtuoso";
 import UserCard from "./UserCard";
 import CompactUserItem from "./CompactUserItem";
@@ -63,11 +62,15 @@ const SkeletonCard = () => (
 const Feed = () => {
   const { addToast } = useToast();
   const dispatch = useDispatch();
-  const feed = useSelector((store) => store.feed);
+  const reduxFeed = useSelector((store) => store.feed);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [nextCursor, setNextCursor] = useState(null);
+  const [hasMore, setHasMore] = useState(false);
   const [coords, setCoords] = useState(null);
   const [locationRequested, setLocationRequested] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const seeded = useRef(false);
   
   // Search state
   const [searchQuery, setSearchQuery] = useState("");
@@ -91,27 +94,38 @@ const Feed = () => {
     setSelectedResult(null);
   }, [debouncedQuery]);
 
-  const getFeed = useCallback(async (force = false) => {
-    if (!force && feed.length > 0) {
-      setLoading(false);
-      return;
-    }
+  const [feedItems, setFeedItems] = useState([]);
+
+  const fetchFeed = useCallback(async ({ cursor = null, append = false } = {}) => {
     try {
-      const params = new URLSearchParams();
+      if (append) setLoadingMore(true);
+      else setLoading(true);
+      const params = {};
+      if (cursor) params.cursor = cursor;
       if (coords?.lat && coords?.lng) {
-        params.set("lat", coords.lat);
-        params.set("lng", coords.lng);
-        params.set("radius", "50");
+        params.lat = coords.lat;
+        params.lng = coords.lng;
+        params.radius = 50;
       }
-      const url = params.toString() ? `${BASE_URL}/feed?${params.toString()}` : `${BASE_URL}/feed`;
-      const res = await axios.get(url, { withCredentials: true });
-      dispatch(addFeed(res?.data?.data?.users || []));
+      const data = await getFeed(params);
+      const users = data?.users || [];
+      const next = data?.nextCursor ?? null;
+      const more = data?.hasMore ?? false;
+      if (append) {
+        setFeedItems((prev) => [...prev, ...users]);
+      } else {
+        setFeedItems(users);
+        dispatch(addFeed({ items: users, nextCursor: next, hasMore: more }));
+      }
+      setNextCursor(next);
+      setHasMore(more);
     } catch (err) {
       addToast(err.message || "Error fetching feed. Please try again later.", "error");
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
-  }, [feed.length, dispatch, addToast, coords]);
+  }, [dispatch, addToast, coords]);
 
   // Debounce search query
   useEffect(() => {
@@ -130,13 +144,11 @@ const Feed = () => {
     setIsSearching(true);
     setLoading(true);
     try {
-      const res = await axios.get(`${BASE_URL}/search?q=${encodeURIComponent(q.trim())}`, {
-        withCredentials: true,
-        signal,
-      });
-      setSearchResults(res.data.data || []);
+      const data = await searchUsers(q.trim(), signal);
+      setSearchResults(data?.users || []);
     } catch (err) {
-      if (axios.isCancel(err)) return;
+      if (err?.name === "CanceledError" || err?.code === "ERR_CANCELED") return;
+      if (err?.constructor?.name === "Cancel") return;
       console.error("Search error:", err);
     } finally {
       setLoading(false);
@@ -154,11 +166,22 @@ const Feed = () => {
     return () => controller.abort();
   }, [debouncedQuery, fetchSearchResults]);
 
+  // Seed from Redux on mount; re-fetch only when search ends
   useEffect(() => {
-    if (!searchQuery.trim() && !isSearching) {
-      getFeed();
+    if (!seeded.current && !searchQuery.trim() && !isSearching) {
+      seeded.current = true;
+      if (reduxFeed?.items?.length > 0) {
+        setFeedItems(reduxFeed.items);
+        setNextCursor(reduxFeed.nextCursor);
+        setHasMore(reduxFeed.hasMore);
+        setLoading(false);
+      } else {
+        fetchFeed({ cursor: null });
+      }
+    } else if (!searchQuery.trim() && !isSearching && seeded.current) {
+      fetchFeed({ cursor: null });
     }
-  }, [getFeed, searchQuery, isSearching]);
+  }, [fetchFeed, searchQuery, isSearching]);
 
   useEffect(() => {
     const hasGeolocation = "geolocation" in navigator;
@@ -175,7 +198,21 @@ const Feed = () => {
     );
   }, [locationRequested]);
 
-  const targetUsers = isSearching ? searchResults : feed;
+  const targetUsers = isSearching ? searchResults : feedItems;
+
+  // Advance the deck in place when the current card is swiped/responded to,
+  // instead of leaving the same card on screen until "Load More" is clicked.
+  const advanceFeed = useCallback(() => {
+    setFeedItems((prev) => prev.slice(1));
+  }, []);
+
+  // Auto-page: when the deck runs out and the server has more pages,
+  // silently pull the next one so the feed never requires a manual button.
+  useEffect(() => {
+    if (isSearching || searchQuery.trim()) return;
+    if (feedItems.length > 0 || !hasMore || loading || loadingMore) return;
+    fetchFeed({ cursor: nextCursor, append: true });
+  }, [feedItems.length, hasMore, nextCursor, isSearching, searchQuery, loading, loadingMore, fetchFeed]);
 
   return (
     <div className="flex min-h-[80vh] w-full flex-col items-center">
@@ -256,10 +293,19 @@ const Feed = () => {
                 )}
               </div>
               <ErrorBoundary>
-                <UserCard key={targetUsers[0]?._id} user={targetUsers[0]} searchQuery={searchQuery} />
+                <UserCard key={targetUsers[0]?._id} user={targetUsers[0]} searchQuery={searchQuery} onSwiped={advanceFeed} />
               </ErrorBoundary>
             </>
           )}
+        </motion.div>
+      ) : loadingMore ? (
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex w-full flex-col items-center gap-4 py-24"
+        >
+          <div className="h-12 w-12 rounded-full border-4 border-brand-500/20 border-t-brand-500 animate-spin" />
+          <p className="text-neutral-400 font-medium animate-pulse">Loading more profiles...</p>
         </motion.div>
       ) : (
         <motion.div
@@ -278,7 +324,7 @@ const Feed = () => {
                 variant="secondary"
                 onClick={() => {
                   setLoading(true);
-                  getFeed(true);
+                  fetchFeed({ cursor: null });
                 }}
               >
                 Refresh Feed

@@ -1,32 +1,60 @@
-import axios from "axios";
 import { FaCrown, FaCheckCircle } from "react-icons/fa";
-import { useEffect, useState } from "react";
-import { BASE_URL } from "../utils/constant";
+import { useEffect, useState, useRef } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { addUser } from "../store/userSlice";
+import { setPlans as setPlansRedux } from "../store/plansSlice";
+import { getPlans, createPaymentOrder } from "../api/plans";
+import { verifyPremium } from "../api/auth";
 import { useToast } from "../context/ToastProvider";
 import { motion } from "framer-motion";
 import { HiSparkles, HiShoppingBag } from "react-icons/hi";
 import Spinner from "./ui/Spinner";
 
+// Load Razorpay checkout script on demand (only when a payment is started)
+const loadRazorpay = () =>
+  new Promise((resolve, reject) => {
+    if (window.Razorpay) {
+      resolve(window.Razorpay);
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.onload = () => resolve(window.Razorpay);
+    script.onerror = () => reject(new Error("Payment gateway failed to load"));
+    document.body.appendChild(script);
+  });
+
 const Premium = () => {
   const { addToast } = useToast();
   const user = useSelector((store) => store.user);
+  const reduxPlans = useSelector((store) => store.plans);
   const dispatch = useDispatch();
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
+  const verified = useRef(false);
 
   useEffect(() => {
-    verifyPremiumUser();
-    loadPlans();
+    if (user?.membershipType) {
+      verified.current = true;
+    }
+    if (!verified.current) {
+      verifyPremiumUser();
+      verified.current = true;
+    }
+    if (reduxPlans) {
+      setPlans(reduxPlans);
+      setLoading(false);
+    } else {
+      loadPlans();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const verifyPremiumUser = async () => {
     try {
-      const res = await axios.get(BASE_URL + "/premium/verify", { withCredentials: true });
-      if (res.data.data.isPremium) {
-        dispatch(addUser(res.data.data.user));
+      const data = await verifyPremium();
+      if (data.isPremium) {
+        dispatch(addUser(data.user));
       }
     } catch {
       // non-fatal
@@ -35,8 +63,10 @@ const Premium = () => {
 
   const loadPlans = async () => {
     try {
-      const res = await axios.get(BASE_URL + "/plans", { withCredentials: true });
-      setPlans(res.data.data.plans ?? []);
+      const data = await getPlans();
+      const items = data.plans ?? [];
+      setPlans(items);
+      dispatch(setPlansRedux(items));
     } catch (error) {
       addToast(error.response?.data?.message || "Failed to load plans", "error");
     } finally {
@@ -46,12 +76,9 @@ const Premium = () => {
 
   const handleBuyClick = async (slug) => {
     try {
-      const order = await axios.post(
-        BASE_URL + "/payment/create",
-        { membershipType: slug },
-        { withCredentials: true }
-      );
-      const { payment, keyId } = order.data.data;
+      await loadRazorpay();
+      const result = await createPaymentOrder(slug);
+      const { payment, keyId } = result;
       const notes = payment?.notes ?? {};
       const options = {
         key: keyId,

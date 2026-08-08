@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState, useRef } from "react";
+import { useEffect, useMemo, useState, useRef, useCallback } from "react";
 import { useSelector } from "react-redux";
-import axios from "axios";
 import { HiBell, HiCheck, HiClock, HiTrash, HiUserAdd } from "react-icons/hi";
-import { BASE_URL, createSocketConnection } from "../utils/constant";
+import { createSocketConnection } from "../utils/constant";
+import { getNotifications, markNotificationsRead, deleteNotification, clearAllNotifications as clearAllApi } from "../api/notifications";
+import { getProjects } from "../api/projects";
 import Button from "./ui/Button";
 
 const groupNotifications = (notifications) => {
@@ -60,10 +61,15 @@ const getNotificationMessage = (notification) => {
   return "You have a new notification";
 };
 
+const PAGE_SIZE = 20;
+
 const NotificationBell = () => {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notifications, setNotifications] = useState([]);
+  const [nextCursor, setNextCursor] = useState(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [requestCount, setRequestCount] = useState(0);
   const dropdownRef = useRef(null);
   const reduxUser = useSelector((store) => store.user);
@@ -93,22 +99,32 @@ const NotificationBell = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [open]);
 
-  useEffect(() => {
-    const fetchNotifications = async () => {
-      try {
-        const { data } = await axios.get(`${BASE_URL}/notifications`, {
-          withCredentials: true,
-        });
-         const ordered = (data.data.notifications ?? []).sort(
-          (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-        );
+  const fetchNotifications = useCallback(async ({ cursor = null, append = false } = {}) => {
+    try {
+      if (append) setLoadingMore(true);
+      const data = await getNotifications({ limit: PAGE_SIZE, cursor: cursor || undefined });
+      const ordered = (data.notifications ?? []).sort(
+        (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+      );
+      const next = data?.nextCursor ?? null;
+      const more = data?.hasMore ?? false;
+      if (append) {
+        setNotifications((prev) => [...prev, ...ordered]);
+      } else {
         setNotifications(ordered);
-      } catch (error) {
-        console.error("Failed to load notifications", error);
       }
-    };
-    fetchNotifications();
+      setNextCursor(next);
+      setHasMore(more);
+    } catch (error) {
+      console.error("Failed to load notifications", error);
+    } finally {
+      setLoadingMore(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchNotifications({ cursor: null });
+  }, [fetchNotifications]);
 
   useEffect(() => {
     if (!currentUserId) return;
@@ -130,24 +146,20 @@ const NotificationBell = () => {
     const fetchRequestCount = async () => {
       if (!currentUserId) return;
       try {
-        const { data: notifData } = await axios.get(`${BASE_URL}/notifications`, {
-          withCredentials: true,
-        });
-         const connectionRequests = notifData.data.notifications?.filter(
-           (n) => n.type === "connection.request" && !n.isRead
-         )?.length || 0;
+      const notifData = await getNotifications();
+      const connectionRequests = notifData.notifications?.filter(
+        (n) => n.type === "connection.request" && !n.isRead
+      )?.length || 0;
 
-         const { data: projectData } = await axios.get(`${BASE_URL}/projects`, {
-           withCredentials: true,
-         });
-         let projectRequests = 0;
-         const userIdStr = String(currentUserId);
-         projectData.data.projects?.forEach((project) => {
-          const ownerIdStr = String(project.ownerId?._id || project.ownerId || "");
-          if (ownerIdStr === userIdStr) {
-            projectRequests += project.joinRequests?.filter((r) => r.status === "pending").length || 0;
-          }
-        });
+      const projectData = await getProjects();
+      let projectRequests = 0;
+      const userIdStr = String(currentUserId);
+      projectData.projects?.forEach((project) => {
+        const ownerIdStr = String(project.ownerId?._id || project.ownerId || "");
+        if (ownerIdStr === userIdStr) {
+          projectRequests += project.joinRequests?.filter((r) => r.status === "pending").length || 0;
+        }
+      });
         
         setRequestCount(connectionRequests + projectRequests);
       } catch (error) {
@@ -160,11 +172,7 @@ const NotificationBell = () => {
   const markAsRead = async () => {
     try {
       setBusy(true);
-      await axios.patch(
-        `${BASE_URL}/notifications/read`,
-        {},
-        { withCredentials: true }
-      );
+      await markNotificationsRead();
       setNotifications((prev) => prev.map((notification) => ({ ...notification, isRead: true })));
     } catch (error) {
       console.error("Unable to mark notifications as read", error);
@@ -175,9 +183,7 @@ const NotificationBell = () => {
 
   const deleteNotificationItem = async (id) => {
     try {
-      await axios.delete(`${BASE_URL}/notifications/${id}`, {
-        withCredentials: true,
-      });
+      await deleteNotification(id);
       setNotifications((prev) => prev.filter((notification) => notification._id !== id));
       setRequestCount((prev) => {
         const target = notifications.find((n) => n._id === id);
@@ -193,9 +199,7 @@ const NotificationBell = () => {
 
   const clearAllNotifications = async () => {
     try {
-      await axios.delete(`${BASE_URL}/notifications`, {
-        withCredentials: true,
-      });
+      await clearAllApi();
       setNotifications([]);
       setRequestCount(0);
     } catch (error) {
@@ -262,38 +266,52 @@ const NotificationBell = () => {
             {notifications.length === 0 ? (
               <p className="text-xs text-neutral-500">No notifications yet. We'll keep you posted.</p>
             ) : (
-              groupedNotifications.map((group) => (
-                <div key={group.date} className="space-y-2">
-                  <p className="text-[11px] uppercase tracking-wide text-neutral-500">
-                    {group.date}
-                  </p>
-                  {group.items.map((notification) => (
-                    <div
-                      key={notification._id}
-                      className={`relative rounded-xl border px-3 py-2 pr-9 text-xs text-neutral-200 ${notification.isRead ? "border-hairline-soft bg-tint" : "border-brand-400/40 bg-brand-400/10"}`}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => deleteNotificationItem(notification._id)}
-                        aria-label="Delete notification"
-                        className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-lg text-neutral-500 transition hover:bg-danger-500/15 hover:text-danger-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger-400/40"
+              <>
+                {groupedNotifications.map((group) => (
+                  <div key={group.date} className="space-y-2">
+                    <p className="text-[11px] uppercase tracking-wide text-neutral-500">
+                      {group.date}
+                    </p>
+                    {group.items.map((notification) => (
+                      <div
+                        key={notification._id}
+                        className={`relative rounded-xl border px-3 py-2 pr-9 text-xs text-neutral-200 ${notification.isRead ? "border-hairline-soft bg-tint" : "border-brand-400/40 bg-brand-400/10"}`}
                       >
-                        <HiTrash className="text-sm" />
-                      </button>
-                      <p className="font-medium">
-                        {notification.type.replace(".", " ")}
-                      </p>
-                      <p className="mt-1 text-[11px] text-neutral-400">
-                        {getNotificationMessage(notification)}
-                      </p>
-                      <div className="mt-2 flex items-center gap-1 text-[10px] text-neutral-500">
-                        <HiClock className="text-xs" />
-                        {new Date(notification.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        <button
+                          type="button"
+                          onClick={() => deleteNotificationItem(notification._id)}
+                          aria-label="Delete notification"
+                          className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-lg text-neutral-500 transition hover:bg-danger-500/15 hover:text-danger-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger-400/40"
+                        >
+                          <HiTrash className="text-sm" />
+                        </button>
+                        <p className="font-medium">
+                          {notification.type.replace(".", " ")}
+                        </p>
+                        <p className="mt-1 text-[11px] text-neutral-400">
+                          {getNotificationMessage(notification)}
+                        </p>
+                        <div className="mt-2 flex items-center gap-1 text-[10px] text-neutral-500">
+                          <HiClock className="text-xs" />
+                          {new Date(notification.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              ))
+                    ))}
+                  </div>
+                ))}
+                {hasMore && (
+                  <div className="flex justify-center pt-2">
+                    <Button
+                      variant="ghost"
+                      size="xs"
+                      onClick={() => fetchNotifications({ cursor: nextCursor, append: true })}
+                      disabled={loadingMore}
+                    >
+                      {loadingMore ? "Loading..." : "Load More"}
+                    </Button>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>

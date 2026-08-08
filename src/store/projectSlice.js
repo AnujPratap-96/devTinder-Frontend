@@ -2,24 +2,21 @@ import { createSlice } from "@reduxjs/toolkit";
 
 const projectSlice = createSlice({
   name: "projects",
-  initialState: null,
+  initialState: { items: null, nextCursor: null, hasMore: false },
   reducers: {
-    addProjects: (state, action) => {
-      return action.payload;
-    },
+    addProjects: (state, action) => action.payload,
     removeProject: (state, action) => {
-      if (!state) return null;
-      return state.filter((project) => project._id !== action.payload);
+      if (!state?.items) return state;
+      state.items = state.items.filter((project) => project._id !== action.payload);
     },
     updateProject: (state, action) => {
-      if (!state) return null;
-      return state.map((project) =>
-        project._id === action.payload._id ? { ...project, ...action.payload } : project
-      );
+      if (!state?.items) return state;
+      const idx = state.items.findIndex((p) => p._id === action.payload._id);
+      if (idx !== -1) {
+        state.items[idx] = { ...state.items[idx], ...action.payload };
+      }
     },
-    clearProjects: () => {
-      return null;
-    },
+    clearProjects: () => ({ items: null, nextCursor: null, hasMore: false }),
   },
 });
 

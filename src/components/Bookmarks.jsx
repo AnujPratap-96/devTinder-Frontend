@@ -1,5 +1,4 @@
-import { useEffect, useState } from "react";
-import axios from "axios";
+import { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   HiBookmark,
@@ -7,11 +6,14 @@ import {
   HiBan,
   HiFlag,
   HiCode,
-  HiExternalLink,
+  HiArrowDown,
 } from "react-icons/hi";
-import { BASE_URL } from "../utils/constant";
+import { getBookmarks } from "../api/bookmarks";
+import Button from "./ui/Button";
 import EmptyState from "./ui/EmptyState";
 import { useToast } from "../context/ToastProvider";
+import { blockUser as blockUserApi, reportUser as reportUserApi, removeBookmark as removeBookmarkApi } from "../api/connections";
+import { optimizePhotoUrl } from "../utils/avatar";
 
 // ─── Availability badge colours ───────────────────────────────
 const availabilityConfig = {
@@ -57,34 +59,48 @@ const SkeletonCard = () => (
 );
 
 // ─── Main component ────────────────────────────────────────────
+const PAGE_SIZE = 12;
+
 const Bookmarks = () => {
   const [bookmarks, setBookmarks] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [nextCursor, setNextCursor] = useState(null);
+  const [hasMore, setHasMore] = useState(false);
   const [removing, setRemoving] = useState(null);
   const { addToast } = useToast();
 
-  useEffect(() => {
-    const loadBookmarks = async () => {
-      try {
-        const { data } = await axios.get(`${BASE_URL}/bookmarks`, {
-          withCredentials: true,
-        });
-        setBookmarks(data.data.bookmarks ?? []);
-      } catch (error) {
-        addToast(error?.response?.data?.message || "Unable to load bookmarks", "error");
-      } finally {
-        setLoading(false);
+  const loadBookmarks = useCallback(async ({ cursor = null, append = false } = {}) => {
+    try {
+      if (append) setLoadingMore(true);
+      else setLoading(true);
+      const data = await getBookmarks({ limit: PAGE_SIZE, cursor: cursor || undefined });
+      const items = data.bookmarks ?? [];
+      const next = data?.nextCursor ?? null;
+      const more = data?.hasMore ?? false;
+      if (append) {
+        setBookmarks((prev) => [...prev, ...items]);
+      } else {
+        setBookmarks(items);
       }
-    };
-    loadBookmarks();
+      setNextCursor(next);
+      setHasMore(more);
+    } catch (error) {
+      addToast(error?.response?.data?.message || "Unable to load bookmarks", "error");
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
   }, [addToast]);
+
+  useEffect(() => {
+    loadBookmarks({ cursor: null });
+  }, [loadBookmarks]);
 
   const removeBookmark = async (bookmarkId) => {
     setRemoving(bookmarkId);
     try {
-      await axios.delete(`${BASE_URL}/bookmark/${bookmarkId}`, {
-        withCredentials: true,
-      });
+      await removeBookmarkApi(bookmarkId);
       setBookmarks((prev) => prev.filter((b) => b._id !== bookmarkId));
       addToast("Bookmark removed", "success");
     } catch (error) {
@@ -96,11 +112,7 @@ const Bookmarks = () => {
 
   const blockUser = async (userId, bookmarkId) => {
     try {
-      await axios.post(
-        `${BASE_URL}/block`,
-        { userId },
-        { withCredentials: true }
-      );
+      await blockUserApi(userId);
       setBookmarks((prev) => prev.filter((b) => b._id !== bookmarkId));
       addToast("User blocked and removed from bookmarks", "success");
     } catch (error) {
@@ -110,11 +122,7 @@ const Bookmarks = () => {
 
   const reportUser = async (userId) => {
     try {
-      await axios.post(
-        `${BASE_URL}/report`,
-        { userId, reason: "Inappropriate behavior" },
-        { withCredentials: true }
-      );
+      await reportUserApi(userId, "inappropriate", "");
       addToast("User reported", "success");
     } catch (error) {
       addToast(error?.response?.data?.message || "Unable to report user", "error");
@@ -177,9 +185,11 @@ const Bookmarks = () => {
             const avail = availabilityConfig[dev.availability] ?? availabilityConfig.open;
             const gradient = roleGradient[dev.role] ?? roleGradient.other;
             const skills = (dev.skills ?? []).slice(0, 4);
-            const photo = Array.isArray(dev.photoUrl)
-              ? dev.photoUrl[0]
-              : dev.photoUrl;
+            const photo = optimizePhotoUrl(
+              Array.isArray(dev.photoUrl)
+                ? dev.photoUrl[0]
+                : dev.photoUrl
+            );
             const name = `${dev.firstName ?? ""} ${dev.lastName ?? ""}`.trim();
             const isRemoving = removing === bookmark._id;
 
@@ -223,6 +233,8 @@ const Bookmarks = () => {
                             src={photo}
                             alt={name}
                             className="h-full w-full object-cover"
+                            loading="lazy"
+                            decoding="async"
                           />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-brand-600 to-violet-700 text-lg font-bold text-white">
@@ -342,6 +354,18 @@ const Bookmarks = () => {
           })}
         </AnimatePresence>
       </div>
+      {hasMore && (
+        <div className="mt-8 flex justify-center">
+          <Button
+            variant="secondary"
+            onClick={() => loadBookmarks({ cursor: nextCursor, append: true })}
+            disabled={loadingMore}
+          >
+            {loadingMore ? <span className="spinner h-4 w-4 border-2 text-brand-600" /> : <HiArrowDown className="text-lg" />}
+            {loadingMore ? "Loading..." : "Load More"}
+          </Button>
+        </div>
+      )}
     </div>
   );
 };

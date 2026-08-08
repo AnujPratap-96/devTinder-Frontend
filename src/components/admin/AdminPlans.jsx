@@ -1,9 +1,8 @@
 /* eslint-disable react/prop-types */
 import { useEffect, useState } from "react";
-import axios from "axios";
 import { useSelector } from "react-redux";
 import { HiCreditCard, HiPencil, HiTrash, HiPlus } from "react-icons/hi";
-import { BASE_URL } from "../../utils/constant";
+import { getAdminPlans, createAdminPlan, updateAdminPlan, deleteAdminPlan } from "../../api/admin";
 import Card from "../ui/Card";
 import Button from "../ui/Button";
 import EmptyState from "../ui/EmptyState";
@@ -50,8 +49,8 @@ const AdminPlans = () => {
 
   const load = async () => {
     try {
-      const res = await axios.get(`${BASE_URL}/admin/plans`, { withCredentials: true });
-      setPlans(res.data.data.plans ?? []);
+      const data = await getAdminPlans();
+      setPlans(data.plans ?? []);
     } catch (err) {
       addToast(err?.response?.data?.message || "Failed to load plans", "error");
     } finally {
@@ -115,11 +114,11 @@ const AdminPlans = () => {
         },
       };
       if (editing._id) {
-        await axios.patch(`${BASE_URL}/admin/plans/${editing._id}`, payload, { withCredentials: true });
+        await updateAdminPlan(editing._id, payload);
         addToast("Plan updated", "success");
       } else {
         payload.slug = editing.slug.toLowerCase().trim();
-        await axios.post(`${BASE_URL}/admin/plans`, payload, { withCredentials: true });
+        await createAdminPlan(payload);
         addToast("Plan created", "success");
       }
       setEditing(null);
@@ -138,7 +137,7 @@ const AdminPlans = () => {
     }
     if (!window.confirm("Delete this plan?")) return;
     try {
-      await axios.delete(`${BASE_URL}/admin/plans/${id}`, { withCredentials: true });
+      await deleteAdminPlan(id);
       addToast("Plan deleted", "success");
       load();
     } catch (err) {

@@ -10,10 +10,12 @@ import { FiLogOut } from "react-icons/fi";
 import { HiX } from "react-icons/hi";
 import { useDispatch, useSelector } from "react-redux";
 import { removeUser } from "../store/userSlice";
-import axios from "axios";
-import { BASE_URL, closeSocketConnection } from "../utils/constant";
+import { logout as logoutApi } from "../api/auth";
+import { closeSocketConnection } from "../utils/constant";
 import { useToast } from "../context/ToastProvider";
-import { HiBookmark, HiCollection, HiShieldCheck } from "react-icons/hi";
+import { HiBookmark, HiCollection, HiShieldCheck, HiMail, HiCog } from "react-icons/hi";
+import { getNotifications } from "../api/notifications";
+import { getProjects } from "../api/projects";
 
 const Sidebar = ({ isSidebarOpen, setSidebarOpen }) => {
   const { addToast } = useToast();
@@ -28,19 +30,15 @@ const Sidebar = ({ isSidebarOpen, setSidebarOpen }) => {
     const fetchRequestCount = async () => {
       if (!currentUserId) return;
       try {
-        const { data: notifData } = await axios.get(`${BASE_URL}/notifications`, {
-          withCredentials: true,
-        });
-        const connectionRequests = notifData.data.notifications?.filter(
+        const notifData = await getNotifications();
+        const connectionRequests = notifData.notifications?.filter(
           (n) => n.type === "connection.request" && !n.isRead
         )?.length || 0;
 
-        const { data: projectData } = await axios.get(`${BASE_URL}/projects`, {
-          withCredentials: true,
-        });
+        const projectData = await getProjects();
         let projectRequests = 0;
         const userIdStr = String(currentUserId);
-        projectData.data.projects?.forEach((project) => {
+        projectData.projects?.forEach((project) => {
           const ownerIdStr = String(project.ownerId?._id || project.ownerId || "");
           if (ownerIdStr === userIdStr) {
             projectRequests += project.joinRequests?.filter((r) => r.status === "pending").length || 0;
@@ -62,7 +60,9 @@ const Sidebar = ({ isSidebarOpen, setSidebarOpen }) => {
     { to: "/messages", icon: AiOutlineMessage, text: "Messages" },
     { to: "/projects", icon: HiCollection, text: "Projects" },
     { to: "/bookmarks", icon: HiBookmark, text: "Bookmarks" },
+    { to: "/invite-friends", icon: HiMail, text: "Invite Friends" },
     { to: "/profile", icon: FaUserEdit, text: "Profile" },
+    { to: "/settings", icon: HiCog, text: "Security & Privacy" },
     { to: "/premium", icon: FaCrown, text: "Premium", iconClassName: "text-warning-400 group-hover:text-warning-100" },
   ];
 
@@ -72,7 +72,7 @@ const Sidebar = ({ isSidebarOpen, setSidebarOpen }) => {
 
   const handleLogout = async () => {
     try {
-      await axios.post(`${BASE_URL}/logout`, {}, { withCredentials: true });
+      await logoutApi();
       closeSocketConnection();
       dispatch(removeUser());
       addToast("Logged out successfully", "success");

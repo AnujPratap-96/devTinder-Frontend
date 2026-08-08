@@ -1,20 +1,20 @@
 import useConnectionList from "../hooks/useConnectionList";
 import { motion, AnimatePresence } from "framer-motion";
-import { HiUsers, HiCode, HiDotsVertical, HiBan, HiFlag } from "react-icons/hi";
+import { HiUsers, HiCode, HiDotsVertical, HiBan, HiFlag, HiArrowDown } from "react-icons/hi";
 import { useNavigate } from "react-router-dom";
 import Button from "./ui/Button";
 import Card from "./ui/Card";
 import EmptyState from "./ui/EmptyState";
 import { useState, useRef, useEffect } from "react";
 import ConnectionModal from "./ConnectionModal";
-import axios from "axios";
-import { BASE_URL } from "../utils/constant";
+import { blockUser as blockUserApi, reportUser as reportUserApi } from "../api/connections";
 import { useToast } from "../context/ToastProvider";
 import { useDispatch } from "react-redux";
 import { removeConnection } from "../store/connectionSlice";
+import { optimizePhotoUrl } from "../utils/avatar";
 
 const Connections = () => {
-  const connections = useConnectionList();
+  const { connections, hasMore, loadMore, loadingMore } = useConnectionList();
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const [selectedUser, setSelectedUser] = useState(null);
@@ -37,7 +37,7 @@ const Connections = () => {
   const handleBlock = async (userId) => {
     if (!window.confirm("Are you sure you want to block this user? This will remove them from your connections.")) return;
     try {
-      await axios.post(`${BASE_URL}/block`, { userId }, { withCredentials: true });
+      await blockUserApi(userId);
       dispatch(removeConnection(userId));
       addToast("User blocked successfully", "success");
       setOpenMenu(null);
@@ -49,15 +49,7 @@ const Connections = () => {
   const handleReport = async () => {
     if (!reportData.reason) return addToast("Please select a reason", "error");
     try {
-      await axios.post(
-        `${BASE_URL}/report`,
-        { 
-          userId: reportModal.userId, 
-          reason: reportData.reason, 
-          details: reportData.details 
-        },
-        { withCredentials: true }
-      );
+      await reportUserApi(reportModal.userId, reportData.reason, reportData.details);
       addToast("Report submitted. Thank you for keeping DevTinder safe.", "success");
       setReportModal({ isOpen: false, userId: null, name: "" });
       setReportData({ reason: "", details: "" });
@@ -80,130 +72,146 @@ const Connections = () => {
       </div>
 
       {connections?.length > 0 ? (
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {connections.map((connection, index) => {
-            const { _id, firstName, lastName, photoUrl, age, gender, about, skills } = connection;
-            return (
-              <Card
-                as={motion.div}
-                key={_id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: index * 0.06 }}
-                whileHover={{ y: -6, scale: 1.01 }}
-                tone="muted"
-                padding="md"
-                interactive
-                onClick={() => setSelectedUser(connection)}
-                className="flex h-full flex-col gap-4 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 relative"
-              >
-                {/* Options Menu */}
-                <div className="absolute top-4 right-4 z-10" ref={openMenu === _id ? menuRef : null}>
-                  <button
+        <>
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {connections.map((connection, index) => {
+              const { _id, firstName, lastName, photoUrl, age, gender, about, skills } = connection;
+              return (
+                <Card
+                  as={motion.div}
+                  key={_id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: index * 0.06 }}
+                  whileHover={{ y: -6, scale: 1.01 }}
+                  tone="muted"
+                  padding="md"
+                  interactive
+                  onClick={() => setSelectedUser(connection)}
+                  className="flex h-full flex-col gap-4 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 relative"
+                >
+                  {/* Options Menu */}
+                  <div className="absolute top-4 right-4 z-10" ref={openMenu === _id ? menuRef : null}>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setOpenMenu(openMenu === _id ? null : _id);
+                      }}
+                      className="p-2 rounded-xl hover:bg-tint-strong transition-colors text-neutral-400 hover:text-neutral-50"
+                    >
+                      <HiDotsVertical />
+                    </button>
+                    
+                    <AnimatePresence>
+                      {openMenu === _id && (
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                          animate={{ opacity: 1, scale: 1, y: 0 }}
+                          exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                          className="absolute right-0 mt-2 w-48 rounded-2xl bg-surface-800 border border-hairline shadow-xl overflow-hidden py-1 z-20"
+                        >
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleBlock(_id);
+                            }}
+                            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-error-400 hover:bg-error-500/10 transition-colors font-medium text-left"
+                          >
+                            <HiBan className="text-lg" /> Block User
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setReportModal({ isOpen: true, userId: _id, name: `${firstName} ${lastName}` });
+                            }}
+                            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-neutral-300 hover:bg-tint transition-colors font-medium text-left"
+                          >
+                            <HiFlag className="text-lg" /> Report User
+                          </button>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
+                  {/* Top row: avatar + name */}
+                  <div className="flex items-center gap-3 pr-8">
+                    <div className="relative flex-shrink-0">
+                      <div className="avatar-ring h-14 w-14 overflow-hidden">
+                        <img
+                          alt={`${firstName}'s profile`}
+                          className="h-full w-full object-cover"
+                          src={optimizePhotoUrl(Array.isArray(photoUrl) ? photoUrl[0] : photoUrl) || "https://via.placeholder.com/150"}
+                          loading="lazy"
+                          decoding="async"
+                        />
+                      </div>
+                      <span className={`absolute -bottom-1 -right-1 block h-3.5 w-3.5 rounded-full border-2 border-neutral-950 ${connection.isOnline ? "bg-success-500" : "bg-neutral-500"}`} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h2 className="text-body-sm font-semibold text-neutral-50 break-words line-clamp-2">
+                        {firstName} {lastName}
+                      </h2>
+                      {age && gender && (
+                        <p className="mt-0.5 text-body-xs text-neutral-400">
+                          {age} · {gender.charAt(0).toUpperCase() + gender.slice(1)}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* About */}
+                  {about && (
+                    <p className="line-clamp-3 text-body-xs leading-relaxed text-neutral-300 break-words whitespace-pre-wrap">
+                      {about}
+                    </p>
+                  )}
+
+                  {/* Skills */}
+                  {skills?.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {skills.slice(0, 3).map((skill, i) => (
+                        <span key={i} className="inline-flex items-center gap-1 rounded-pill border border-brand-400/30 bg-brand-500/10 px-2.5 py-1 text-[0.7rem] font-medium text-brand-500">
+                          <HiCode className="text-sm text-brand-600" /> {skill}
+                        </span>
+                      ))}
+                      {skills.length > 3 && (
+                        <span className="inline-flex items-center rounded-pill bg-neutral-800 px-2 py-1 text-[0.65rem] font-medium text-neutral-400">
+                          +{skills.length - 3}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Message CTA */}
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="mt-auto justify-center"
+                    type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      setOpenMenu(openMenu === _id ? null : _id);
+                      navigate(`/chat/${_id}`);
                     }}
-                    className="p-2 rounded-xl hover:bg-tint-strong transition-colors text-neutral-400 hover:text-neutral-50"
                   >
-                    <HiDotsVertical />
-                  </button>
-                  
-                  <AnimatePresence>
-                    {openMenu === _id && (
-                      <motion.div
-                        initial={{ opacity: 0, scale: 0.95, y: -10 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                        className="absolute right-0 mt-2 w-48 rounded-2xl bg-surface-800 border border-hairline shadow-xl overflow-hidden py-1 z-20"
-                      >
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleBlock(_id);
-                          }}
-                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-error-400 hover:bg-error-500/10 transition-colors font-medium text-left"
-                        >
-                          <HiBan className="text-lg" /> Block User
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setReportModal({ isOpen: true, userId: _id, name: `${firstName} ${lastName}` });
-                          }}
-                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-neutral-300 hover:bg-tint transition-colors font-medium text-left"
-                        >
-                          <HiFlag className="text-lg" /> Report User
-                        </button>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-
-                {/* Top row: avatar + name */}
-                <div className="flex items-center gap-3 pr-8">
-                  <div className="relative flex-shrink-0">
-                    <div className="avatar-ring h-14 w-14 overflow-hidden">
-                      <img
-                        alt={`${firstName}'s profile`}
-                        className="h-full w-full object-cover"
-                        src={Array.isArray(photoUrl) ? photoUrl[0] : photoUrl || "https://via.placeholder.com/150"}
-                      />
-                    </div>
-                    <span className={`absolute -bottom-1 -right-1 block h-3.5 w-3.5 rounded-full border-2 border-neutral-950 ${connection.isOnline ? "bg-success-500" : "bg-neutral-500"}`} />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <h2 className="text-body-sm font-semibold text-neutral-50 break-words line-clamp-2">
-                      {firstName} {lastName}
-                    </h2>
-                    {age && gender && (
-                      <p className="mt-0.5 text-body-xs text-neutral-400">
-                        {age} · {gender.charAt(0).toUpperCase() + gender.slice(1)}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                {/* About */}
-                {about && (
-                  <p className="line-clamp-3 text-body-xs leading-relaxed text-neutral-300 break-words whitespace-pre-wrap">
-                    {about}
-                  </p>
-                )}
-
-                {/* Skills */}
-                {skills?.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5">
-                    {skills.slice(0, 3).map((skill, i) => (
-                      <span key={i} className="inline-flex items-center gap-1 rounded-pill border border-brand-400/30 bg-brand-500/10 px-2.5 py-1 text-[0.7rem] font-medium text-brand-500">
-                        <HiCode className="text-sm text-brand-600" /> {skill}
-                      </span>
-                    ))}
-                    {skills.length > 3 && (
-                      <span className="inline-flex items-center rounded-pill bg-neutral-800 px-2 py-1 text-[0.65rem] font-medium text-neutral-400">
-                        +{skills.length - 3}
-                      </span>
-                    )}
-                  </div>
-                )}
-
-                {/* Message CTA */}
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  className="mt-auto justify-center"
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    navigate(`/chat/${_id}`);
-                  }}
-                >
-                  💬 Send Message
-                </Button>
-              </Card>
-            );
-          })}
-        </div>
+                    💬 Send Message
+                  </Button>
+                </Card>
+              );
+            })}
+          </div>
+          {hasMore && (
+            <div className="mt-8 flex justify-center">
+              <Button
+                variant="secondary"
+                onClick={loadMore}
+                disabled={loadingMore}
+              >
+                {loadingMore ? <span className="spinner h-4 w-4 border-2 text-brand-600" /> : <HiArrowDown className="text-lg" />}
+                {loadingMore ? "Loading..." : "Load More"}
+              </Button>
+            </div>
+          )}
+        </>
       ) : (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -237,7 +245,7 @@ const Connections = () => {
               <div className="p-6 space-y-6">
                 <div>
                   <h3 className="text-heading-sm text-neutral-50">Report {reportModal.name}</h3>
-                  <p className="mt-1 text-body-xs text-neutral-400">Help us understand what's wrong with this profile.</p>
+                  <p className="mt-1 text-body-xs text-neutral-400">Help us understand what&apos;s wrong with this profile.</p>
                 </div>
 
                 <div className="space-y-4">

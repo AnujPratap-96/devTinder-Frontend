@@ -1,12 +1,11 @@
 import { useRef, useState } from "react";
-import axios from "axios";
 import { useDispatch } from "react-redux";
 import { addUser } from "../store/userSlice";
 import { useNavigate } from "react-router-dom";
-import { BASE_URL } from "../utils/constant";
+import { login, verify2faLogin } from "../api/auth";
 import { ensureCrypto } from "../utils/e2ee";
 import { useToast } from "../context/ToastProvider";
-import { HiEye, HiEyeOff, HiArrowRight, HiMail } from "react-icons/hi";
+import { HiEye, HiEyeOff, HiArrowRight, HiMail, HiShieldCheck } from "react-icons/hi";
 import AuthShell from "./ui/AuthShell";
 import AuthInput from "./ui/AuthInput";
 import AuthButton from "./ui/AuthButton";
@@ -15,6 +14,9 @@ const Login = () => {
   const { addToast } = useToast();
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [pending2fa, setPending2fa] = useState(null);
+  const [otp, setOtp] = useState("");
+  const [otpLoading, setOtpLoading] = useState(false);
 
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -22,27 +24,47 @@ const Login = () => {
   const emailRef = useRef();
   const passwordRef = useRef();
 
+  const finishLogin = (user) => {
+    dispatch(addUser(user));
+    addToast("Login successful!", "success");
+    ensureCrypto({ userId: user._id }).catch(() => {});
+    navigate("/feed");
+  };
+
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await axios.post(
-        BASE_URL + "/login",
-        {
-          emailId: emailRef.current.value,
-          password: passwordRef.current.value,
-        },
-        { withCredentials: true }
-      );
-      dispatch(addUser(res.data.data.user));
-      addToast("Login successful!", "success");
-      // Provision/restore end-to-end encryption keys (device-bound).
-      ensureCrypto({ userId: res.data.data.user._id }).catch(() => {});
-      navigate("/feed");
+      const data = await login({
+        emailId: emailRef.current.value,
+        password: passwordRef.current.value,
+      });
+      if (data.twoFactorRequired) {
+        setPending2fa(data.tempToken);
+        return;
+      }
+      finishLogin(data.user);
     } catch (err) {
       addToast(err?.response?.data?.ERROR || "Something went wrong!", "error");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handle2faVerify = async (e) => {
+    e.preventDefault();
+    if (!/^\d{6}$/.test(otp.trim())) {
+      addToast("Enter the 6-digit code from your authenticator app", "error");
+      return;
+    }
+    setOtpLoading(true);
+    try {
+      const data = await verify2faLogin(pending2fa, otp.trim());
+      finishLogin(data.user);
+    } catch (err) {
+      addToast(err?.response?.data?.ERROR || "Invalid code", "error");
+    } finally {
+      setOtpLoading(false);
     }
   };
 
@@ -65,6 +87,57 @@ const Login = () => {
       </div>
     </div>
   );
+
+  if (pending2fa) {
+    return (
+      <AuthShell
+        title="Two-factor authentication"
+        subtitle="Enter the code from your authenticator app"
+        visual={visual}
+        visualSide="right"
+      >
+        <form onSubmit={handle2faVerify} className="flex flex-col gap-4">
+          <div>
+            <label
+              htmlFor="otp"
+              className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.04em] text-neutral-400"
+            >
+              Authenticator code
+            </label>
+            <div className="relative">
+              <input
+                id="otp"
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={6}
+                value={otp}
+                onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
+                placeholder="6-digit code"
+                className="input-base pr-11 text-center text-lg tracking-[0.4em]"
+              />
+              <HiShieldCheck className="absolute right-3 top-1/2 -translate-y-1/2 text-lg text-neutral-500" />
+            </div>
+          </div>
+
+          <AuthButton loading={otpLoading}>
+            {otpLoading ? "Verifying..." : <>Verify & Sign In <HiArrowRight className="text-base" /></>}
+          </AuthButton>
+        </form>
+
+        <p className="mt-6 text-center text-sm text-neutral-400">
+          Wrong account?{" "}
+          <button
+            type="button"
+            onClick={() => setPending2fa(null)}
+            className="font-semibold text-brand-600 transition hover:text-brand-600"
+          >
+            Back to login
+          </button>
+        </p>
+      </AuthShell>
+    );
+  }
 
   return (
     <AuthShell

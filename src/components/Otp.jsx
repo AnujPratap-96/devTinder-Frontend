@@ -1,7 +1,6 @@
 import { useRef, useEffect, useState } from "react";
-import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import { BASE_URL } from "../utils/constant";
+import { sendOtp, verifyOtp } from "../api/auth";
 import { useToast } from "../context/ToastProvider";
 import { HiArrowRight } from "react-icons/hi";
 import AuthShell from "./ui/AuthShell";
@@ -43,11 +42,7 @@ const OtpVerify = () => {
   const handleResend = async () => {
     if (resendCooldown > 0 || !signupEmail) return;
     try {
-      await axios.post(
-        BASE_URL + "/send-otp",
-        { email: signupEmail, purpose: "signup" },
-        { withCredentials: true }
-      );
+      await sendOtp(signupEmail, "signup");
       addToast("OTP resent to your email!", "success");
       setResendCooldown(30);
     } catch (err) {
@@ -94,16 +89,10 @@ const OtpVerify = () => {
     }
     setLoading(true);
     try {
-      const res = await axios.post(
-        BASE_URL + "/verify-otp",
-        { email: signupEmail, otp, purpose: "signup" },
-        { withCredentials: true }
-      );
-      if (res.status === 200) {
-        addToast("OTP verified successfully! ✅", "success");
-        localStorage.removeItem("signup_email");
-        navigate("/complete-signup");
-      }
+      await verifyOtp(signupEmail, otp, "signup");
+      addToast("OTP verified successfully! ✅", "success");
+      localStorage.removeItem("signup_email");
+      navigate("/complete-signup");
     } catch (err) {
       addToast(err?.response?.data?.error || "❌ Invalid OTP", "error");
       console.error(err);

@@ -1,5 +1,6 @@
 import { forwardRef } from "react";
 import clsx from "clsx";
+import Spinner from "./Spinner";
 
 const baseStyles = "inline-flex items-center justify-center gap-2 rounded-2xl font-semibold tracking-tight transition duration-200 ease-snappy focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300/40 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas disabled:cursor-not-allowed disabled:opacity-60";
 
@@ -26,8 +27,16 @@ const variantStyles = {
     "border border-success-500/50 bg-success-500/10 text-success-600 hover:-translate-y-0.5 hover:border-success-500 hover:bg-success-500/20 hover:text-success-700",
 };
 
-const Button = forwardRef(({ as: Component = "button", className, size = "md", variant = "primary", ...props }, ref) => {
-  const resolvedProps = { ...props };
+const spinnersBySize = {
+  xs: "xs",
+  sm: "sm",
+  md: "sm",
+  lg: "md",
+  icon: "sm",
+};
+
+const Button = forwardRef(({ as: Component = "button", className, size = "md", variant = "primary", loading, disabled, children, ...props }, ref) => {
+  const resolvedProps = { ...props, disabled: disabled || loading };
 
   if (Component === "button" && !resolvedProps.type) {
     resolvedProps.type = "button";
@@ -38,7 +47,9 @@ const Button = forwardRef(({ as: Component = "button", className, size = "md", v
       ref={ref}
       className={clsx(baseStyles, sizeStyles[size], variantStyles[variant], className)}
       {...resolvedProps}
-    />
+    >
+      {loading ? <Spinner size={spinnersBySize[size] || "sm"} /> : children}
+    </Component>
   );
 });
 
