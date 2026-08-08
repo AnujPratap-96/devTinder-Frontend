@@ -6,6 +6,7 @@ import { HiCode, HiSun, HiMoon } from "react-icons/hi";
 import { useState } from "react";
 import { useTheme } from "../context/ThemeProvider";
 import NotificationBell from "./NotificationBell";
+import { optimizePhotoUrl } from "../utils/avatar";
 
 const Navbar = () => {
   const user = useSelector((store) => store.user);
@@ -62,10 +63,12 @@ const Navbar = () => {
                 <img
                   alt={`${user?.firstName || "User"}'s profile`}
                   src={
-                    user.photoUrl?.[0] ||
+                    optimizePhotoUrl(user.photoUrl?.[0]) ||
                     "https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.webp"
                   }
                   className="h-full w-full object-cover"
+                  loading="lazy"
+                  decoding="async"
                 />
               </button>
             </>
@@ -128,11 +131,13 @@ const Navbar = () => {
               <div className="avatar-ring h-10 w-10 overflow-hidden">
                 <img
                   src={
-                    user.photoUrl?.[0] ||
+                    optimizePhotoUrl(user.photoUrl?.[0]) ||
                     "https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.webp"
                   }
                   className="h-full w-full object-cover"
                   alt="profile"
+                  loading="lazy"
+                  decoding="async"
                 />
               </div>
               <div className="flex flex-col">

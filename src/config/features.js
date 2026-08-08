@@ -11,6 +11,8 @@ export const FEATURES = {
   chatPrefs: true, // pin conversation + mute notifications per chat
   callQuality: true, // live call-quality badge
   missedCalls: true, // missed-call cards in the chat
+  // [PHASE-2] offline chat: IndexedDB message cache + outgoing queue (no PWA)
+  offlineChat: true,
 };
 
 /** Tenor GIF picker requires an API key: set VITE_TENOR_API_KEY in .env */

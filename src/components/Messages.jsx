@@ -8,13 +8,20 @@ import EmptyState from "./ui/EmptyState";
 // ── [PHASE-1] pinned conversations
 import { FEATURES } from "../config/features";
 import { getChatPrefs } from "../features/chat/enhancementApi";
+import { optimizePhotoUrl } from "../utils/avatar";
 
 const Messages = () => {
-  const { connections, hasMore, loadMore, loadingMore } = useConnectionList();
+  const { connections, hasMore, loadMore, refresh, loadingMore } = useConnectionList();
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   // [PHASE-1] pinned conversation ids
   const [pinnedIds, setPinnedIds] = useState(new Set());
+
+  // Always pull a fresh copy on mount so per-chat unread counts (and new
+  // conversations) are current instead of the last Redux-cached snapshot.
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
 
   useEffect(() => {
     if (!FEATURES.chatPrefs) return;
@@ -91,9 +98,11 @@ const Messages = () => {
                     <div className="relative flex-shrink-0">
                       <div className="avatar-ring h-12 w-12 overflow-hidden">
                         <img
-                          src={Array.isArray(conn.photoUrl) ? conn.photoUrl[0] : conn.photoUrl || "https://via.placeholder.com/150"}
+                          src={optimizePhotoUrl(Array.isArray(conn.photoUrl) ? conn.photoUrl[0] : conn.photoUrl) || "https://via.placeholder.com/150"}
                           alt={conn.firstName}
                           className="h-full w-full object-cover"
+                          loading="lazy"
+                          decoding="async"
                         />
                       </div>
                       <span className={`absolute -bottom-0.5 -right-0.5 block h-3 w-3 rounded-full border-2 border-neutral-950 ${conn.isOnline ? "bg-success-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]" : "bg-neutral-600"}`} />

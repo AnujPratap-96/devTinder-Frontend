@@ -7,10 +7,11 @@ import { useToast } from "../context/ToastProvider";
 import { useTheme } from "../context/ThemeProvider";
 import { sendRequest } from "../api/requests";
 import { blockUser as blockUserApi, reportUser as reportUserApi, bookmarkUser, removeBookmark, endorseSkill, recordProfileView } from "../api/connections";
-import { HiHeart, HiX, HiCode, HiLightningBolt, HiLocationMarker, HiBan, HiFlag, HiBookmark, HiCheck, HiArrowLeft } from "react-icons/hi";
+import { HiHeart, HiX, HiCode, HiLightningBolt, HiLocationMarker, HiBan, HiFlag, HiBookmark, HiCheck } from "react-icons/hi";
 import AIMatchExplainer from "./AIMatchExplainer";
 import Button from "./ui/Button";
 import { highlightText } from "../utils/textUtils.jsx";
+import { optimizePhotoUrl } from "../utils/avatar";
 
 const themeStyles = {
   default: {
@@ -71,7 +72,7 @@ const themeStyles = {
   }
 };
 
-const SwipeCard = ({ user, searchQuery = "" }) => {
+const SwipeCard = ({ user, searchQuery = "", onSwiped }) => {
   const { addToast } = useToast();
   const { theme: appTheme } = useTheme();
   const isAppDark = appTheme !== "light";
@@ -82,7 +83,6 @@ const SwipeCard = ({ user, searchQuery = "" }) => {
 
   if (!user || !user._id) {
     console.warn("SwipeCard received invalid user object:", user);
-    return null;
   }
 
   const {
@@ -103,7 +103,7 @@ const SwipeCard = ({ user, searchQuery = "" }) => {
     relationshipStatus = "none",
     theme = "default",
     endorsements = [],
-  } = user;
+  } = user || {};
 
   const currentTheme = themeStyles[theme] || themeStyles["default"];
 
@@ -141,6 +141,7 @@ const SwipeCard = ({ user, searchQuery = "" }) => {
       addToast(status === "interested" ? "💚 Connection sent!" : "✕ Skipped", status === "interested" ? "success" : "info");
       setTimeout(() => {
         dispatch(removeUserFromFeed(userId));
+        onSwiped?.(userId);
       }, 350);
     } catch (err) {
       addToast(err.response?.data?.message || "Something went wrong", "error");
@@ -154,6 +155,7 @@ const SwipeCard = ({ user, searchQuery = "" }) => {
       await sendRequest(action, userId);
       addToast(status === "accepted" ? "Connection Accepted!" : "Ignored", "success");
       dispatch(removeUserFromFeed(userId));
+      onSwiped?.(userId);
     } catch (err) {
       addToast(err.response?.data?.message || "Unable to respond", "error");
     }
@@ -180,6 +182,7 @@ const SwipeCard = ({ user, searchQuery = "" }) => {
       await blockUserApi(_id);
       addToast("User blocked", "success");
       dispatch(removeUserFromFeed(_id));
+      onSwiped?.(_id);
     } catch (error) {
       addToast(error?.response?.data?.message || "Unable to block user", "error");
     }
@@ -200,7 +203,7 @@ const SwipeCard = ({ user, searchQuery = "" }) => {
     try {
       const data = await endorseSkill(_id, skill);
       addToast(`Endorsed for ${skill} 👍`, "success");
-      setLocalEndorsements(data || []);
+      setLocalEndorsements(data.data?.endorsements || []);
     } catch (err) {
       addToast(err?.response?.data?.message || "Failed to endorse", "error");
     }
@@ -285,7 +288,7 @@ const SwipeCard = ({ user, searchQuery = "" }) => {
     }
   };
 
-  return user ? (
+  return user && user._id ? (
     <div className="relative flex flex-col justify-center items-center w-full">
       {/* Card */}
       <motion.div
@@ -300,7 +303,7 @@ const SwipeCard = ({ user, searchQuery = "" }) => {
           y,
           rotate,
         }}
-        drag={relationshipStatus === "none"}
+        drag={relationshipStatus === "none" ? "x" : false}
         dragElastic={0.4}
         dragMomentum={false}
         onDragEnd={handleDragEnd}
@@ -370,11 +373,13 @@ const SwipeCard = ({ user, searchQuery = "" }) => {
           {photoUrl?.map((img, index) => (
             <img
               key={index}
-              src={img || "https://i.pinimg.com/474x/18/b9/ff/18b9ffb2a8a791d50213a9d595c4dd52.jpg"}
+              src={optimizePhotoUrl(img, "card") || "https://i.pinimg.com/474x/18/b9/ff/18b9ffb2a8a791d50213a9d595c4dd52.jpg"}
               alt="developer"
               className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${
                 index === currentIndex ? "opacity-100" : "opacity-0"
               }`}
+              loading={index === 0 ? "eager" : "lazy"}
+              decoding="async"
             />
           ))}
         </div>

@@ -13,7 +13,7 @@ import { removeUser } from "../store/userSlice";
 import { logout as logoutApi } from "../api/auth";
 import { closeSocketConnection } from "../utils/constant";
 import { useToast } from "../context/ToastProvider";
-import { HiBookmark, HiCollection, HiShieldCheck, HiMail } from "react-icons/hi";
+import { HiBookmark, HiCollection, HiShieldCheck, HiMail, HiCog } from "react-icons/hi";
 import { getNotifications } from "../api/notifications";
 import { getProjects } from "../api/projects";
 
@@ -62,6 +62,7 @@ const Sidebar = ({ isSidebarOpen, setSidebarOpen }) => {
     { to: "/bookmarks", icon: HiBookmark, text: "Bookmarks" },
     { to: "/invite-friends", icon: HiMail, text: "Invite Friends" },
     { to: "/profile", icon: FaUserEdit, text: "Profile" },
+    { to: "/settings", icon: HiCog, text: "Security & Privacy" },
     { to: "/premium", icon: FaCrown, text: "Premium", iconClassName: "text-warning-400 group-hover:text-warning-100" },
   ];
 

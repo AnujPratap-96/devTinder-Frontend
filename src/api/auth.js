@@ -23,3 +23,23 @@ export const logout = () =>
 
 export const verifyPremium = () =>
   client.get("/premium/verify").then((r) => r.data.data);
+
+// [PHASE-3] two-factor authentication
+export const setup2fa = () =>
+  client.post("/auth/2fa/setup").then((r) => r.data.data);
+
+export const enable2fa = (token) =>
+  client.post("/auth/2fa/enable", { token }).then((r) => r.data.data);
+
+export const disable2fa = (token) =>
+  client.post("/auth/2fa/disable", { token }).then((r) => r.data.data);
+
+export const verify2faLogin = (tempToken, token) =>
+  client.post("/auth/2fa/verify-login", { tempToken, token }).then((r) => r.data.data);
+
+// [PHASE-3] active session management
+export const getSessions = () =>
+  client.get("/auth/sessions").then((r) => r.data.data);
+
+export const revokeSession = (sessionId) =>
+  client.post("/auth/sessions/revoke", { sessionId }).then((r) => r.data.data);

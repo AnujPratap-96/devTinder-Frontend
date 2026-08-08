@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import { motion, AnimatePresence } from "framer-motion";
 import { HiX, HiCode, HiChat, HiCheckCircle } from "react-icons/hi";
 import { useNavigate } from "react-router-dom";
@@ -5,6 +6,7 @@ import { useState, useEffect } from "react";
 import { endorseSkill } from "../api/connections";
 import { useToast } from "../context/ToastProvider";
 import Button from "./ui/Button";
+import { optimizePhotoUrl } from "../utils/avatar";
 
 const ConnectionModal = ({ user, isOpen, onClose }) => {
   const navigate = useNavigate();
@@ -20,7 +22,7 @@ const ConnectionModal = ({ user, isOpen, onClose }) => {
   const handleEndorse = async (skill) => {
     try {
       const data = await endorseSkill(user._id, skill);
-      setLocalUser((prev) => ({ ...prev, endorsements: data.endorsements }));
+      setLocalUser((prev) => ({ ...prev, endorsements: data.data.endorsements }));
       addToast(data.message, "success");
     } catch (error) {
       addToast(error?.response?.data?.message || "Endorsement failed", "error");
@@ -63,9 +65,11 @@ const ConnectionModal = ({ user, isOpen, onClose }) => {
           {/* Left Image Area / Top on mobile */}
           <div className="relative h-64 w-full shrink-0 sm:h-auto sm:w-2/5 xl:w-5/12">
             <img
-                src={Array.isArray(user.photoUrl) ? user.photoUrl[0] : user.photoUrl || "https://via.placeholder.com/150"}
+                src={optimizePhotoUrl(Array.isArray(user.photoUrl) ? user.photoUrl[0] : user.photoUrl, "card") || "https://via.placeholder.com/150"}
               alt={user.firstName}
               className="h-full w-full object-cover"
+              loading="lazy"
+              decoding="async"
             />
             {/* Gradient mask for seamless blend on desktop, and soften bottom on mobile */}
             <div className="absolute inset-0 bg-gradient-to-t from-surface-900/50 via-transparent to-transparent sm:bg-gradient-to-r" />

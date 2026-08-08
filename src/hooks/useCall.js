@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useSelector, useDispatch, useStore } from "react-redux";
 import { createSocketConnection } from "../utils/constant";
 import callClient from "../utils/callClient";
+import { startRingtone, stopRingtone } from "../features/call/callTone";
 import { useToast } from "../context/ToastProvider";
 import {
   startOutgoing,
@@ -71,7 +72,11 @@ export const useCall = () => {
 
     const onCreated = ({ callId }) => dispatch(setCallId(callId));
 
-    const onInvite = (p) => dispatch(setIncoming(p));
+    const onInvite = (p) => {
+      startRingtone();
+      navigator.vibrate?.([200, 100, 200, 100, 200]);
+      dispatch(setIncoming(p));
+    };
 
     const onAccept = async () => {
       try {
@@ -114,12 +119,14 @@ export const useCall = () => {
 
     const onIce = ({ candidate }) => callClient.addIce(candidate);
     const onEnd = () => {
+      stopRingtone();
       callClient.close();
       setLocalStream(null);
       setRemoteStream(null);
       dispatch(resetCall());
     };
     const onDecline = () => {
+      stopRingtone();
       callClient.close();
       setLocalStream(null);
       setRemoteStream(null);
@@ -127,6 +134,7 @@ export const useCall = () => {
       addToast("Call declined", "info");
     };
     const onBusy = () => {
+      stopRingtone();
       callClient.close();
       setLocalStream(null);
       setRemoteStream(null);
@@ -134,6 +142,7 @@ export const useCall = () => {
       addToast("User is busy on another call", "error");
     };
     const onUnavailable = () => {
+      stopRingtone();
       callClient.close();
       setLocalStream(null);
       setRemoteStream(null);
@@ -141,13 +150,21 @@ export const useCall = () => {
       addToast("User is not reachable right now", "error");
     };
     const onError = (e) => {
+      stopRingtone();
       callClient.close();
       setLocalStream(null);
       setRemoteStream(null);
       dispatch(resetCall());
       addToast(e?.message || "Call error", "error");
     };
-    const onMissed = () => addToast("You missed a call", "info");
+    const onMissed = () => {
+      stopRingtone();
+      callClient.close();
+      setLocalStream(null);
+      setRemoteStream(null);
+      dispatch(resetCall());
+      addToast("Missed call", "info");
+    };
 
     socket.on("call:created", onCreated);
     socket.on("call:invite", onInvite);
@@ -163,6 +180,7 @@ export const useCall = () => {
     socket.on("call:missed", onMissed);
 
     return () => {
+      stopRingtone();
       socket.off("call:created", onCreated);
       socket.off("call:invite", onInvite);
       socket.off("call:accept", onAccept);
@@ -206,6 +224,7 @@ export const useCall = () => {
 
   const acceptCall = useCallback(async () => {
     const { callId, type } = store.getState().call;
+    stopRingtone();
     try {
       const ice = await callClient.fetchIceServers();
       const stream = await callClient.getMedia(type);
@@ -222,6 +241,7 @@ export const useCall = () => {
 
   const declineCall = useCallback(() => {
     const { callId } = store.getState().call;
+    stopRingtone();
     socketRef.current?.emit("call:decline", { callId });
     callClient.close();
     setLocalStream(null);
@@ -231,6 +251,7 @@ export const useCall = () => {
 
   const endCall = useCallback(() => {
     const { callId } = store.getState().call;
+    stopRingtone();
     socketRef.current?.emit("call:end", { callId, reason: "hangup" });
     callClient.close();
     setLocalStream(null);

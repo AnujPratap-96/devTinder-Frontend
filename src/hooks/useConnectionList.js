@@ -49,6 +49,10 @@ const useConnectionList = () => {
     fetchConnections({ cursor: nextCursor, append: true });
   }, [hasMore, loadingMore, nextCursor, fetchConnections]);
 
+  const refresh = useCallback(() => {
+    fetchConnections({ cursor: null });
+  }, [fetchConnections]);
+
   useEffect(() => {
     if (seeded.current) return;
     seeded.current = true;
@@ -76,7 +80,7 @@ const useConnectionList = () => {
     };
   }, [userId, fetchConnections]);
 
-  return { connections, nextCursor, hasMore, loadMore, loading, loadingMore };
+  return { connections, nextCursor, hasMore, loadMore, refresh, loading, loadingMore };
 };
 
 export default useConnectionList;

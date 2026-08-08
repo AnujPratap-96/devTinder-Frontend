@@ -20,10 +20,9 @@ import Card from "./ui/Card";
 import Button from "./ui/Button";
 import { useToast } from "../context/ToastProvider";
 import { addProjects, removeProject, updateProject } from "../store/projectSlice";
-import { generateProjectDescription, suggestProjectTechStack, generateProjectRoadmap, suggestProjectDetails, aiErrorMessage } from "../utils/aiApi";
+import { optimizePhotoUrl } from "../utils/avatar";
+import { generateProjectRoadmap, suggestProjectDetails, aiErrorMessage } from "../utils/aiApi";
 import { HiTrendingUp } from "react-icons/hi";
-
-const AI_LOADING_TEXT = "AI is thinking...";
 
 const RoadmapModal = ({ project, onClose }) => {
   const [roadmap, setRoadmap] = useState(null);
@@ -31,7 +30,7 @@ const RoadmapModal = ({ project, onClose }) => {
   const [isEnhancing, setIsEnhancing] = useState(false);
   const { addToast } = useToast();
 
-  const fetchRoadmap = async (force = false) => {
+  const fetchRoadmap = useCallback(async (force = false) => {
     if (force) setIsEnhancing(true);
     else setLoading(true);
 
@@ -52,11 +51,11 @@ const RoadmapModal = ({ project, onClose }) => {
       setLoading(false);
       setIsEnhancing(false);
     }
-  };
+  }, [project.title, project.description, project.techStack, project._id, addToast, onClose]);
 
   useEffect(() => {
     fetchRoadmap();
-  }, [project._id]);
+  }, [fetchRoadmap]);
 
   return (
     <motion.div
@@ -306,11 +305,13 @@ const MembersModal = ({ project, currentUserId, onClose, onRemove }) => {
                     <div className="h-10 w-10 overflow-hidden rounded-full border border-brand-400/30">
                       <img
                         src={
-                          member.userId?.photoUrl?.[0] ||
+                          optimizePhotoUrl(member.userId?.photoUrl?.[0]) ||
                           "https://ui-avatars.com/api/?name=User&background=random"
                         }
                         alt={memberFullName}
                         className="h-full w-full object-cover"
+                        loading="lazy"
+                        decoding="async"
                       />
                     </div>
                   <div>
@@ -386,7 +387,7 @@ const TechInput = ({ value, onChange }) => {
   );
 };
 
-const ProjectCard = ({ project, currentUserId, onJoin, onView, onRespond, onRemove, onShowMembers, onEdit, onDelete, onShowRoadmap }) => {
+const ProjectCard = ({ project, currentUserId, onJoin, onView, onRespond, onShowMembers, onEdit, onDelete, onShowRoadmap }) => {
   const getUserId = (m) => m.userId?._id || m.userId;
   const ownerId = project.ownerId?._id || project.ownerId;
   const ownerFullName = project.ownerId?.firstName || "Unknown";
@@ -426,11 +427,13 @@ const ProjectCard = ({ project, currentUserId, onJoin, onView, onRespond, onRemo
             <div className="h-6 w-6 overflow-hidden rounded-full border border-brand-400/50">
               <img
                 src={
-                  project.ownerId?.photoUrl?.[0] ||
+                  optimizePhotoUrl(project.ownerId?.photoUrl?.[0]) ||
                   "https://ui-avatars.com/api/?name=User&background=random"
                 }
                 alt={ownerFullName}
                 className="h-full w-full object-cover"
+                loading="lazy"
+                decoding="async"
               />
             </div>
             <span className="text-xs text-brand-600">{ownerFullName}</span>
@@ -529,11 +532,13 @@ const ProjectCard = ({ project, currentUserId, onJoin, onView, onRespond, onRemo
                     <div className="h-8 w-8 overflow-hidden rounded-full border border-hairline">
                       <img
                         src={
-                          request.user?.photoUrl?.[0] ||
+                          optimizePhotoUrl(request.user?.photoUrl?.[0]) ||
                           "https://via.placeholder.com/32"
                         }
                         alt={request.user?.firstName}
                         className="h-full w-full object-cover"
+                        loading="lazy"
+                        decoding="async"
                       />
                     </div>
                     <div>
@@ -587,7 +592,7 @@ const ProjectChat = ({ project, currentUserId, onClose }) => {
   const messagesEndRef = useRef(null);
   const messagesTopRef = useRef(null);
 
-  const loadMessages = async ({ cursor = null, append = false } = {}) => {
+  const loadMessages = useCallback(async ({ cursor = null, append = false } = {}) => {
     try {
       if (append) setLoadingMore(true);
       else setLoading(true);
@@ -596,24 +601,23 @@ const ProjectChat = ({ project, currentUserId, onClose }) => {
       const next = data?.nextCursor ?? null;
       const more = data?.hasMore ?? false;
       if (append) {
-        const prevLen = messages.length;
         setMessages((prev) => [...items, ...prev]);
       } else {
         setMessages(items);
       }
       setNextCursor(next);
       setHasMore(more);
-    } catch (error) {
+    } catch {
       addToast("Unable to load messages", "error");
     } finally {
       setLoading(false);
       setLoadingMore(false);
     }
-  };
+  }, [project._id, addToast]);
 
   useEffect(() => {
     loadMessages({ cursor: null });
-  }, [project._id]);
+  }, [loadMessages]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -626,7 +630,7 @@ const ProjectChat = ({ project, currentUserId, onClose }) => {
       await sendProjectMessageApi(project._id, { message: newMessage });
       setNewMessage("");
       await loadMessages();
-    } catch (error) {
+    } catch {
       addToast("Unable to send message", "error");
     } finally {
       setSending(false);
@@ -648,10 +652,10 @@ const ProjectChat = ({ project, currentUserId, onClose }) => {
     if (!senderId) return "https://ui-avatars.com/api/?name=User&background=random";
     const senderIdStr = String(senderId?._id || senderId);
     const ownerId = String(project.ownerId?._id || project.ownerId);
-    if (senderIdStr === ownerId) return project.ownerId?.photoUrl?.[0] || "https://ui-avatars.com/api/?name=Owner&background=random";
+    if (senderIdStr === ownerId) return optimizePhotoUrl(project.ownerId?.photoUrl?.[0]) || "https://ui-avatars.com/api/?name=Owner&background=random";
     const member = project.members?.find((m) => String(m.userId?._id || m.userId) === senderIdStr);
-    if (member?.userId?.photoUrl?.[0]) return member.userId.photoUrl[0];
-    if (senderId?.photoUrl?.[0]) return senderId.photoUrl[0];
+    if (member?.userId?.photoUrl?.[0]) return optimizePhotoUrl(member.userId.photoUrl[0]);
+    if (senderId?.photoUrl?.[0]) return optimizePhotoUrl(senderId.photoUrl[0]);
     return "https://ui-avatars.com/api/?name=User&background=random";
   };
 
@@ -713,6 +717,8 @@ const ProjectChat = ({ project, currentUserId, onClose }) => {
                         src={getSenderPhoto(msg.senderId)}
                         alt={getSenderName(msg.senderId)}
                         className="h-8 w-8 rounded-full object-cover border border-hairline"
+                        loading="lazy"
+                        decoding="async"
                       />
                     </div>
                   )}
@@ -757,6 +763,7 @@ const PAGE_SIZE = 12;
 const Projects = () => {
   const dispatch = useDispatch();
   const reduxProjects = useSelector((store) => store.projects);
+  const { items: reduxItems, nextCursor: reduxNextCursor, hasMore: reduxHasMore } = reduxProjects;
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -825,15 +832,15 @@ const Projects = () => {
   useEffect(() => {
     if (seeded.current) return;
     seeded.current = true;
-    if (reduxProjects?.items?.length > 0) {
-      setProjects(reduxProjects.items);
-      setNextCursor(reduxProjects.nextCursor);
-      setHasMore(reduxProjects.hasMore);
+    if (reduxItems?.length > 0) {
+      setProjects(reduxItems);
+      setNextCursor(reduxNextCursor);
+      setHasMore(reduxHasMore);
       setLoading(false);
     } else {
       loadProjects({ cursor: null });
     }
-  }, [reduxProjects?.items?.length]);
+  }, [reduxItems, reduxNextCursor, reduxHasMore, loadProjects]);
 
   const currentUserIdStr = String(currentUserId || "");
   const getUserId = (m) => String(m.userId?._id || m.userId || "");
@@ -850,8 +857,6 @@ const Projects = () => {
   });
   
   const displayProjects = activeTab === "my" ? myProjects : exploreProjects;
-  const displayTitle = activeTab === "my" ? "My Projects" : "Explore Projects";
-  const displaySubtitle = activeTab === "my" ? "Projects you've joined or created" : "Find projects to join and collaborate";
 
   const removeMember = async (projectId, memberId) => {
     try {
@@ -871,7 +876,7 @@ const Projects = () => {
     setCreating(true);
     try {
       const data = await createProjectApi(form);
-      dispatch(addProjects({ items: [data.project, ...(reduxProjects?.items || [])], nextCursor: reduxProjects?.nextCursor ?? null, hasMore: reduxProjects?.hasMore ?? false }));
+      dispatch(addProjects({ items: [data.project, ...(reduxItems || [])], nextCursor: reduxNextCursor ?? null, hasMore: reduxHasMore ?? false }));
       setProjects((prev) => [data.project, ...prev]);
       setForm({ title: "", description: "", techStack: [] });
       setShowCreate(false);

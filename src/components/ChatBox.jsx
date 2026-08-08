@@ -35,9 +35,18 @@ import {
   MessageReactions,
   GifPicker,
   ChatSearchBar,
-  MissedCallCard,
 } from "../features/chat";
 import { getChatPrefs, setChatPref } from "../features/chat/enhancementApi";
+// ── [PHASE-2] offline chat resilience (revert: delete this block + every `// [PHASE-2]` block below)
+import {
+  getPeerKey,
+  cacheMessages,
+  getCachedMessages,
+  queueOutgoing,
+  getQueuedOutgoing,
+  removeQueuedOutgoing,
+  queuedOutgoingCount,
+} from "../features/offline";
 
 const MESSAGE_LIMIT = 30;
 
@@ -76,6 +85,10 @@ const compressImage = (file, maxWidth = 1280, maxHeight = 1280, quality = 0.8) =
 
 const getStatusLabel = (message, isMine) => {
 if (!isMine) return null;
+// [PHASE-2] queued (offline) messages wait in the outbox, not in flight
+if (message.queued) {
+return <span className="text-warning-400">Queued</span>;
+}
 if (message.seen) {
 return <span className="text-brand-600 font-medium">Seen</span>;
 }
@@ -151,6 +164,10 @@ const [previewImage, setPreviewImage] = useState(null);
 // ── [PHASE-1] chat prefs (pin conversation / mute)
 const [chatPrefs, setChatPrefs] = useState({ pinned: false, muted: false });
 const { addToast } = useToast();
+// ── [PHASE-2] offline chat state
+const [isOffline, setIsOffline] = useState(false);
+const [showingCached, setShowingCached] = useState(false);
+const [queuedCount, setQueuedCount] = useState(0);
 
 const blockUser = async () => {
 try {
@@ -246,11 +263,35 @@ const decorated = await Promise.all(raw.map((msg) => decryptIncoming(msg, userId
         setHasMore(data.hasMore ?? false);
 setError(null);
 
+// [PHASE-2] write-through to the offline display cache (non-blocking)
+if (FEATURES.offlineChat) {
+cacheMessages(getPeerKey({ userId, targetUserId }), decorated).catch(() => {});
+setShowingCached(false);
+}
+
 // Fetch icebreaker only on a fresh/empty chat
 if (raw.length === 0 && targetUserId) {
 fetchIcebreaker();
 }
 } catch (err) {
+// [PHASE-2] fall back to the on-disk cache when the server is unreachable
+if (FEATURES.offlineChat) {
+try {
+const cached = await getCachedMessages(getPeerKey({ userId, targetUserId }));
+if (cached.length) {
+setMessages(cached);
+setMatchId(cached[cached.length - 1]?.matchId ?? null);
+setNextCursor(null);
+setHasMore(false);
+setError(null);
+setShowingCached(true);
+addToast("Offline — showing cached messages", "info");
+return;
+}
+} catch {
+/* fall through to the standard error state */
+}
+}
 setError(err.response?.data?.message || "Unable to load messages");
 addToast(err.response?.data?.message || "Unable to load messages", "error");
 }
@@ -310,9 +351,18 @@ return [...prev, incoming];
 });
 };
 
+// [PHASE-2] refresh the number of messages waiting in the outbox
+const syncQueuedCount = () =>
+queuedOutgoingCount(userId).then(setQueuedCount).catch(() => {});
+
 const handleAck = async (payload) => {
 pendingTimeoutsRef.current.get(payload.clientMessageId)?.();
 pendingTimeoutsRef.current.delete(payload.clientMessageId);
+// [PHASE-2] server confirmed the queued send — remove it from the outbox
+if (FEATURES.offlineChat && payload.clientMessageId) {
+removeQueuedOutgoing(userId, payload.clientMessageId);
+syncQueuedCount();
+}
 const decrypted = await decryptIncoming(payload, userId);
 upsertMessage(decorateMessage(decrypted, userId, targetUserId));
 };
@@ -336,20 +386,34 @@ upsertMessage(decorateMessage(msg, userId, targetUserId));
 const handleTyping = (payload, isTyping) => {
 if (payload.userId === userId) return;
 setTypingUsers((prev) => {
-const updated = new Set(prev);
-if (isTyping) {
-updated.add(payload.userId);
-} else {
-updated.delete(payload.userId);
-}
-return updated;
+  const updated = new Set(prev);
+  if (isTyping) {
+  updated.add(payload.userId);
+  } else {
+  updated.delete(payload.userId);
+  }
+  return updated;
+  });
+};
+
+// [PHASE-2] re-emit every queued message on (re)connect. Server dedupes by
+// clientMessageId, so safe to re-send; entries are dropped only on ack/timeout.
+const handleReconnect = async () => {
+if (!FEATURES.offlineChat || !socketRef.current?.connected) return;
+const queued = await getQueuedOutgoing(userId);
+queued.forEach(({ entry }) => {
+socketRef.current.emit("sendMessage", entry.payload);
 });
+setQueuedCount(queued.length);
 };
 
 const initializeSocket = () => {
 if (!userId) return;
 const socket = createSocketConnection(userId);
 socketRef.current = socket;
+
+// [PHASE-2] flush queued outgoing messages whenever the socket (re)connects
+socket.on("connect", handleReconnect);
 
 socket.emit("joinChat", { userId, targetUserId, matchId });
 
@@ -396,6 +460,11 @@ socket.on("message:created", async (msg) => {
       return [...prev, decorated];
     });
     return; // Don't call upsertMessage again
+  }
+  // [PHASE-2] own message confirmed by the server — drop it from the outbox
+  if (decorated.isOwn && FEATURES.offlineChat && msg.clientMessageId) {
+    removeQueuedOutgoing(userId, msg.clientMessageId);
+    syncQueuedCount();
   }
   upsertMessage(decorated);
 });
@@ -445,6 +514,7 @@ if (typingTimeoutRef.current) {
 clearTimeout(typingTimeoutRef.current);
 }
 if (!socketRef.current) return;
+socketRef.current.off("connect", handleReconnect); // [PHASE-2]
 socketRef.current.off("chat:joined");
 socketRef.current.off("message:created");
 socketRef.current.off("message:ack");
@@ -475,9 +545,27 @@ if (prefs) setChatPrefs(prefs);
 }).catch(() => {});
 }, [matchId]);
 
+// ── [PHASE-2] track browser online/offline for the offline banner + queuing
+useEffect(() => {
+if (!FEATURES.offlineChat) return;
+const sync = () => setIsOffline(!navigator.onLine);
+sync();
+window.addEventListener("online", sync);
+window.addEventListener("offline", sync);
+return () => {
+window.removeEventListener("online", sync);
+window.removeEventListener("offline", sync);
+};
+}, []);
+
 
 const schedulePendingTimeout = (clientMessageId) => {
 const timer = setTimeout(() => {
+// [PHASE-2] an unacked send is no longer waiting in the outbox
+if (FEATURES.offlineChat) {
+removeQueuedOutgoing(userId, clientMessageId);
+syncQueuedCount();
+}
 setMessages((prev) => prev.map((msg) => (msg.clientMessageId === clientMessageId ? { ...msg, status: "failed" } : msg)));
 }, 5000);
 pendingTimeoutsRef.current.set(clientMessageId, () => clearTimeout(timer));
@@ -503,7 +591,7 @@ typingTimeoutRef.current = setTimeout(() => emitTyping(false), 1500);
 };
 
 const sendMessage = async () => {
-if (!socketRef.current || !input.trim() || !userId || !targetUserId) return;
+if (!input.trim() || !userId || !targetUserId) return;
 const clientMessageId = generateClientId();
 const plaintext = input.trim();
 
@@ -552,12 +640,25 @@ targetUserId
 setMessages((prev) => [...prev, pendingMessage]);
 setInput("");
 emitTyping(false);
+
+// [PHASE-2] offline / disconnected: persist to the outbox instead of emitting.
+// The message keeps its clientMessageId, so when it flushes on reconnect the
+// server ack replaces this optimistic bubble and the outbox entry is dropped.
+if (FEATURES.offlineChat && !socketRef.current?.connected) {
+await queueOutgoing(userId, { payload, plaintext, createdAt: pendingMessage.createdAt });
+setQueuedCount((c) => c + 1);
+setMessages((prev) =>
+prev.map((msg) => (msg.clientMessageId === clientMessageId ? { ...msg, queued: true } : msg))
+);
+addToast("Message queued — will send when you're back online", "info");
+return;
+}
+
 schedulePendingTimeout(clientMessageId);
 socketRef.current.emit("sendMessage", payload);
 };
 
 const handleRetry = async (message) => {
-if (!socketRef.current) return;
 const plaintext = message.message;
 let body = plaintext;
 let isEncrypted = false;
@@ -601,6 +702,18 @@ targetUserId
 setMessages((prev) =>
 prev.map((msg) => (msg.clientMessageId === message.clientMessageId ? pendingMessage : msg))
 );
+
+// [PHASE-2] offline retry re-queues instead of emitting
+if (FEATURES.offlineChat && !socketRef.current?.connected) {
+await queueOutgoing(userId, { payload: retriedPayload, plaintext, createdAt: pendingMessage.createdAt });
+setQueuedCount((c) => c + 1);
+setMessages((prev) =>
+prev.map((msg) => (msg.clientMessageId === message.clientMessageId ? { ...msg, queued: true, status: "pending" } : msg))
+);
+addToast("Message queued — will send when you're back online", "info");
+return;
+}
+
 schedulePendingTimeout(retriedPayload.clientMessageId);
 emitTyping(false);
 socketRef.current.emit("sendMessage", retriedPayload);
@@ -864,8 +977,6 @@ className="w-full px-4 py-2 text-left text-sm text-neutral-400 hover:bg-tint fle
 
 {/* Message list OR empty state */}
 <div className="relative min-h-0 flex-1 overflow-hidden">
-{/* ── [PHASE-1] missed-call cards */}
-{FEATURES.missedCalls && <MissedCallCard matchId={matchId} />}
 {sortedMessages.length === 0 ? (
 <EmptyChat />
 ) : (
@@ -884,21 +995,26 @@ Header: () => <div className="h-8" />,
         itemContent={(index, message) => {
             if (message.messageType === "call") {
               const details = message.metadata?.callDetails || {};
-              const started = details.status === "started";
-              const icon = details.type === "video" ? "📹" : "📞";
+              const status = details.status || "ended";
+              const isVideo = details.type === "video";
+              const isMissed = status === "missed";
               const mins = Math.floor((details.durationSec || 0) / 60);
               const secs = (details.durationSec || 0) % 60;
               const durationLabel = mins > 0 ? `${mins}:${String(secs).padStart(2, "0")}` : `0:${String(secs).padStart(2, "0")}`;
+              const callLabel =
+                status === "started"
+                  ? `${isVideo ? "Video" : "Voice"} call`
+                  : status === "missed"
+                    ? `Missed ${isVideo ? "video" : "voice"} call`
+                    : status === "declined"
+                      ? `${isVideo ? "Video" : "Voice"} call declined`
+                      : "Call ended";
               return (
                 <div className="mb-1 flex w-full justify-center px-6">
-                  <div className="flex items-center gap-1.5 rounded-full bg-surface-800/40 px-3 py-1 text-xs text-neutral-400">
-                    <span>{icon}</span>
-                    <span>
-                      {started
-                        ? `${details.type === "video" ? "Video" : "Voice"} call`
-                        : `Call ended`}
-                    </span>
-                    {!started && details.durationSec > 0 && (
+                  <div className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs ${isMissed ? "bg-error-500/10 text-error-300" : "bg-surface-800/40 text-neutral-400"}`}>
+                    <span>{isVideo ? "📹" : "📞"}</span>
+                    <span>{callLabel}</span>
+                    {status === "ended" && details.durationSec > 0 && (
                       <span className="text-neutral-500">· {durationLabel}</span>
                     )}
                   </div>
@@ -921,6 +1037,7 @@ Header: () => <div className="h-8" />,
                       />
                     </div>
                   )}
+                  <MessageReactions message={message} matchId={matchId} userId={userId} emit={emitEnhancement}>
                   <div className="relative flex flex-col items-end">
                     <VoiceNotePlayer
                       src={message.message}
@@ -959,10 +1076,8 @@ Header: () => <div className="h-8" />,
                         </>
                       )}
                     </div>
-                    {FEATURES.reactions && (
-                      <MessageReactions message={message} matchId={matchId} userId={userId} emit={emitEnhancement} />
-                    )}
                   </div>
+                  </MessageReactions>
                 </motion.div>
               );
             }
@@ -982,6 +1097,7 @@ Header: () => <div className="h-8" />,
                       />
                     </div>
                   )}
+                  <MessageReactions message={message} matchId={matchId} userId={userId} emit={emitEnhancement}>
                   <div className="relative flex flex-col">
                     {isUploading ? (
                       <div className="w-[40px] h-[40px] rounded-lg bg-neutral-700/50 flex items-center justify-center">
@@ -996,44 +1112,47 @@ Header: () => <div className="h-8" />,
                         loading="lazy"
                       />
                     )}
-                    {message.isOwn && (
-                      <div className="absolute top-0.5 right-0.5 z-10 flex items-start gap-0.5">
-                        <button
-                          type="button"
-                          onClick={() => setMenuMessageId(menuMessageId === message._id ? null : message._id)}
-                          className="flex h-5 w-5 items-center justify-center rounded text-[10px] leading-none hover:bg-white/20 transition"
-                        >
-                          ...
-                        </button>
-                        {menuMessageId === message._id && (
-                          <button
-                            type="button"
-                            onClick={() => handleDelete(message)}
-                            className="flex h-5 w-5 items-center justify-center rounded bg-error-500 text-white hover:bg-error-600 transition"
-                            title="Delete"
-                          >
-                            <HiOutlineTrash className="h-3 w-3" />
-                          </button>
+                    {
+                      message.isOwn ? (
+                      <div className={`mt-1 flex items-center gap-1.5 text-[10px] tabular-nums justify-end text-white/70`}>
+                        {message.uploadProgress !== undefined && message.uploadProgress < 100 && (
+                          <>
+                            <span className="text-brand-400">{message.uploadProgress}%</span>
+                            <div className="h-1 w-16 bg-neutral-600 rounded">
+                              <div className="h-full bg-brand-400 rounded transition-all" style={{ width: `${message.uploadProgress}%` }} />
+                            </div>
+                          </>
                         )}
-                      </div>
-                    )}
-                    <div className={`mt-1 flex items-center gap-1.5 text-[10px] tabular-nums ${message.isOwn ? "justify-end text-white/70" : "text-neutral-400"}`}>
-                      {message.uploadProgress !== undefined && message.uploadProgress < 100 && (
-                        <>
-                          <span className="text-brand-400">{message.uploadProgress}%</span>
-                          <div className="h-1 w-16 bg-neutral-600 rounded">
-                            <div className="h-full bg-brand-400 rounded transition-all" style={{ width: `${message.uploadProgress}%` }} />
-                          </div>
-                        </>
-                      )}
-                      <span>{formatMessageTime(message.createdAt)}</span>
-                      {message.isOwn && (
+                        <span>{formatMessageTime(message.createdAt)}</span>
                         <>
                           <span className="opacity-40">•</span>
                           <span>{getStatusLabel(message, true)}</span>
+                          <button
+                            type="button"
+                            onClick={() => setMenuMessageId(menuMessageId === message._id ? null : message._id)}
+                            className="flex h-4 w-4 items-center justify-center rounded text-[10px] leading-none transition hover:bg-white/20"
+                            title="Message options"
+                          >
+                            ...
+                          </button>
+                          {menuMessageId === message._id && (
+                            <button
+                              type="button"
+                              onClick={() => handleDelete(message)}
+                              className="flex h-4 w-4 items-center justify-center rounded bg-error-500 text-white transition hover:bg-error-600"
+                              title="Delete"
+                            >
+                              <HiOutlineTrash className="h-2.5 w-2.5" />
+                            </button>
+                          )}
                         </>
-                      )}
-                    </div>
+                      </div>
+                    ) : (
+                      <div className={`mt-1 flex items-center gap-1.5 text-[10px] tabular-nums text-neutral-400`}>
+                        <span>{formatMessageTime(message.createdAt)}</span>
+                      </div>
+                    )
+                    }
                     {message.status === "failed" && (
                       <button
                         type="button"
@@ -1043,10 +1162,8 @@ Header: () => <div className="h-8" />,
                         Retry
                       </button>
                     )}
-                    {FEATURES.reactions && (
-                      <MessageReactions message={message} matchId={matchId} userId={userId} emit={emitEnhancement} />
-                    )}
                   </div>
+                  </MessageReactions>
                 </motion.div>
               );
             }
@@ -1066,63 +1183,64 @@ Header: () => <div className="h-8" />,
                     />
                   </div>
                 )}
-                <div 
-                  className={`relative flex max-w-[75%] flex-col rounded-2xl px-3 py-1 text-[15px] shadow-sm transition-all sm:max-w-[70%] ${
-                     message.isOwn 
-                       ? "bg-brand-500 text-white rounded-br-none" 
-                       : "bg-surface-800 text-neutral-100 border border-hairline-soft rounded-bl-none"
-                   }`}
-                 >
-{message.isOwn && (
-                    <div className="absolute top-0.5 right-0.5 z-10 flex items-start gap-0.5">
-                      <button
-                        type="button"
-                        onClick={() => setMenuMessageId(menuMessageId === message._id ? null : message._id)}
-                        className="flex h-5 w-5 items-center justify-center rounded text-[10px] leading-none hover:bg-white/20 transition"
-                      >
-                        ...
-                      </button>
-                      {menuMessageId === message._id && (
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(message)}
-                          className="flex h-5 w-5 items-center justify-center rounded bg-error-500 text-white hover:bg-error-600 transition"
-                          title="Delete"
-                        >
-                          <HiOutlineTrash className="h-3 w-3" />
-                        </button>
+                <MessageReactions
+                  message={message}
+                  matchId={matchId}
+                  userId={userId}
+                  emit={emitEnhancement}
+                  className="max-w-[85%] sm:max-w-[72%]"
+                >
+                  <div
+                    className={`flex w-auto max-w-full flex-col rounded-[18px] px-[14px] py-[10px] text-[15px] leading-snug shadow-sm transition-all ${
+                      message.isOwn
+                        ? "bg-brand-500 text-white rounded-br-[6px]"
+                        : "bg-surface-800 text-neutral-100 border border-hairline-soft rounded-bl-[6px]"
+                    }`}
+                  >
+                    {FEATURES.markdown ? (
+                      <MarkdownMessage text={message.message} />
+                    ) : (
+                      <p className="break-words whitespace-pre-wrap">{message.message}</p>
+                    )}
+
+                    <div className={`mt-1 flex items-center gap-1.5 text-[10px] tabular-nums ${message.isOwn ? "justify-end text-white/70" : "text-neutral-400"}`}>
+                      <span>{formatMessageTime(message.createdAt)}</span>
+                      {message.isOwn && (
+                        <>
+                          <span className="opacity-40">•</span>
+                          <span>{getStatusLabel(message, true)}</span>
+                          <button
+                            type="button"
+                            onClick={() => setMenuMessageId(menuMessageId === message._id ? null : message._id)}
+                            className="flex h-4 w-4 items-center justify-center rounded text-[10px] leading-none transition hover:bg-white/20"
+                            title="Message options"
+                          >
+                            ...
+                          </button>
+                          {menuMessageId === message._id && (
+                            <button
+                              type="button"
+                              onClick={() => handleDelete(message)}
+                              className="flex h-4 w-4 items-center justify-center rounded bg-error-500 text-white transition hover:bg-error-600"
+                              title="Delete"
+                            >
+                              <HiOutlineTrash className="h-2.5 w-2.5" />
+                            </button>
+                          )}
+                        </>
                       )}
                     </div>
-                  )}
-                  {FEATURES.markdown ? (
-                    <MarkdownMessage text={message.message} />
-                  ) : (
-                    <p className="break-words whitespace-pre-wrap leading-snug">
-                      {message.message}
-                    </p>
-                  )}
-                  <div className={`mt-1 flex items-center gap-1.5 text-[10px] tabular-nums ${message.isOwn ? "justify-end text-white/70" : "text-neutral-400"}`}>
-                    <span>{formatMessageTime(message.createdAt)}</span>
-                    {message.isOwn && (
-                      <>
-                        <span className="opacity-40">•</span>
-                        <span>{getStatusLabel(message, true)}</span>
-                      </>
+                    {message.status === "failed" && (
+                      <button
+                        type="button"
+                        onClick={() => handleRetry(message)}
+                        className="mt-1 self-end rounded-md bg-tint-strong px-2 py-0.5 text-[10px] text-white hover:bg-tint-strong"
+                      >
+                        Retry
+                      </button>
                     )}
                   </div>
-                  {message.status === "failed" && (
-                    <button
-                      type="button"
-                      onClick={() => handleRetry(message)}
-                      className="mt-1 self-end rounded-md bg-tint-strong px-2 py-0.5 text-[10px] text-white hover:bg-tint-strong"
-                    >
-                      Retry
-                    </button>
-                  )}
-                </div>
-                {FEATURES.reactions && (
-                  <MessageReactions message={message} matchId={matchId} userId={userId} emit={emitEnhancement} />
-                )}
+                </MessageReactions>
               </motion.div>
             );
           }}
@@ -1131,6 +1249,17 @@ Header: () => <div className="h-8" />,
     </div>
 
 <div className="flex flex-col gap-2 border-t border-hairline-soft px-4 py-3">
+{/* ── [PHASE-2] offline / queued status banner */}
+{FEATURES.offlineChat && (isOffline || showingCached || queuedCount > 0) && (
+<div className="flex items-center gap-2 rounded-lg border border-warning-500/20 bg-warning-500/10 px-3 py-1.5 text-xs text-warning-300">
+<span className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-warning-400" />
+{showingCached
+? "Offline — showing cached messages"
+: isOffline
+? "You're offline — messages will be queued"
+: `${queuedCount} queued message${queuedCount === 1 ? "" : "s"} — sending on reconnect`}
+</div>
+)}
 {typingUsers.size > 0 && (
 <p className="text-xs text-brand-600">Someone is typing…</p>
 )}

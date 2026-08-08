@@ -27,6 +27,7 @@ const ForgotPassword = lazy(() => import("./components/ForgotPassword"));
 const Projects = lazy(() => import("./components/Projects"));
 const Bookmarks = lazy(() => import("./components/Bookmarks"));
 const InviteFriends = lazy(() => import("./components/InviteFriends"));
+const Settings = lazy(() => import("./components/Settings")); // [PHASE-3] security & privacy
 const AdminLayout = lazy(() => import("./components/admin/AdminLayout"));
 const AdminUsers = lazy(() => import("./components/admin/AdminUsers"));
 const AdminReports = lazy(() => import("./components/admin/AdminReports"));
@@ -72,6 +73,7 @@ const App = () => {
                     <Route path="/projects" element={<Projects />} />
                     <Route path="/bookmarks" element={<Bookmarks />} />
                     <Route path="/invite-friends" element={<InviteFriends />} />
+                    <Route path="/settings" element={<Settings />} />
                     <Route path="/admin" element={<AdminLayout />}>
                       <Route index element={<Navigate to="users" replace />} />
                       <Route path="users" element={<AdminUsers />} />

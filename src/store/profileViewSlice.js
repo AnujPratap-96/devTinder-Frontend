@@ -2,7 +2,7 @@ import { createSlice } from "@reduxjs/toolkit";
 
 const profileViewSlice = createSlice({
   name: "profileViews",
-  initialState: { items: null, nextCursor: null, hasMore: false },
+  initialState: { items: null, nextCursor: null, hasMore: false, totalViews: 0, profileViewsLimit: null },
   reducers: {
     addProfileViews: (state, action) => action.payload,
   },

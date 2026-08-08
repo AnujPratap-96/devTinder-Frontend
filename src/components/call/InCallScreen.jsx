@@ -14,11 +14,13 @@ const formatDuration = (secs) => {
 };
 
 const InCallScreen = () => {
-  const { peer, type } = useSelector((s) => s.call);
+  const { peer, type, status } = useSelector((s) => s.call);
   const { localStream, remoteStream, reconnecting } = useCallContext();
   const remoteRef = useRef(null);
   const localRef = useRef(null);
   const [elapsed, setElapsed] = useState(0);
+
+  const isActive = status === "active";
 
   useEffect(() => {
     if (remoteRef.current && remoteStream) {
@@ -33,9 +35,10 @@ const InCallScreen = () => {
   }, [localStream]);
 
   useEffect(() => {
+    if (!isActive) return;
     const t = setInterval(() => setElapsed((e) => e + 1), 1000);
     return () => clearInterval(t);
-  }, []);
+  }, [isActive]);
 
   const isVideo = type === "video";
 
@@ -47,6 +50,11 @@ const InCallScreen = () => {
           <span className="flex items-center gap-2 rounded-full bg-warning-500/20 px-4 py-1.5 text-sm text-warning-300">
             <span className="block h-3 w-3 animate-spin rounded-full border-2 border-warning-300 border-t-transparent" />
             Reconnecting…
+          </span>
+        ) : !isActive ? (
+          <span className="flex items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-sm text-neutral-200">
+            <span className="block h-3 w-3 animate-pulse rounded-full bg-brand-400" />
+            Connecting…
           </span>
         ) : (
           <span className="rounded-full bg-white/10 px-4 py-1.5 text-sm tabular-nums text-neutral-200">

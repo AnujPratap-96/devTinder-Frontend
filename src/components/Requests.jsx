@@ -8,15 +8,16 @@ import { HiCheck, HiX, HiBell, HiCode, HiArrowDown } from "react-icons/hi";
 import Button from "./ui/Button";
 import Card from "./ui/Card";
 import EmptyState from "./ui/EmptyState";
+import { optimizePhotoUrl } from "../utils/avatar";
 
 const PAGE_SIZE = 12;
 
 const Requests = () => {
   const dispatch = useDispatch();
   const reduxRequests = useSelector((store) => store.requests);
+  const { items: reduxItems, nextCursor: reduxNextCursor, hasMore: reduxHasMore } = reduxRequests;
   const { addToast } = useToast();
   const [requests, setRequests] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [nextCursor, setNextCursor] = useState(null);
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -25,7 +26,6 @@ const Requests = () => {
   const fetchRequests = useCallback(async ({ cursor = null, append = false } = {}) => {
     try {
       if (append) setLoadingMore(true);
-      else setLoading(true);
       const data = await getReceivedRequests({ limit: PAGE_SIZE, cursor: cursor || undefined });
       const items = data?.requests || [];
       const next = data?.nextCursor ?? null;
@@ -41,7 +41,6 @@ const Requests = () => {
     } catch (error) {
       addToast(error?.response?.data?.message || "Error fetching requests. Please try again later.");
     } finally {
-      setLoading(false);
       setLoadingMore(false);
     }
   }, [dispatch, addToast]);
@@ -60,15 +59,14 @@ const Requests = () => {
   useEffect(() => {
     if (seeded.current) return;
     seeded.current = true;
-    if (reduxRequests?.items?.length > 0) {
-      setRequests(reduxRequests.items);
-      setNextCursor(reduxRequests.nextCursor);
-      setHasMore(reduxRequests.hasMore);
-      setLoading(false);
+    if (reduxItems?.length > 0) {
+      setRequests(reduxItems);
+      setNextCursor(reduxNextCursor);
+      setHasMore(reduxHasMore);
     } else {
       fetchRequests({ cursor: null });
     }
-  }, [reduxRequests?.items?.length]);
+  }, [reduxItems, reduxNextCursor, reduxHasMore, fetchRequests]);
 
   return (
     <div className="w-full space-y-8">
@@ -108,7 +106,9 @@ const Requests = () => {
                       <img
                         alt={`${firstName}'s profile`}
                         className="h-full w-full object-cover"
-                        src={photoUrl?.[0] || "https://via.placeholder.com/150"}
+                        src={optimizePhotoUrl(photoUrl?.[0]) || "https://via.placeholder.com/150"}
+                        loading="lazy"
+                        decoding="async"
                       />
                     </div>
                     <div className="min-w-0">

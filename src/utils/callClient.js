@@ -4,6 +4,13 @@ let pc = null;
 let localStream = null;
 let remoteStream = null;
 let handlers = {};
+// ICE candidates that arrived before the remote description was set.
+// addIceCandidate() throws until setRemoteDescription() has run, and a throw
+// means the candidate is lost forever — which is exactly why calls fail to
+// connect across networks: both sides create their peer early and their
+// candidates arrive too soon. We buffer here and replay them once the remote
+// offer/answer is installed.
+let pendingIce = [];
 
 // Free public TURN fallback (Open Relay Project) — used when the backend
 // returns no TURN servers (e.g. local dev). Mirrors the backend default.
@@ -59,7 +66,21 @@ const callClient = {
     };
     pc.oniceconnectionstatechange = () => handlers.onIceState?.(pc.iceConnectionState);
     pc.onconnectionstatechange = () => handlers.onState?.(pc.connectionState);
+    pendingIce = [];
     return pc;
+  },
+
+  flushPendingIce() {
+    if (!pc?.remoteDescription) return;
+    const buffered = pendingIce.splice(0);
+    for (const candidate of buffered) {
+      if (!candidate) continue;
+      try {
+        pc.addIceCandidate(candidate);
+      } catch {
+        // late/duplicate candidates are non-fatal
+      }
+    }
   },
 
   async makeOffer() {
@@ -70,6 +91,7 @@ const callClient = {
 
   async makeAnswer(offerSdp) {
     await pc.setRemoteDescription(offerSdp);
+    this.flushPendingIce();
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
     return pc.localDescription;
@@ -77,11 +99,15 @@ const callClient = {
 
   async setRemoteAnswer(answerSdp) {
     await pc.setRemoteDescription(answerSdp);
+    this.flushPendingIce();
   },
 
   async addIce(candidate) {
     try {
-      if (pc && candidate) await pc.addIceCandidate(candidate);
+      if (pc && candidate) {
+        if (pc.remoteDescription) await pc.addIceCandidate(candidate);
+        else pendingIce.push(candidate);
+      }
     } catch {
       // late/duplicate candidates are non-fatal
     }
@@ -160,6 +186,7 @@ const callClient = {
       }
       pc = null;
     }
+    pendingIce = [];
     this.stopMedia();
   },
 };

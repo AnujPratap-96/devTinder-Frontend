@@ -6,7 +6,6 @@ import {
   HiBan,
   HiFlag,
   HiCode,
-  HiExternalLink,
   HiArrowDown,
 } from "react-icons/hi";
 import { getBookmarks } from "../api/bookmarks";
@@ -14,6 +13,7 @@ import Button from "./ui/Button";
 import EmptyState from "./ui/EmptyState";
 import { useToast } from "../context/ToastProvider";
 import { blockUser as blockUserApi, reportUser as reportUserApi, removeBookmark as removeBookmarkApi } from "../api/connections";
+import { optimizePhotoUrl } from "../utils/avatar";
 
 // ─── Availability badge colours ───────────────────────────────
 const availabilityConfig = {
@@ -112,7 +112,7 @@ const Bookmarks = () => {
 
   const blockUser = async (userId, bookmarkId) => {
     try {
-      await blockUserApi(currentUser._id);
+      await blockUserApi(userId);
       setBookmarks((prev) => prev.filter((b) => b._id !== bookmarkId));
       addToast("User blocked and removed from bookmarks", "success");
     } catch (error) {
@@ -122,7 +122,7 @@ const Bookmarks = () => {
 
   const reportUser = async (userId) => {
     try {
-      await reportUserApi(currentUser._id, reason, details);
+      await reportUserApi(userId, "inappropriate", "");
       addToast("User reported", "success");
     } catch (error) {
       addToast(error?.response?.data?.message || "Unable to report user", "error");
@@ -185,9 +185,11 @@ const Bookmarks = () => {
             const avail = availabilityConfig[dev.availability] ?? availabilityConfig.open;
             const gradient = roleGradient[dev.role] ?? roleGradient.other;
             const skills = (dev.skills ?? []).slice(0, 4);
-            const photo = Array.isArray(dev.photoUrl)
-              ? dev.photoUrl[0]
-              : dev.photoUrl;
+            const photo = optimizePhotoUrl(
+              Array.isArray(dev.photoUrl)
+                ? dev.photoUrl[0]
+                : dev.photoUrl
+            );
             const name = `${dev.firstName ?? ""} ${dev.lastName ?? ""}`.trim();
             const isRemoving = removing === bookmark._id;
 
@@ -231,6 +233,8 @@ const Bookmarks = () => {
                             src={photo}
                             alt={name}
                             className="h-full w-full object-cover"
+                            loading="lazy"
+                            decoding="async"
                           />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-brand-600 to-violet-700 text-lg font-bold text-white">

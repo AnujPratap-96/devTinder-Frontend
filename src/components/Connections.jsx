@@ -11,6 +11,7 @@ import { blockUser as blockUserApi, reportUser as reportUserApi } from "../api/c
 import { useToast } from "../context/ToastProvider";
 import { useDispatch } from "react-redux";
 import { removeConnection } from "../store/connectionSlice";
+import { optimizePhotoUrl } from "../utils/avatar";
 
 const Connections = () => {
   const { connections, hasMore, loadMore, loadingMore } = useConnectionList();
@@ -139,7 +140,9 @@ const Connections = () => {
                         <img
                           alt={`${firstName}'s profile`}
                           className="h-full w-full object-cover"
-                          src={Array.isArray(photoUrl) ? photoUrl[0] : photoUrl || "https://via.placeholder.com/150"}
+                          src={optimizePhotoUrl(Array.isArray(photoUrl) ? photoUrl[0] : photoUrl) || "https://via.placeholder.com/150"}
+                          loading="lazy"
+                          decoding="async"
                         />
                       </div>
                       <span className={`absolute -bottom-1 -right-1 block h-3.5 w-3.5 rounded-full border-2 border-neutral-950 ${connection.isOnline ? "bg-success-500" : "bg-neutral-500"}`} />
@@ -242,7 +245,7 @@ const Connections = () => {
               <div className="p-6 space-y-6">
                 <div>
                   <h3 className="text-heading-sm text-neutral-50">Report {reportModal.name}</h3>
-                  <p className="mt-1 text-body-xs text-neutral-400">Help us understand what's wrong with this profile.</p>
+                  <p className="mt-1 text-body-xs text-neutral-400">Help us understand what&apos;s wrong with this profile.</p>
                 </div>
 
                 <div className="space-y-4">

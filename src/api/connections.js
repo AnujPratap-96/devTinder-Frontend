@@ -16,7 +16,7 @@ export const removeBookmark = (userId) =>
   client.delete(`/bookmark/${userId}`).then((r) => r.data.data);
 
 export const endorseSkill = (targetUserId, skill) =>
-  client.post("/user/endorse", { targetUserId, skill }).then((r) => r.data.data);
+  client.post("/user/endorse", { targetUserId, skill }).then((r) => r.data);
 
 export const recordProfileView = (userId) =>
   client.post(`/profile/view/${userId}`).then((r) => r.data.data);

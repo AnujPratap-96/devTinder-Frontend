@@ -8,7 +8,7 @@ import CompactUserItem from "./CompactUserItem";
 import { useToast } from "../context/ToastProvider";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { HiUsers, HiSearch, HiArrowLeft, HiArrowDown } from "react-icons/hi";
+import { HiUsers, HiSearch, HiArrowLeft } from "react-icons/hi";
 import Button from "./ui/Button";
 import Card from "./ui/Card";
 import EmptyState from "./ui/EmptyState";
@@ -200,6 +200,20 @@ const Feed = () => {
 
   const targetUsers = isSearching ? searchResults : feedItems;
 
+  // Advance the deck in place when the current card is swiped/responded to,
+  // instead of leaving the same card on screen until "Load More" is clicked.
+  const advanceFeed = useCallback(() => {
+    setFeedItems((prev) => prev.slice(1));
+  }, []);
+
+  // Auto-page: when the deck runs out and the server has more pages,
+  // silently pull the next one so the feed never requires a manual button.
+  useEffect(() => {
+    if (isSearching || searchQuery.trim()) return;
+    if (feedItems.length > 0 || !hasMore || loading || loadingMore) return;
+    fetchFeed({ cursor: nextCursor, append: true });
+  }, [feedItems.length, hasMore, nextCursor, isSearching, searchQuery, loading, loadingMore, fetchFeed]);
+
   return (
     <div className="flex min-h-[80vh] w-full flex-col items-center">
       {/* Search Header */}
@@ -279,22 +293,19 @@ const Feed = () => {
                 )}
               </div>
               <ErrorBoundary>
-                <UserCard key={targetUsers[0]?._id} user={targetUsers[0]} searchQuery={searchQuery} />
+                <UserCard key={targetUsers[0]?._id} user={targetUsers[0]} searchQuery={searchQuery} onSwiped={advanceFeed} />
               </ErrorBoundary>
-              {hasMore && !isSearching && (
-                <div className="mt-8 flex justify-center">
-                  <Button
-                    variant="secondary"
-                    onClick={() => fetchFeed({ cursor: nextCursor, append: true })}
-                    disabled={loadingMore}
-                  >
-                    {loadingMore ? <span className="spinner h-4 w-4 border-2 text-brand-600" /> : <HiArrowDown className="text-lg" />}
-                    {loadingMore ? "Loading..." : "Load More"}
-                  </Button>
-                </div>
-              )}
             </>
           )}
+        </motion.div>
+      ) : loadingMore ? (
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex w-full flex-col items-center gap-4 py-24"
+        >
+          <div className="h-12 w-12 rounded-full border-4 border-brand-500/20 border-t-brand-500 animate-spin" />
+          <p className="text-neutral-400 font-medium animate-pulse">Loading more profiles...</p>
         </motion.div>
       ) : (
         <motion.div

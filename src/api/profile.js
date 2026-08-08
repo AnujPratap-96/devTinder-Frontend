@@ -16,3 +16,7 @@ export const updateLocation = (lat, lng) =>
 
 export const syncGitHub = (githubToken) =>
   client.post("/ai/github-sync", { githubToken }).then((r) => r.data.data);
+
+// [PHASE-3] privacy settings (anonymized browsing)
+export const updatePrivacy = (hideProfileViews) =>
+  client.patch("/profile/privacy", { hideProfileViews }).then((r) => r.data.data);

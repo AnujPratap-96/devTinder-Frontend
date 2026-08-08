@@ -7,6 +7,7 @@ import { HiHeart, HiX, HiChat, HiSparkles } from "react-icons/hi";
 import { useNavigate } from "react-router-dom";
 import Button from "./ui/Button";
 import { suggestCollaboration, aiErrorMessage } from "../utils/aiApi";
+import { optimizePhotoUrl } from "../utils/avatar";
 
 const MatchCelebration = () => {
   const user = useSelector((store) => store.user);
@@ -74,7 +75,7 @@ const MatchCelebration = () => {
             <HiHeart className="text-4xl animate-pulse" />
           </motion.div>
 
-          <h1 className="mb-1 text-3xl font-bold text-white tracking-tight">It's a Match!</h1>
+          <h1 className="mb-1 text-3xl font-bold text-white tracking-tight">It&apos;s a Match!</h1>
           <p className="mb-6 text-base text-neutral-300">
             You and <span className="font-bold text-brand-500">{otherUser?.firstName}</span> are now connected.
           </p>
@@ -86,9 +87,11 @@ const MatchCelebration = () => {
               className="z-10 h-28 w-28 overflow-hidden rounded-2xl border-4 border-white shadow-xl"
             >
               <img
-                src={user.photoUrl?.[0] || "https://via.placeholder.com/150"}
+                src={optimizePhotoUrl(user.photoUrl?.[0]) || "https://via.placeholder.com/150"}
                 alt="You"
                 className="h-full w-full object-cover"
+                loading="lazy"
+                decoding="async"
               />
             </motion.div>
 
@@ -102,9 +105,11 @@ const MatchCelebration = () => {
               className="z-10 h-28 w-28 overflow-hidden rounded-2xl border-4 border-white shadow-xl"
             >
               <img
-                src={otherUser?.photoUrl?.[0] || "https://via.placeholder.com/150"}
+                src={optimizePhotoUrl(otherUser?.photoUrl?.[0]) || "https://via.placeholder.com/150"}
                 alt={otherUser?.firstName}
                 className="h-full w-full object-cover"
+                loading="lazy"
+                decoding="async"
               />
             </motion.div>
           </div>
