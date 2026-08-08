@@ -45,7 +45,7 @@ const Login = () => {
       }
       finishLogin(data.user);
     } catch (err) {
-      addToast(err?.response?.data?.ERROR || "Something went wrong!", "error");
+      addToast(err?.response?.data?.message || "Something went wrong!", "error");
     } finally {
       setLoading(false);
     }
@@ -62,7 +62,7 @@ const Login = () => {
       const data = await verify2faLogin(pending2fa, otp.trim());
       finishLogin(data.user);
     } catch (err) {
-      addToast(err?.response?.data?.ERROR || "Invalid code", "error");
+      addToast(err?.response?.data?.message || "Invalid code", "error");
     } finally {
       setOtpLoading(false);
     }

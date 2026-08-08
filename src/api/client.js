@@ -23,14 +23,31 @@ const processQueue = (error, token = null) => {
   failedQueue = [];
 };
 
+const getSessionId = () => appStore.getState().user?._id ?? null;
+
+client.interceptors.request.use((config) => {
+  config._sessionId = getSessionId();
+  return config;
+});
+
 client.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
 
     if (error?.response?.status === 401 && !originalRequest._retry) {
+      // Fired while logged out (boot/landing without cookies): a 401 is
+      // expected. Reject quietly — no refresh attempt, no removeUser. This
+      // prevents the pre-login 401 flood AND stops a stale 401 response from
+      // racing a fresh login and kicking the user back to the login page.
+      if (!originalRequest._sessionId) {
+        return Promise.reject(error);
+      }
+
       if (originalRequest.url?.includes("/refresh-token")) {
-        appStore.dispatch(removeUser());
+        if (getSessionId() === originalRequest._sessionId) {
+          appStore.dispatch(removeUser());
+        }
         return Promise.reject(error);
       }
 
@@ -49,7 +66,7 @@ client.interceptors.response.use(
         return client(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError);
-        if (refreshError?.response?.status === 401) {
+        if (getSessionId() === originalRequest._sessionId) {
           appStore.dispatch(removeUser());
         }
         return Promise.reject(refreshError);
