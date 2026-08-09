@@ -19,9 +19,6 @@ export const searchMessages = (matchId, { query = "", pinned = false, limit } = 
     })
     .then((r) => r.data.data);
 
-export const togglePinMessage = (messageId) =>
-  client.patch(`/chat/enhance/messages/${messageId}/pin`).then((r) => r.data.data);
-
 export const getChatPrefs = () => client.get("/chat/enhance/prefs").then((r) => r.data.data);
 
 export const setChatPref = (matchId, { pinned, muted }) =>
