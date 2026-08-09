@@ -13,12 +13,13 @@ HiBan,
 HiFlag,
 HiX,
 HiOutlineTrash,
+HiOutlineBookmark,
 HiOutlineLocationMarker,
 HiVolumeUp,
 HiVolumeOff,
 } from "react-icons/hi";
 import { createSocketConnection } from "../utils/constant";
-import { getMessages, getMessagesByMatch, markAsSeen, deleteMessage, uploadChatFile } from "../api/chat";
+import { getMessages, getMessagesByMatch, markAsSeen, deleteMessage, uploadChatFile, pinMessage, unpinMessage } from "../api/chat";
 import { blockUser as blockUserApi, reportUser as reportUserApi } from "../api/connections";
 import { ensureCrypto, isCryptoReady, encryptMessage, decryptMessage, canEncryptWith } from "../utils/e2ee";
 import { useToast } from "../context/ToastProvider";
@@ -82,6 +83,52 @@ const compressImage = (file, maxWidth = 1280, maxHeight = 1280, quality = 0.8) =
     reader.readAsDataURL(file);
   });
 };
+
+// Inline options menu for a message: pin/unpin (both parties) + delete (own).
+/* eslint-disable react/prop-types */
+const MessageMenu = ({ message, menuMessageId, setMenuMessageId, onPin, onDelete }) => (
+  <>
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        setMenuMessageId(menuMessageId === message._id ? null : message._id);
+      }}
+      className="flex h-4 w-4 items-center justify-center rounded text-[10px] leading-none transition hover:bg-white/20"
+      title="Message options"
+    >
+      ...
+    </button>
+    {menuMessageId === message._id && (
+      <span className="flex items-center gap-0.5">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onPin(message);
+          }}
+          className="flex h-4 w-4 items-center justify-center rounded bg-tint-strong text-white transition hover:bg-brand-500"
+          title={message.pinnedAt ? "Unpin message" : "Pin message"}
+        >
+          <HiOutlineBookmark className="h-2.5 w-2.5" />
+        </button>
+        {message.isOwn && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(message);
+            }}
+            className="flex h-4 w-4 items-center justify-center rounded bg-error-500 text-white transition hover:bg-error-600"
+            title="Delete"
+          >
+            <HiOutlineTrash className="h-2.5 w-2.5" />
+          </button>
+        )}
+      </span>
+    )}
+  </>
+);
 
 const getStatusLabel = (message, isMine) => {
 if (!isMine) return null;
@@ -163,6 +210,9 @@ const [uploading, setUploading] = useState(false);
 const [previewImage, setPreviewImage] = useState(null);
 // ── [PHASE-1] chat prefs (pin conversation / mute)
 const [chatPrefs, setChatPrefs] = useState({ pinned: false, muted: false });
+// Pinned message (one per chat, WhatsApp-style)
+const [pinnedMessage, setPinnedMessage] = useState(null);
+const [pinnedPreview, setPinnedPreview] = useState("");
 const { addToast } = useToast();
 // ── [PHASE-2] offline chat state
 const [isOffline, setIsOffline] = useState(false);
@@ -206,12 +256,45 @@ const handleDelete = async (message) => {
 try {
       await deleteMessage(message._id);
       setMessages((prev) => prev.filter((m) => m._id !== message._id));
+if (pinnedMessage?._id === message._id) {
+setPinnedMessage(null);
+}
 setMenuMessageId(null);
 if (socketRef.current && matchId) {
 socketRef.current.emit("message:delete", { messageId: message._id, matchId });
 }
 } catch (err) {
 addToast(err?.response?.data?.message || "Failed to delete message", "error");
+}
+};
+
+// Pin/unpin a message (one pinned message per chat). The server broadcasts
+// `message:pinned` / `message:unpinned` to the room for the other party.
+const handlePinToggle = async (message) => {
+if (!matchId) return;
+const wasPinned = pinnedMessage?._id === message._id;
+setMenuMessageId(null);
+try {
+if (wasPinned) {
+await unpinMessage(matchId);
+setPinnedMessage(null);
+setMessages((prev) => prev.map((m) => (m._id === message._id ? { ...m, pinnedAt: null } : m)));
+} else {
+const res = await pinMessage(matchId, message._id);
+setPinnedMessage(res.message);
+setMessages((prev) => prev.map((m) => (m._id === message._id ? { ...m, pinnedAt: res.message?.pinnedAt ?? true } : m)));
+addToast("Message pinned", "success");
+}
+} catch (err) {
+addToast(err?.response?.data?.message || "Failed to update pin", "error");
+}
+};
+
+const jumpToPinnedMessage = () => {
+if (!pinnedMessage) return;
+const index = sortedMessages.findIndex((m) => m._id === pinnedMessage._id);
+if (index >= 0) {
+virtuosoRef.current?.scrollToIndex({ index, align: "center", behavior: "smooth" });
 }
 };
 
@@ -245,6 +328,7 @@ try {
 // on crypto succeeding. E2E init happens afterwards and is non-fatal.
 const data = await getMessages(targetUserId, { limit: MESSAGE_LIMIT });
       setMatchId(data.chat.matchId);
+      setPinnedMessage(data.chat.pinnedMessage ?? null);
 
       const raw = (data.messages ?? []).map((msg) =>
 decorateMessage(msg, userId, targetUserId)
@@ -483,6 +567,19 @@ socket.on("message:deleted", ({ messageId }) => {
 setMessages((prev) => prev.filter((m) => m._id !== messageId));
 });
 
+// ── [PHASE-1] pinned message (server broadcasts after pin/unpin)
+socket.on("message:pinned", ({ chatId: cId, message: pinned }) => {
+if (cId !== matchId) return;
+setPinnedMessage(pinned);
+setMessages((prev) => prev.map((m) => (m._id === pinned?._id ? { ...m, pinnedAt: pinned?.pinnedAt ?? true } : m)));
+});
+
+socket.on("message:unpinned", ({ chatId: cId }) => {
+if (cId !== matchId) return;
+setPinnedMessage(null);
+setMessages((prev) => prev.map((m) => (m.pinnedAt ? { ...m, pinnedAt: null } : m)));
+});
+
 // ── [PHASE-1] reactions
 socket.on("message:reacted", ({ messageId, reactions }) => {
 setMessages((prev) => prev.map((m) => (m._id === messageId ? { ...m, reactions } : m)));
@@ -521,6 +618,8 @@ socketRef.current.off("message:ack");
 socketRef.current.off("messages:delivered");
 socketRef.current.off("messages:seen");
 socketRef.current.off("message:deleted");
+socketRef.current.off("message:pinned");
+socketRef.current.off("message:unpinned");
 socketRef.current.off("message:reacted"); // [PHASE-1]
 socketRef.current.off("typing:start");
 socketRef.current.off("typing:stop");
@@ -544,6 +643,25 @@ const prefs = data.prefs?.[matchId];
 if (prefs) setChatPrefs(prefs);
 }).catch(() => {});
 }, [matchId]);
+
+// Decrypt the pinned message for the banner preview (it is stored encrypted).
+useEffect(() => {
+let alive = true;
+if (!pinnedMessage) {
+setPinnedPreview("");
+return;
+}
+decryptIncoming(pinnedMessage, userId).then((msg) => {
+if (!alive) return;
+if (msg.messageType === "image") setPinnedPreview("📷 Photo");
+else if (msg.messageType === "audio") setPinnedPreview("🎵 Voice message");
+else if (msg.messageType === "call") setPinnedPreview("📞 Call");
+else setPinnedPreview(msg.message || "");
+});
+return () => {
+alive = false;
+};
+}, [pinnedMessage, userId]);
 
 // ── [PHASE-2] track browser online/offline for the offline banner + queuing
 useEffect(() => {
@@ -975,6 +1093,34 @@ className="w-full px-4 py-2 text-left text-sm text-neutral-400 hover:bg-tint fle
 )}
 </div>
 
+{/* ── [PHASE-1] pinned message banner */}
+{pinnedMessage && (
+<div className="flex items-center gap-2.5 border-b border-hairline-soft bg-tint/40 px-5 py-2">
+<button
+type="button"
+onClick={jumpToPinnedMessage}
+className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
+title="Jump to pinned message"
+>
+<HiOutlineBookmark className="shrink-0 text-sm text-brand-400" />
+<span className="min-w-0 flex-1">
+<span className="block truncate text-[10px] font-bold uppercase tracking-wider text-brand-400">
+{pinnedMessage.senderId?.firstName === user?.firstName ? "You" : pinnedMessage.senderId?.firstName} pinned a message
+</span>
+<span className="block truncate text-xs text-neutral-300">{pinnedPreview || "Message"}</span>
+</span>
+</button>
+<button
+type="button"
+onClick={() => handlePinToggle(pinnedMessage)}
+className="shrink-0 rounded-md p-1 text-neutral-400 transition hover:bg-tint-strong hover:text-white"
+title="Unpin message"
+>
+<HiX className="text-sm" />
+</button>
+</div>
+)}
+
 {/* Message list OR empty state */}
 <div className="relative min-h-0 flex-1 overflow-hidden">
 {sortedMessages.length === 0 ? (
@@ -1047,33 +1193,30 @@ Header: () => <div className="h-8" />,
                     />
                     <div className={`mt-1 flex items-center gap-1.5 text-[10px] tabular-nums ${message.isOwn ? "justify-end text-white/70" : "text-neutral-400"}`}>
                       <span>{formatMessageTime(message.createdAt)}</span>
+                      {message.pinnedAt && <HiOutlineBookmark className="text-[10px] opacity-60" />}
                       {message.isOwn && (
                         <>
                           <span className="opacity-40">•</span>
                           <span>{getStatusLabel(message, true)}</span>
                           {!isUploading && (
-                            <>
-                              <button
-                                type="button"
-                                onClick={() => setMenuMessageId(menuMessageId === message._id ? null : message._id)}
-                                className="flex h-4 w-4 items-center justify-center rounded text-[10px] leading-none hover:bg-white/20 transition"
-                                title="Message options"
-                              >
-                                ...
-                              </button>
-                              {menuMessageId === message._id && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleDelete(message)}
-                                  className="flex h-4 w-4 items-center justify-center rounded bg-error-500 text-white hover:bg-error-600 transition"
-                                  title="Delete"
-                                >
-                                  <HiOutlineTrash className="h-2.5 w-2.5" />
-                                </button>
-                              )}
-                            </>
+                            <MessageMenu
+                              message={message}
+                              menuMessageId={menuMessageId}
+                              setMenuMessageId={setMenuMessageId}
+                              onPin={handlePinToggle}
+                              onDelete={handleDelete}
+                            />
                           )}
                         </>
+                      )}
+                      {!message.isOwn && (
+                        <MessageMenu
+                          message={message}
+                          menuMessageId={menuMessageId}
+                          setMenuMessageId={setMenuMessageId}
+                          onPin={handlePinToggle}
+                          onDelete={handleDelete}
+                        />
                       )}
                     </div>
                   </div>
@@ -1124,32 +1267,32 @@ Header: () => <div className="h-8" />,
                           </>
                         )}
                         <span>{formatMessageTime(message.createdAt)}</span>
+                        {message.pinnedAt && <HiOutlineBookmark className="text-[10px] opacity-60" />}
                         <>
                           <span className="opacity-40">•</span>
                           <span>{getStatusLabel(message, true)}</span>
-                          <button
-                            type="button"
-                            onClick={() => setMenuMessageId(menuMessageId === message._id ? null : message._id)}
-                            className="flex h-4 w-4 items-center justify-center rounded text-[10px] leading-none transition hover:bg-white/20"
-                            title="Message options"
-                          >
-                            ...
-                          </button>
-                          {menuMessageId === message._id && (
-                            <button
-                              type="button"
-                              onClick={() => handleDelete(message)}
-                              className="flex h-4 w-4 items-center justify-center rounded bg-error-500 text-white transition hover:bg-error-600"
-                              title="Delete"
-                            >
-                              <HiOutlineTrash className="h-2.5 w-2.5" />
-                            </button>
+                          {!isUploading && (
+                            <MessageMenu
+                              message={message}
+                              menuMessageId={menuMessageId}
+                              setMenuMessageId={setMenuMessageId}
+                              onPin={handlePinToggle}
+                              onDelete={handleDelete}
+                            />
                           )}
                         </>
                       </div>
                     ) : (
                       <div className={`mt-1 flex items-center gap-1.5 text-[10px] tabular-nums text-neutral-400`}>
                         <span>{formatMessageTime(message.createdAt)}</span>
+                        {message.pinnedAt && <HiOutlineBookmark className="text-[10px] opacity-60" />}
+                        <MessageMenu
+                          message={message}
+                          menuMessageId={menuMessageId}
+                          setMenuMessageId={setMenuMessageId}
+                          onPin={handlePinToggle}
+                          onDelete={handleDelete}
+                        />
                       </div>
                     )
                     }
@@ -1205,29 +1348,28 @@ Header: () => <div className="h-8" />,
 
                     <div className={`mt-1 flex items-center gap-1.5 text-[10px] tabular-nums ${message.isOwn ? "justify-end text-white/70" : "text-neutral-400"}`}>
                       <span>{formatMessageTime(message.createdAt)}</span>
+                      {message.pinnedAt && <HiOutlineBookmark className="text-[10px] opacity-60" />}
                       {message.isOwn && (
                         <>
                           <span className="opacity-40">•</span>
                           <span>{getStatusLabel(message, true)}</span>
-                          <button
-                            type="button"
-                            onClick={() => setMenuMessageId(menuMessageId === message._id ? null : message._id)}
-                            className="flex h-4 w-4 items-center justify-center rounded text-[10px] leading-none transition hover:bg-white/20"
-                            title="Message options"
-                          >
-                            ...
-                          </button>
-                          {menuMessageId === message._id && (
-                            <button
-                              type="button"
-                              onClick={() => handleDelete(message)}
-                              className="flex h-4 w-4 items-center justify-center rounded bg-error-500 text-white transition hover:bg-error-600"
-                              title="Delete"
-                            >
-                              <HiOutlineTrash className="h-2.5 w-2.5" />
-                            </button>
-                          )}
+                          <MessageMenu
+                            message={message}
+                            menuMessageId={menuMessageId}
+                            setMenuMessageId={setMenuMessageId}
+                            onPin={handlePinToggle}
+                            onDelete={handleDelete}
+                          />
                         </>
+                      )}
+                      {!message.isOwn && (
+                        <MessageMenu
+                          message={message}
+                          menuMessageId={menuMessageId}
+                          setMenuMessageId={setMenuMessageId}
+                          onPin={handlePinToggle}
+                          onDelete={handleDelete}
+                        />
                       )}
                     </div>
                     {message.status === "failed" && (

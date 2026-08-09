@@ -23,3 +23,9 @@ export const uploadChatFile = (formData, onProgress) =>
     headers: { "Content-Type": "multipart/form-data" },
     onUploadProgress: onProgress,
   }).then((r) => r.data.data);
+
+export const pinMessage = (chatId, messageId) =>
+  client.post(`/chat/${chatId}/pin`, { messageId }).then((r) => r.data.data);
+
+export const unpinMessage = (chatId) =>
+  client.delete(`/chat/${chatId}/pin`).then((r) => r.data.data);

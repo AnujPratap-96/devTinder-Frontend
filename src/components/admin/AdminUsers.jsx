@@ -252,7 +252,10 @@ const AdminUsers = () => {
               <Row label="Location" value={[selected.city, selected.country].filter(Boolean).join(", ") || null} />
               <Row label="Membership" value={selected.membershipType} />
               <Row label="Premium" value={selected.isPremium ? "Yes" : "No"} />
-              <Row label="Profile strength" value={selected.profileStrength != null ? `${selected.profileStrength}%` : null} />
+              <Row
+                label="Profile strength"
+                value={selected.profileStrength?.score != null ? `${selected.profileStrength.score}%` : null}
+              />
               <Row label="Joined" value={selected.createdAt ? new Date(selected.createdAt).toLocaleDateString() : null} />
             </div>
 
