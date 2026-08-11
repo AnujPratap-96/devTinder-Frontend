@@ -62,7 +62,9 @@ const AIMatchExplainer = ({ targetUserId, targetName }) => {
     try {
       const result = await explainMatch(targetUserId);
       if (!result.success) throw new Error(result.message);
-      setPoints(result.data.points);
+      // Accept both the documented { points: [] } shape and a bare array so a
+      // mismatched backend can never blow up the renderer.
+      setPoints(Array.isArray(result.data) ? result.data : (result.data?.points ?? []));
       setFetched(true);
     } catch (err) {
       setError(err?.response?.data?.message || err.message || "AI unavailable");

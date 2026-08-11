@@ -386,7 +386,7 @@ setIcebreakerLoading(true);
 try {
 const result = await generateIcebreaker(targetUserId);
 if (result.success) {
-setIcebreaker(result.data.message);
+setIcebreaker(typeof result.data === "string" ? result.data : (result.data?.message ?? ""));
 }
 } catch (err) {
 addToast(aiErrorMessage(err), "error");

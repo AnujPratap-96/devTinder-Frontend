@@ -131,7 +131,7 @@ const AIPanel = ({ user, skills, formData, onBioGenerated, onSkillsAccepted }) =
         role: formData?.role ?? user?.role,
       });
       if (!result.success) throw new Error(result.message);
-      setGeneratedBio(result.data.bio);
+      setGeneratedBio(typeof result.data === "string" ? result.data : (result.data?.bio ?? ""));
     } catch (err) {
       setBioError(err?.response?.data?.message || err.message || "AI service unavailable");
     } finally {
@@ -159,7 +159,7 @@ const AIPanel = ({ user, skills, formData, onBioGenerated, onSkillsAccepted }) =
         about: formData?.about ?? user?.about,
       });
       if (!result.success) throw new Error(result.message);
-      setSuggestedSkills(result.data.suggestions);
+      setSuggestedSkills(Array.isArray(result.data) ? result.data : (result.data?.suggestions ?? []));
     } catch (err) {
       setSkillsError(err?.response?.data?.message || err.message || "AI service unavailable");
     } finally {
