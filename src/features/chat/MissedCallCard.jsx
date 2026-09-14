@@ -4,7 +4,7 @@
  */
 import { useEffect, useState } from "react";
 import { HiPhoneMissedCall } from "react-icons/hi";
-import { getMissedCalls } from "./enhancementApi";
+import { getMissedCalls } from "../../api/enhancementApi";
 
 const MissedCallCard = ({ matchId, onCallBack }) => {
   const [missed, setMissed] = useState([]);

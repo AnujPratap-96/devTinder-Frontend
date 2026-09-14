@@ -1,0 +1,1068 @@
+import { useEffect, useState, useRef, useCallback } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import {
+  HiCollection,
+  HiUserAdd,
+  HiX,
+  HiPlus,
+  HiChat,
+  HiCheck,
+  HiPaperAirplane,
+  HiUsers,
+  HiGlobeAlt,
+  HiPencilAlt,
+  HiTrash,
+  HiArrowDown,
+} from "react-icons/hi";
+import { motion, AnimatePresence } from "framer-motion";
+import { getProjects, createProject as createProjectApi, updateProject as updateProjectApi, deleteProject as deleteProjectApi, getProjectMessages, sendProjectMessage as sendProjectMessageApi, removeProjectMember, joinProject, respondToJoinRequest } from "../api/projects";
+import Card from "../components/ui/Card";
+import Button from "../components/ui/Button";
+import { useToast } from "../context/ToastProvider";
+import { addProjects, removeProject, updateProject } from "../store/slices/projectSlice";
+import { optimizePhotoUrl } from "../utils/avatar";
+import { generateProjectRoadmap, suggestProjectDetails, aiErrorMessage } from "../utils/aiApi";
+import { HiTrendingUp } from "react-icons/hi";
+
+const RoadmapModal = ({ project, onClose }) => {
+  const [roadmap, setRoadmap] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [isEnhancing, setIsEnhancing] = useState(false);
+  const { addToast } = useToast();
+
+  const fetchRoadmap = useCallback(async (force = false) => {
+    if (force) setIsEnhancing(true);
+    else setLoading(true);
+
+    try {
+      const response = await generateProjectRoadmap({
+        title: project.title,
+        description: project.description,
+        techStack: project.techStack,
+        projectId: project._id,
+        forceRefresh: force,
+      });
+       setRoadmap(response.data.roadmap);
+      if (force) addToast("Roadmap enhanced with AI!", "success");
+    } catch (error) {
+      addToast(aiErrorMessage(error), "error");
+      if (!force) onClose();
+    } finally {
+      setLoading(false);
+      setIsEnhancing(false);
+    }
+  }, [project.title, project.description, project.techStack, project._id, addToast, onClose]);
+
+  useEffect(() => {
+    fetchRoadmap();
+  }, [fetchRoadmap]);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 pt-24 lg:pl-80"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: 20, opacity: 0 }}
+        className="w-full max-w-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <Card tone="glass" className="!rounded-2xl max-h-[calc(100vh-8rem)] overflow-hidden p-0 flex flex-col">
+          <div className="flex items-center justify-between border-b border-hairline p-6 glass z-20 shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="rounded-xl bg-brand-500/20 p-2 text-brand-500 font-bold uppercase tracking-widest leading-none">
+                <HiTrendingUp className="text-xl" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-neutral-100">Project Blueprint</h3>
+                <p className="text-xs text-neutral-400">Step-by-step strategy for {project.title}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => fetchRoadmap(true)}
+                disabled={loading || isEnhancing}
+                className="text-[10px] uppercase font-bold tracking-widest text-brand-500 hover:text-brand-600"
+              >
+                {isEnhancing ? "Refining..." : "✨ Enhance"}
+              </Button>
+              <Button variant="ghost" size="sm" onClick={onClose} className="p-1">
+                <HiX className="text-xl text-neutral-400" />
+              </Button>
+            </div>
+          </div>
+
+          <div className="p-6 overflow-y-auto flex-1">
+            {loading ? (
+              <div className="flex flex-col items-center justify-center py-16 gap-3">
+                <span className="spinner h-7 w-7 border-[3px] text-brand-600" />
+                <p className="text-sm font-medium text-neutral-400 animate-pulse uppercase tracking-widest">Architecting Plan...</p>
+              </div>
+            ) : (
+              <div className="space-y-8 py-2">
+                {roadmap?.map((phase, idx) => (
+                  <div key={idx} className="relative pl-10">
+                    {/* Connection Line */}
+                    {idx !== roadmap.length - 1 && (
+                      <div className="absolute left-[11px] top-8 h-[calc(100%+16px)] w-[1px] bg-gradient-to-b from-brand-500/30 to-transparent" />
+                    )}
+                    
+                    <div className="absolute left-0 top-[3px] flex h-6 w-6 items-center justify-center rounded-full border border-brand-500/40 bg-brand-500/10 text-[10px] font-black text-brand-500 shadow-brand-glow">
+                      {idx + 1}
+                    </div>
+
+                    <h4 className="mb-4 text-sm font-bold uppercase tracking-widest text-neutral-200">{phase.title}</h4>
+                    <div className="grid gap-2.5">
+                      {phase.tasks.map((task, tidx) => (
+                        <div key={tidx} className="flex items-center gap-3 rounded-lg border border-hairline-soft bg-tint px-3 py-2.5 hover:bg-tint transition-all group">
+                          <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-hairline group-hover:border-brand-500/50 transition-colors">
+                            <HiCheck className="text-[10px] text-brand-500 opacity-30 group-hover:opacity-100 transition-opacity" />
+                          </div>
+                          <span className="text-sm text-neutral-300 leading-tight">{task}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="border-t border-hairline p-6 flex justify-between items-center glass shrink-0">
+            <p className="text-[10px] text-neutral-500 uppercase tracking-widest font-medium">Blueprint v1.0 • AI Verified</p>
+            <Button variant="primary" size="sm" onClick={onClose} className="px-6">Explore Tasks</Button>
+          </div>
+        </Card>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+const EditProjectModal = ({ project, onClose, onSave }) => {
+  const [form, setForm] = useState({
+    title: project.title,
+    description: project.description,
+    techStack: project.techStack,
+    status: project.status,
+  });
+  const [loadingSuggestion, setLoadingSuggestion] = useState(false);
+  const { addToast } = useToast();
+
+  const handleMagicSuggest = async () => {
+    if (!form.title.trim()) {
+      addToast("Enter a project title first!", "info");
+      return;
+    }
+    setLoadingSuggestion(true);
+    try {
+      const response = await suggestProjectDetails(form.title);
+       setForm((p) => ({
+         ...p,
+         description: response.data.description,
+         techStack: [...new Set([...p.techStack, ...response.data.techStack])],
+       }));
+      addToast("AI has filled in the project details!", "success");
+    } catch (error) {
+      addToast(aiErrorMessage(error), "error");
+    } finally {
+      setLoadingSuggestion(false);
+    }
+  };
+
+  const handleSave = () => {
+    onSave(project._id, form);
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 pt-24 lg:pl-80"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ scale: 0.9 }}
+        animate={{ scale: 1 }}
+        exit={{ scale: 0.9 }}
+        className="w-full max-w-lg"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <Card tone="glass" className="space-y-4 p-6 max-h-[calc(100vh-8rem)] overflow-y-auto">
+          <h3 className="text-xl font-bold text-neutral-100">Edit Project</h3>
+          <div className="space-y-3">
+            <div>
+              <div className="mb-1 flex items-center justify-between">
+                <label className="text-xs font-semibold uppercase text-neutral-500">Project Title</label>
+                <button
+                  type="button"
+                  onClick={handleMagicSuggest}
+                  disabled={loadingSuggestion}
+                  className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-brand-500 hover:text-brand-600 disabled:opacity-50"
+                  title="Generate description and tech stack automatically"
+                >
+                  {loadingSuggestion ? "Thinking..." : "✨ Magic AI"}
+                </button>
+              </div>
+              <input
+                value={form.title}
+                onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
+                placeholder="Title"
+                className="w-full rounded-xl border border-hairline bg-tint px-4 py-2 text-sm text-neutral-100 outline-none focus:ring-2 focus:ring-brand-500"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-semibold uppercase text-neutral-500">Tech Stack</label>
+              <TechInput
+                value={form.techStack}
+                onChange={(ts) => setForm((p) => ({ ...p, techStack: ts }))}
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-semibold uppercase text-neutral-500">Description</label>
+              <textarea
+                value={form.description}
+                onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
+                placeholder="Description"
+                className="w-full min-h-[120px] rounded-xl border border-hairline bg-tint px-4 py-2 text-sm text-neutral-100 outline-none resize-none focus:ring-2 focus:ring-brand-500"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-semibold uppercase text-neutral-500">Project Status</label>
+              <select
+                value={form.status}
+                onChange={(e) => setForm((p) => ({ ...p, status: e.target.value }))}
+                className="w-full rounded-xl border border-hairline bg-tint px-4 py-2 text-sm text-neutral-100 outline-none focus:ring-2 focus:ring-brand-500 [&>option]:bg-neutral-900"
+              >
+                <option value="open">Open</option>
+                <option value="in_progress">In Progress</option>
+                <option value="completed">Completed</option>
+              </select>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="ghost" onClick={onClose}>Cancel</Button>
+            <Button variant="primary" onClick={handleSave}>Save Changes</Button>
+          </div>
+        </Card>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+const MembersModal = ({ project, currentUserId, onClose, onRemove }) => {
+  const getUserId = (m) => m.userId?._id || m.userId;
+  const ownerId = project.ownerId?._id || project.ownerId;
+  const isOwner = ownerId === currentUserId;
+  const userRole = project.members?.find((m) => getUserId(m) === currentUserId)?.role;
+  const canManage = isOwner || userRole === "admin" || userRole === "owner";
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 pt-24 lg:pl-80"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ scale: 0.9 }}
+        animate={{ scale: 1 }}
+        exit={{ scale: 0.9 }}
+        className="w-full max-w-md"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <Card tone="glass" className="p-0 overflow-hidden">
+          <div className="flex items-center justify-between border-b border-hairline p-4">
+            <h3 className="text-lg font-semibold text-neutral-100">Members</h3>
+            <Button variant="ghost" size="sm" onClick={onClose}>
+              <HiX className="text-xl" />
+            </Button>
+          </div>
+          <div className="space-y-1 max-h-80 overflow-y-auto p-2">
+            {project.members?.map((member) => {
+              const memberUserId = getUserId(member);
+              const isMemberOwner = member.role === "owner";
+              const memberFullName = member.userId?.firstName && member.userId?.lastName
+                ? `${member.userId.firstName} ${member.userId.lastName}`
+                : member.userId?.firstName || "Unknown";
+              return (
+                <div
+                  key={memberUserId}
+                  className="flex items-center justify-between rounded-lg border border-hairline-soft bg-tint p-2 hover:bg-tint-strong transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 overflow-hidden rounded-full border border-brand-400/30">
+                      <img
+                        src={
+                          optimizePhotoUrl(member.userId?.photoUrl?.[0]) ||
+                          "https://ui-avatars.com/api/?name=User&background=random"
+                        }
+                        alt={memberFullName}
+                        className="h-full w-full object-cover"
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    </div>
+                  <div>
+                    <p className="text-sm text-neutral-200">{memberFullName}</p>
+                    {isMemberOwner && (
+                      <p className="text-[10px] text-brand-600">Owner</p>
+                    )}
+                  </div>
+                </div>
+                {!isMemberOwner && canManage && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onRemove(project._id, memberUserId)}
+                  >
+                    <HiX className="text-error-400" />
+                  </Button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        </Card>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+const TechChip = ({ tech, onRemove }) => (
+  <span className="flex items-center gap-1.5 rounded-full border border-brand-400/30 bg-brand-500/15 px-3 py-1 text-xs font-medium text-brand-600">
+    {tech}
+    <button
+      type="button"
+      onClick={onRemove}
+      className="flex h-4 w-4 items-center justify-center rounded-full bg-tint-strong text-brand-600 transition hover:bg-tint-strong"
+    >
+      <HiX className="text-[10px]" />
+    </button>
+  </span>
+);
+
+const TechInput = ({ value, onChange }) => {
+  const inputRef = useRef(null);
+
+  const handleKeyDown = (e) => {
+    if ((e.key === "Enter" || e.key === ",") && e.currentTarget.value.trim()) {
+      e.preventDefault();
+      const newTech = e.currentTarget.value.trim();
+      if (!value.includes(newTech)) {
+        onChange([...value, newTech]);
+      }
+      e.currentTarget.value = "";
+    }
+  };
+
+  const removeTech = (techToRemove) => {
+    onChange(value.filter((t) => t !== techToRemove));
+  };
+
+  return (
+    <div className="flex min-h-[46px] flex-wrap items-center gap-2 rounded-xl border border-hairline bg-tint px-3 py-2 transition focus-within:ring-2 focus-within:ring-brand-500/50 hover:bg-tint-strong">
+      {value.map((tech) => (
+        <TechChip key={tech} tech={tech} onRemove={() => removeTech(tech)} />
+      ))}
+      <input
+        ref={inputRef}
+        type="text"
+        placeholder={value.length === 0 ? "Type tech & press Enter..." : ""}
+        className="flex-1 min-w-[140px] border-none bg-transparent text-sm text-neutral-50 outline-none placeholder:text-neutral-500"
+        onKeyDown={handleKeyDown}
+      />
+    </div>
+  );
+};
+
+const ProjectCard = ({ project, currentUserId, onJoin, onView, onRespond, onShowMembers, onEdit, onDelete, onShowRoadmap }) => {
+  const getUserId = (m) => m.userId?._id || m.userId;
+  const ownerId = project.ownerId?._id || project.ownerId;
+  const ownerFullName = project.ownerId?.firstName || "Unknown";
+  const isMember = project.members?.some(
+    (m) => getUserId(m) === currentUserId
+  );
+  const isOwner = ownerId === currentUserId;
+  const userRole = project.members?.find(
+    (m) => getUserId(m) === currentUserId
+  )?.role;
+  const canManage = isOwner || userRole === "admin" || userRole === "owner";
+  const hasPendingRequest = project.joinRequests?.some(
+    (r) => r.user?._id === currentUserId && r.status === "pending"
+  );
+
+  return (
+    <Card tone="glass" className="relative space-y-3 p-5">
+      <div className="flex items-start justify-between">
+        <div className="flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h3 className="text-base font-semibold text-neutral-100">
+              {project.title}
+            </h3>
+            <span
+              className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${
+                project.status === "open"
+                  ? "border-success-400/40 bg-success-500/15 text-success-600"
+                  : project.status === "in_progress"
+                  ? "border-warning-400/40 bg-warning-500/15 text-warning-600"
+                  : "border-neutral-500/40 bg-neutral-500/15 text-neutral-400"
+              }`}
+            >
+              {project.status.replace("_", " ")}
+            </span>
+          </div>
+          <div className="mt-2 flex items-center gap-2">
+            <div className="h-6 w-6 overflow-hidden rounded-full border border-brand-400/50">
+              <img
+                src={
+                  optimizePhotoUrl(project.ownerId?.photoUrl?.[0]) ||
+                  "https://ui-avatars.com/api/?name=User&background=random"
+                }
+                alt={ownerFullName}
+                className="h-full w-full object-cover"
+                loading="lazy"
+                decoding="async"
+              />
+            </div>
+            <span className="text-xs text-brand-600">{ownerFullName}</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {canManage && (
+            <>
+              <Button variant="ghost" size="sm" onClick={() => onEdit(project)}>
+                <HiPencilAlt className="text-lg text-brand-600" />
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => onDelete(project._id)}>
+                <HiTrash className="text-lg text-error-400" />
+              </Button>
+            </>
+          )}
+          {isMember && (
+            <Button variant="ghost" size="sm" onClick={() => onView(project)}>
+              <HiChat className="text-lg" /> Chat
+            </Button>
+          )}
+        </div>
+      </div>
+
+      <p className="text-sm text-neutral-300 line-clamp-4 min-h-[3.5rem]">
+        {project.description}
+      </p>
+
+      {project.techStack?.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {project.techStack.map((tech) => (
+            <span
+              key={tech}
+              className="rounded-full border border-hairline bg-tint px-2 py-0.5 text-[11px] text-neutral-300"
+            >
+              {tech}
+            </span>
+          ))}
+        </div>
+      )}
+
+      <div className="flex items-center justify-between pt-2">
+        <div className="flex gap-2">
+          <Button variant="ghost" size="sm" className="px-2" onClick={() => onShowRoadmap(project)}>
+            <HiTrendingUp className="text-lg text-brand-500" /> Roadmap
+          </Button>
+          <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-500">
+            <span className="text-brand-600">{project.members?.length ?? 1} members</span>
+            {project.members?.length > 1 && (
+              <button
+                type="button"
+                onClick={() => onShowMembers(project)}
+                className="flex items-center gap-1 text-brand-600 hover:text-brand-600"
+              >
+                <HiUsers className="text-sm" /> View
+              </button>
+            )}
+          </div>
+        </div>
+        <div>
+          {project.joinRequests?.filter((r) => r.status === "pending")
+            ?.length > 0 && canManage && (
+            <span className="rounded-full bg-brand-500/20 px-2 py-0.5 text-brand-600">
+              {project.joinRequests.filter((r) => r.status === "pending").length}{" "}
+              pending
+            </span>
+          )}
+        </div>
+        {!isMember && project.status === "open" && (
+          <div>
+            {hasPendingRequest ? (
+              <span className="text-xs text-warning-600">Request pending...</span>
+            ) : (
+              <Button variant="secondary" size="sm" onClick={() => onJoin(project._id)}>
+                <HiUserAdd className="text-lg" /> Join
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {canManage &&
+        project.joinRequests?.filter((r) => r.status === "pending").length > 0 && (
+          <div className="mt-3 space-y-2 border-t border-hairline-soft pt-3">
+            <p className="text-xs font-medium uppercase text-neutral-500">
+              Join Requests
+            </p>
+            {project.joinRequests
+              .filter((r) => r.status === "pending")
+              .map((request) => (
+                <div
+                  key={request._id}
+                  className="flex items-center justify-between rounded-lg border border-hairline-soft bg-tint p-2"
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="h-8 w-8 overflow-hidden rounded-full border border-hairline">
+                      <img
+                        src={
+                          optimizePhotoUrl(request.user?.photoUrl?.[0]) ||
+                          "https://via.placeholder.com/32"
+                        }
+                        alt={request.user?.firstName}
+                        className="h-full w-full object-cover"
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    </div>
+                    <div>
+                      <p className="text-sm text-neutral-200">
+                        {request.user?.firstName} {request.user?.lastName}
+                      </p>
+                      <p className="text-[10px] text-neutral-500">
+                        {new Date(request.requestedAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() =>
+                        onRespond(project._id, request._id, "accept")
+                      }
+                    >
+                      <HiCheck className="text-success-400" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() =>
+                        onRespond(project._id, request._id, "reject")
+                      }
+                    >
+                      <HiX className="text-error-400" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+          </div>
+        )}
+    </Card>
+  );
+};
+
+const MESSAGE_PAGE_SIZE = 30;
+
+const ProjectChat = ({ project, currentUserId, onClose }) => {
+  const [messages, setMessages] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [nextCursor, setNextCursor] = useState(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [newMessage, setNewMessage] = useState("");
+  const [sending, setSending] = useState(false);
+  const { addToast } = useToast();
+  const messagesEndRef = useRef(null);
+  const messagesTopRef = useRef(null);
+
+  const loadMessages = useCallback(async ({ cursor = null, append = false } = {}) => {
+    try {
+      if (append) setLoadingMore(true);
+      else setLoading(true);
+      const data = await getProjectMessages(project._id, { limit: MESSAGE_PAGE_SIZE, cursor: cursor || undefined });
+      const items = data.messages || [];
+      const next = data?.nextCursor ?? null;
+      const more = data?.hasMore ?? false;
+      if (append) {
+        setMessages((prev) => [...items, ...prev]);
+      } else {
+        setMessages(items);
+      }
+      setNextCursor(next);
+      setHasMore(more);
+    } catch {
+      addToast("Unable to load messages", "error");
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  }, [project._id, addToast]);
+
+  useEffect(() => {
+    loadMessages({ cursor: null });
+  }, [loadMessages]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  const handleSendMessage = async () => {
+    if (!newMessage.trim()) return;
+    setSending(true);
+    try {
+      await sendProjectMessageApi(project._id, { message: newMessage });
+      setNewMessage("");
+      await loadMessages();
+    } catch {
+      addToast("Unable to send message", "error");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const getSenderName = (senderId) => {
+    if (!senderId) return "Unknown";
+    const senderIdStr = String(senderId?._id || senderId);
+    const ownerId = String(project.ownerId?._id || project.ownerId);
+    if (senderIdStr === ownerId) return project.ownerId?.firstName || "Owner";
+    const member = project.members?.find((m) => String(m.userId?._id || m.userId) === senderIdStr);
+    if (member?.userId) return `${member.userId.firstName} ${member.userId.lastName || ""}`;
+    if (senderId?.firstName) return `${senderId.firstName} ${senderId.lastName || ""}`;
+    return senderIdStr === currentUserId ? "You" : "Unknown";
+  };
+
+  const getSenderPhoto = (senderId) => {
+    if (!senderId) return "https://ui-avatars.com/api/?name=User&background=random";
+    const senderIdStr = String(senderId?._id || senderId);
+    const ownerId = String(project.ownerId?._id || project.ownerId);
+    if (senderIdStr === ownerId) return optimizePhotoUrl(project.ownerId?.photoUrl?.[0]) || "https://ui-avatars.com/api/?name=Owner&background=random";
+    const member = project.members?.find((m) => String(m.userId?._id || m.userId) === senderIdStr);
+    if (member?.userId?.photoUrl?.[0]) return optimizePhotoUrl(member.userId.photoUrl[0]);
+    if (senderId?.photoUrl?.[0]) return optimizePhotoUrl(senderId.photoUrl[0]);
+    return "https://ui-avatars.com/api/?name=User&background=random";
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 pt-24 lg:pl-80"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ scale: 0.9 }}
+        animate={{ scale: 1 }}
+        exit={{ scale: 0.9 }}
+        className="flex h-[80vh] w-full max-w-2xl flex-col rounded-2xl bg-neutral-900 border border-hairline overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between border-b border-hairline px-4 py-3">
+          <div>
+            <h3 className="text-lg font-semibold text-neutral-100">{project.title}</h3>
+            <p className="text-xs text-neutral-400">Project Chat</p>
+          </div>
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            <HiX className="text-xl" />
+          </Button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+          {loading ? (
+            <div className="flex h-full items-center justify-center">
+              <span className="spinner h-5 w-5 border-2 text-brand-600" />
+            </div>
+          ) : messages.length === 0 ? (
+            <p className="text-center text-sm text-neutral-500">No messages yet. Start the conversation!</p>
+          ) : (
+            <>
+              {hasMore && (
+                <div ref={messagesTopRef} className="flex justify-center pb-2">
+                  <Button
+                    variant="ghost"
+                    size="xs"
+                    onClick={() => loadMessages({ cursor: nextCursor, append: true })}
+                    disabled={loadingMore}
+                  >
+                    {loadingMore ? <span className="spinner h-3 w-3 border-2 text-brand-600" /> : null}
+                    {loadingMore ? "Loading..." : "Load Older Messages"}
+                  </Button>
+                </div>
+              )}
+              {messages.map((msg) => {
+              const senderIdStr = String(msg.senderId?._id || msg.senderId);
+              const isOwn = senderIdStr === currentUserId;
+              return (
+                <div key={msg._id} className={`flex ${isOwn ? "justify-end" : "justify-start"}`}>
+                  {!isOwn && (
+                    <div className="mr-2 flex-shrink-0">
+                      <img
+                        src={getSenderPhoto(msg.senderId)}
+                        alt={getSenderName(msg.senderId)}
+                        className="h-8 w-8 rounded-full object-cover border border-hairline"
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    </div>
+                  )}
+                  <div className={`max-w-[75%] rounded-2xl px-4 py-2 ${
+                    isOwn ? "bg-brand-500 text-white" : "bg-tint-strong text-neutral-200"
+                  }`}>
+                    {!isOwn && <p className="text-xs font-medium text-brand-600 mb-1">{getSenderName(msg.senderId)}</p>}
+                    <p className="text-sm">{msg.message}</p>
+                    <p className="text-[10px] text-white/60 mt-1">
+                      {new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+            </>
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+
+        <div className="border-t border-hairline p-3">
+          <div className="flex gap-2">
+            <input
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSendMessage()}
+              placeholder="Type a message..."
+              className="flex-1 rounded-xl border border-hairline bg-tint px-4 py-2 text-sm text-neutral-100 outline-none focus-visible:ring-2 focus-visible:ring-brand-400"
+            />
+            <Button variant="primary" onClick={handleSendMessage} disabled={sending || !newMessage.trim()}>
+              <HiPaperAirplane className="text-lg" />
+            </Button>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+const PAGE_SIZE = 12;
+
+const Projects = () => {
+  const dispatch = useDispatch();
+  const reduxProjects = useSelector((store) => store.projects);
+  const { items: reduxItems, nextCursor: reduxNextCursor, hasMore: reduxHasMore } = reduxProjects;
+  const [projects, setProjects] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [nextCursor, setNextCursor] = useState(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [chatProject, setChatProject] = useState(null);
+  const [showCreate, setShowCreate] = useState(false);
+  const [activeTab, setActiveTab] = useState("my");
+  const [membersProject, setMembersProject] = useState(null);
+  const [editingProject, setEditingProject] = useState(null);
+  const [roadmapProject, setRoadmapProject] = useState(null);
+  const [form, setForm] = useState({ title: "", description: "", techStack: [] });
+  const [loadingSuggestion, setLoadingSuggestion] = useState(false);
+  const { addToast } = useToast();
+  const user = useSelector((store) => store.user);
+  const currentUserId = user?._id;
+
+  const handleMagicSuggest = async () => {
+    if (!form.title.trim()) {
+      addToast("Enter a project title first!", "info");
+      return;
+    }
+    setLoadingSuggestion(true);
+    try {
+      const response = await suggestProjectDetails(form.title);
+       setForm((p) => ({
+         ...p,
+         description: response.data.description,
+         techStack: [...new Set([...p.techStack, ...response.data.techStack])],
+       }));
+      addToast("AI has filled in the project details!", "success");
+    } catch (error) {
+      addToast(aiErrorMessage(error), "error");
+    } finally {
+      setLoadingSuggestion(false);
+    }
+  };
+
+  const loadProjects = useCallback(async ({ cursor = null, append = false } = {}) => {
+    try {
+      if (append) setLoadingMore(true);
+      else setLoading(true);
+      const data = await getProjects({ limit: PAGE_SIZE, cursor: cursor || undefined });
+      const items = data.projects ?? [];
+      const next = data?.nextCursor ?? null;
+      const more = data?.hasMore ?? false;
+      if (append) {
+        setProjects((prev) => [...prev, ...items]);
+      } else {
+        setProjects(items);
+        dispatch(addProjects({ items, nextCursor: next, hasMore: more }));
+      }
+      setNextCursor(next);
+      setHasMore(more);
+    } catch (error) {
+      addToast(error?.response?.data?.message || "Unable to load projects", "error");
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  }, [dispatch, addToast]);
+
+  const seeded = useRef(false);
+
+  useEffect(() => {
+    if (seeded.current) return;
+    seeded.current = true;
+    if (reduxItems?.length > 0) {
+      setProjects(reduxItems);
+      setNextCursor(reduxNextCursor);
+      setHasMore(reduxHasMore);
+      setLoading(false);
+    } else {
+      loadProjects({ cursor: null });
+    }
+  }, [reduxItems, reduxNextCursor, reduxHasMore, loadProjects]);
+
+  const currentUserIdStr = String(currentUserId || "");
+  const getUserId = (m) => String(m.userId?._id || m.userId || "");
+  
+  const myProjects = projects.filter((p) => {
+    const ownerIdStr = String(p.ownerId?._id || p.ownerId || "");
+    return ownerIdStr === currentUserIdStr || p.members?.some((m) => getUserId(m) === currentUserIdStr);
+  });
+  
+  const exploreProjects = projects.filter((p) => {
+    const ownerIdStr = String(p.ownerId?._id || p.ownerId || "");
+    const isMember = ownerIdStr === currentUserIdStr || p.members?.some((m) => getUserId(m) === currentUserIdStr);
+    return !isMember && p.status === "open";
+  });
+  
+  const displayProjects = activeTab === "my" ? myProjects : exploreProjects;
+
+  const removeMember = async (projectId, memberId) => {
+    try {
+      await removeProjectMember(projectId, memberId);
+      loadProjects();
+      addToast("Member removed", "success");
+    } catch (error) {
+      addToast(error?.response?.data?.message || "Unable to remove member", "error");
+    }
+  };
+
+  const createProject = async () => {
+    if (!form.title.trim() || !form.description.trim()) {
+      addToast("Provide a title and description", "info");
+      return;
+    }
+    setCreating(true);
+    try {
+      const data = await createProjectApi(form);
+      dispatch(addProjects({ items: [data.project, ...(reduxItems || [])], nextCursor: reduxNextCursor ?? null, hasMore: reduxHasMore ?? false }));
+      setProjects((prev) => [data.project, ...prev]);
+      setForm({ title: "", description: "", techStack: [] });
+      setShowCreate(false);
+      addToast("Project created", "success");
+    } catch (error) {
+      addToast(error?.response?.data?.message || "Unable to create project", "error");
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleEditSave = async (projectId, updatedData) => {
+    try {
+      const data = await updateProjectApi(projectId, updatedData);
+      dispatch(updateProject(data.project));
+      setProjects((prev) => prev.map((p) => (p._id === projectId ? { ...p, ...data.project } : p)));
+      setEditingProject(null);
+      addToast("Project updated", "success");
+    } catch (error) {
+      addToast(error?.response?.data?.message || "Unable to update project", "error");
+    }
+  };
+
+  const handleDelete = async (projectId) => {
+    if (!window.confirm("Are you sure you want to delete this project?")) return;
+    try {
+      await deleteProjectApi(projectId);
+      dispatch(removeProject(projectId));
+      setProjects((prev) => prev.filter((p) => p._id !== projectId));
+      addToast("Project deleted", "success");
+    } catch (error) {
+      addToast(error?.response?.data?.message || "Unable to delete project", "error");
+    }
+  };
+
+  const requestJoin = async (projectId) => {
+    try {
+      await joinProject(projectId);
+      loadProjects();
+      addToast("Join request sent", "success");
+    } catch (error) {
+      addToast(error?.response?.data?.message || "Unable to send request", "error");
+    }
+  };
+
+  const respondToRequest = async (projectId, requestId, action) => {
+    try {
+      const data = await respondToJoinRequest(projectId, requestId, action);
+      dispatch(updateProject(data.project));
+      addToast(`Request ${action}ed`, "success");
+    } catch (error) {
+      addToast(error?.response?.data?.message || "Unable to respond", "error");
+    }
+  };
+
+  return (
+    <div className="space-y-8">
+      {!showCreate ? (
+        <>
+          <div className="flex items-center justify-between">
+            <div className="flex gap-2">
+              {["my", "explore"].map(tab => (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setActiveTab(tab)}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                    activeTab === tab ? "bg-brand-500 text-white" : "text-neutral-400 hover:text-neutral-200"
+                  }`}
+                >
+                  {tab === "my" ? "My Projects" : "Explore"}
+                </button>
+              ))}
+            </div>
+            <Button variant="primary" onClick={() => setShowCreate(true)}>
+              <HiPlus className="text-lg" /> Create
+            </Button>
+          </div>
+
+          {loading ? (
+            <Card tone="translucent" className="flex h-64 items-center justify-center">
+              <span className="spinner h-7 w-7 border-[3px] text-brand-600" />
+            </Card>
+          ) : displayProjects.length === 0 ? (
+            <Card tone="translucent" className="flex flex-col items-center gap-4 p-8 text-center">
+              {activeTab === "my" ? <HiCollection className="text-3xl text-brand-600" /> : <HiGlobeAlt className="text-3xl text-brand-600" />}
+              <h3 className="text-lg font-semibold text-neutral-100">{activeTab === "my" ? "No projects yet" : "No projects to explore"}</h3>
+              <p className="text-sm text-neutral-400">{activeTab === "my" ? "Create a project to start collaborating." : "All projects are either private or you've already joined."}</p>
+              {activeTab === "my" && <Button variant="primary" onClick={() => setShowCreate(true)}><HiPlus className="text-lg" /> Create Project</Button>}
+            </Card>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2">
+              {displayProjects.map((project) => (
+                <ProjectCard
+                  key={project._id}
+                  project={project}
+                  currentUserId={currentUserId}
+                  onJoin={requestJoin}
+                  onView={setChatProject}
+                  onRespond={respondToRequest}
+                  onRemove={removeMember}
+                  onShowMembers={setMembersProject}
+                  onEdit={setEditingProject}
+                  onDelete={handleDelete}
+                  onShowRoadmap={setRoadmapProject}
+                />
+              ))}
+            </div>
+          )}
+          {displayProjects.length > 0 && hasMore && (
+            <div className="mt-8 flex justify-center">
+              <Button
+                variant="secondary"
+                onClick={() => loadProjects({ cursor: nextCursor, append: true })}
+                disabled={loadingMore}
+              >
+                {loadingMore ? <span className="spinner h-4 w-4 border-2 text-brand-600" /> : <HiArrowDown className="text-lg" />}
+                {loadingMore ? "Loading..." : "Load More"}
+              </Button>
+            </div>
+          )}
+        </>
+      ) : (
+        <Card tone="translucent" className="space-y-4 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-neutral-100">Create Project</h2>
+              <p className="text-xs text-neutral-400">Share your vision and find teammates.</p>
+            </div>
+            <Button variant="ghost" onClick={() => setShowCreate(false)}><HiX className="text-xl" /></Button>
+          </div>
+          <div className="grid gap-4">
+            <div>
+              <div className="mb-1 flex items-center justify-between">
+                <label className="text-xs font-semibold uppercase text-neutral-500">Project Title</label>
+                <button
+                  type="button"
+                  onClick={handleMagicSuggest}
+                  disabled={loadingSuggestion}
+                  className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-brand-500 hover:text-brand-600 disabled:opacity-50"
+                  title="Generate description and tech stack automatically"
+                >
+                  {loadingSuggestion ? "Thinking..." : "✨ Magic AI"}
+                </button>
+              </div>
+              <input
+                value={form.title}
+                onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
+                placeholder="e.g. Real-time Crypto Dashboard"
+                className="w-full rounded-xl border border-hairline bg-tint px-3 py-2 text-sm text-neutral-100 outline-none focus:ring-2 focus:ring-brand-500"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-semibold uppercase text-neutral-500">Tech Stack</label>
+              <TechInput
+                value={form.techStack}
+                onChange={(ts) => setForm((p) => ({ ...p, techStack: ts }))}
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-semibold uppercase text-neutral-500">Description</label>
+              <textarea
+                value={form.description}
+                onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
+                placeholder="Describe your vision and find teammates."
+                className="min-h-[150px] w-full rounded-xl border border-hairline bg-tint px-3 py-2 text-sm text-neutral-100 outline-none resize-y focus:ring-2 focus:ring-brand-500"
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setShowCreate(false)}>Cancel</Button>
+            <Button variant="primary" onClick={createProject} disabled={creating}>{creating ? <span className="spinner h-4 w-4 border-2 text-brand-600" /> : <><HiPlus className="text-lg" /> Create Project</>}</Button>
+          </div>
+        </Card>
+      )}
+
+      <AnimatePresence>
+        {editingProject && <EditProjectModal project={editingProject} onClose={() => setEditingProject(null)} onSave={handleEditSave} />}
+        {chatProject && <ProjectChat project={chatProject} currentUserId={currentUserId} onClose={() => setChatProject(null)} />}
+        {membersProject && <MembersModal project={membersProject} currentUserId={currentUserId} onClose={() => setMembersProject(null)} onRemove={removeMember} />}
+        {roadmapProject && <RoadmapModal project={roadmapProject} onClose={() => setRoadmapProject(null)} />}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+export default Projects;

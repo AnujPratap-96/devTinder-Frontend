@@ -11,4 +11,4 @@ export { default as ChatSearchBar } from "./ChatSearchBar";
 export { default as CallQualityBadge } from "./CallQualityBadge";
 export { default as MissedCallCard } from "./MissedCallCard";
 export { default as FEATURES } from "../../config/features";
-export * as enhancementApi from "./enhancementApi";
+export * as enhancementApi from "../../api/enhancementApi";

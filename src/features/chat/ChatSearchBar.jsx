@@ -4,7 +4,7 @@
  */
 import { useEffect, useState } from "react";
 import { HiSearch, HiX, HiOutlineLocationMarker } from "react-icons/hi";
-import { searchMessages } from "./enhancementApi";
+import { searchMessages } from "../../api/enhancementApi";
 
 const typeIcon = (type) => (type === "image" ? "🖼️" : type === "audio" ? "🎤" : type === "call" ? "📞" : "💬");
 

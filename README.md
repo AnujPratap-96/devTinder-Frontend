@@ -1,5 +1,5 @@
 <p align="center">
-  <h1 align="center">DevTinder - Developer Networking Frontend</h1>
+  <h1 align="center">DevConnect - Developer Networking Frontend</h1>
   <p align="center">A React 18 + Vite single-page app for discovering developers, matching, secure real-time chat, calls, AI-assisted profiles, projects, subscriptions, and account safety.</p>
 </p>
 
@@ -42,7 +42,7 @@
 
 ## Overview
 
-DevTinder Frontend is the browser client for a developer networking platform. It gives users a swipeable discovery feed, connection requests, end-to-end-encryption-aware chat, WebRTC call controls, AI helpers, project collaboration, paid memberships, account security, and admin screens.
+DevConnect Frontend is the browser client for a developer networking platform. It gives users a swipeable discovery feed, connection requests, end-to-end-encryption-aware chat, WebRTC call controls, AI helpers, project collaboration, paid memberships, account security, and admin screens.
 
 The app uses React Router for route-level pages, Redux Toolkit for shared state, Axios for API calls, Socket.io Client for realtime events, Tailwind CSS/DaisyUI for styling, and Framer Motion for transitions.
 
@@ -69,7 +69,7 @@ The Axios client sends credentials with every request and retries protected call
 
 ### 2. Dashboard Shell
 
-Authenticated routes are wrapped by `Body.jsx`:
+Authenticated routes are wrapped by `src/layouts/Body.jsx`:
 
 - Fixed navbar
 - Responsive sidebar
@@ -270,35 +270,155 @@ The admin area at `/admin` is restricted to admin users:
 ## Project Structure
 
 ```text
-DevTinder-FrontEnd/
-|-- README.md
-|-- index.html
-|-- package.json
-|-- vite.config.js
-|-- tailwind.config.js
-|-- vercel.json
-|-- public/
-|   |-- logo.svg
-|   `-- robots.txt
-`-- src/
-    |-- App.jsx                         # Router, providers, lazy-loaded pages
-    |-- main.jsx                        # React root
-    |-- index.css                       # Global styles
-    |-- api/                            # Feature API clients
-    |-- components/                     # Pages, layout, cards, auth, admin, calls, UI
-    |   |-- admin/                      # Admin users/reports/banned/plans
-    |   |-- call/                       # Call provider, overlays, controls, screens
-    |   `-- ui/                         # Button, card, modal, select, spinner, auth inputs
-    |-- config/                         # Base URL and feature flags
-    |-- context/                        # Theme and toast providers
-    |-- features/
-    |   |-- chat/                       # Markdown, GIFs, reactions, voice notes, search
-    |   |-- call/                       # Call audio/tone helpers
-    |   `-- offline/                    # Offline message cache and outgoing queue
-    |-- hooks/                          # Call and connection hooks
-    |-- store/                          # Redux slices
-    |-- styles/                         # Utility CSS
-    `-- utils/                          # AI, E2EE, socket, call, time, avatar, text helpers
+devConnect-Frontend-main/
+├── README.md
+├── index.html                                  # HTML5 SPA entry
+├── package.json                                # Dependencies & build scripts
+├── package-lock.json
+├── vite.config.js                              # Vite bundler configuration & proxies
+├── tailwind.config.js                          # Tailwind CSS styling & DaisyUI plugins
+├── postcss.config.js                           # PostCSS autoprefixer configuration
+├── eslint.config.js                            # ESLint 9 linting rules
+├── vercel.json                                 # Vercel SPA routing rewrites
+├── public/
+│   ├── logo.svg                                # Application brand icon
+│   └── robots.txt                              # Web crawler instructions
+└── src/
+    ├── main.jsx                                # Entrypoint: mounts App, loads global styles
+    ├── App.jsx                                 # Providers, router & lazy-loaded routes
+    ├── api/                                    # Axios HTTP services by domain
+    │   ├── client.js                           # Axios instance with credentials & refresh interceptor
+    │   ├── index.js                            # Aggregate API export
+    │   ├── admin.js                            # Admin user/report/plan APIs
+    │   ├── ai.js                               # AI bios, icebreakers & project helpers
+    │   ├── auth.js                             # Authentication, OTP & session APIs
+    │   ├── bookmarks.js                        # Bookmark APIs
+    │   ├── chat.js                             # Messaging & conversation APIs
+    │   ├── community.js                        # Community & endorsement APIs
+    │   ├── connections.js                      # Connection, block, report APIs
+    │   ├── enhancementApi.js                   # Chat extras: voice notes, search, prefs, missed calls
+    │   ├── feed.js                             # Discovery feed & radius search
+    │   ├── invite.js                           # Email invitation APIs
+    │   ├── notifications.js                    # Notification APIs
+    │   ├── plans.js                            # Membership & Razorpay order APIs
+    │   ├── profile.js                          # Profile APIs
+    │   ├── profileViews.js                     # Profile view tracking APIs
+    │   ├── projects.js                         # Projects & team APIs
+    │   └── requests.js                         # Connection request APIs
+    ├── components/                             # Shared, app-agnostic components
+    │   ├── common/
+    │   │   ├── ErrorBoundary.jsx               # Component failure barrier
+    │   │   └── MatchCelebration.jsx            # Global confetti match overlay
+    │   ├── layout/
+    │   │   ├── Navbar.jsx                      # Top navigation bar
+    │   │   ├── Sidebar.jsx                     # Side navigation with counters
+    │   │   ├── Footer.jsx                      # Global footer
+    │   │   └── NotificationBell.jsx            # Notification bell & dropdown
+    │   └── ui/                                 # Atomic UI primitives
+    │       ├── Aurora.jsx
+    │       ├── AuthButton.jsx
+    │       ├── AuthInput.jsx
+    │       ├── AuthShell.jsx
+    │       ├── Button.jsx
+    │       ├── Card.jsx
+    │       ├── EmptyState.jsx
+    │       ├── Modal.jsx
+    │       ├── Select.jsx
+    │       └── Spinner.jsx
+    ├── config/
+    │   ├── constants.js                        # BASE_URL & Socket.io connection helpers
+    │   └── features.js                         # Client feature switches
+    ├── context/
+    │   ├── ThemeProvider.jsx                   # Dark/light theme provider
+    │   └── ToastProvider.jsx                   # Global toast provider
+    ├── features/                               # Domain-specific building blocks
+    │   ├── ai/
+    │   │   ├── AIMatchExplainer.jsx            # AI compatibility explanation dialog
+    │   │   └── AIPanel.jsx                     # AI bio & skill assistant
+    │   ├── call/
+    │   │   ├── callTone.js                     # Ringtone & dial tone synthesis
+    │   │   └── components/                     # WebRTC call UI
+    │   │       ├── CallButton.jsx
+    │   │       ├── CallControls.jsx
+    │   │       ├── CallOverlays.jsx
+    │   │       ├── CallProvider.jsx
+    │   │       ├── InCallScreen.jsx
+    │   │       ├── IncomingCallSheet.jsx
+    │   │       └── OutgoingCallSheet.jsx
+    │   ├── chat/                               # Chat extras (markdown, voice, reactions, GIFs...)
+    │   │   ├── index.js
+    │   │   ├── CallQualityBadge.jsx
+    │   │   ├── ChatSearchBar.jsx
+    │   │   ├── GifPicker.jsx
+    │   │   ├── MarkdownMessage.jsx
+    │   │   ├── MessageReactions.jsx
+    │   │   ├── MissedCallCard.jsx
+    │   │   ├── VoiceNotePlayer.jsx
+    │   │   └── VoiceNoteRecorder.jsx
+    │   ├── connections/
+    │   │   └── ConnectionModal.jsx             # Connection details & endorsements
+    │   ├── feed/
+    │   │   ├── UserCard.jsx                    # Swipeable profile card with actions
+    │   │   └── CompactUserItem.jsx             # Compact card for search results
+    │   ├── offline/
+    │   │   ├── index.js
+    │   │   └── offlineChat.js                  # Chat cache & pending send queue
+    │   └── profile/
+    │       ├── EditProfile.jsx                 # Profile editor form
+    │       ├── ProfileStrengthMeter.jsx        # Profile completeness meter
+    │       └── ProfileViews.jsx                # Who viewed your profile
+    ├── hooks/
+    │   ├── useCall.js                          # WebRTC call state hook
+    │   └── useConnectionList.js                # Connections fetcher hook
+    ├── layouts/                                # Route layout shells (render <Outlet />)
+    │   ├── Body.jsx                            # Authenticated dashboard shell
+    │   └── LandingPage.jsx                     # Public/auth shell
+    ├── pages/                                  # Route-level screens
+    │   ├── Home.jsx
+    │   ├── Feed.jsx
+    │   ├── Profile.jsx
+    │   ├── Connections.jsx
+    │   ├── Requests.jsx
+    │   ├── Messages.jsx
+    │   ├── ChatBox.jsx
+    │   ├── Projects.jsx
+    │   ├── Bookmarks.jsx
+    │   ├── InviteFriends.jsx
+    │   ├── Premium.jsx
+    │   ├── Settings.jsx
+    │   ├── auth/
+    │   │   ├── Login.jsx
+    │   │   ├── Register.jsx
+    │   │   ├── Signup.jsx
+    │   │   ├── Otp.jsx
+    │   │   └── ForgotPassword.jsx
+    │   └── admin/
+    │       ├── AdminLayout.jsx
+    │       ├── AdminUsers.jsx
+    │       ├── AdminReports.jsx
+    │       ├── AdminBanned.jsx
+    │       └── AdminPlans.jsx
+    ├── store/
+    │   ├── appStore.js                         # configureStore root
+    │   └── slices/
+    │       ├── userSlice.js
+    │       ├── feedSlice.js
+    │       ├── connectionSlice.js
+    │       ├── requestsSlice.js
+    │       ├── callSlice.js
+    │       ├── projectSlice.js
+    │       ├── plansSlice.js
+    │       └── profileViewSlice.js
+    ├── styles/
+    │   ├── index.css                           # Tailwind base, components, animations
+    │   └── utilities.css                       # Custom utilities
+    └── utils/
+        ├── aiApi.js                            # AI request wrapper
+        ├── avatar.js                           # Avatar/photo URL helpers
+        ├── callClient.js                       # RTCPeerConnection wrapper
+        ├── e2ee.js                             # Encryption primitives
+        ├── textUtils.jsx                       # Linkify & highlight helpers
+        └── timeUtils.js                        # Time formatters
 ```
 
 ---
@@ -313,7 +433,7 @@ DevTinder-FrontEnd/
 ### Install Dependencies
 
 ```bash
-cd DevTinder-FrontEnd
+cd DevConnect-FrontEnd
 npm install
 ```
 
@@ -324,7 +444,7 @@ The API base URL is currently selected in `src/config/constants.js`:
 ```js
 location.hostname === "localhost"
   ? "http://localhost:3000"
-  : "https://devtinder-1zr8.onrender.com"
+  : "YOUR_BACKEND_URL"
 ```
 
 For GIF search, create `.env` with:
@@ -349,7 +469,7 @@ The app is available at `http://localhost:5173`.
 |---|---|---|
 | `VITE_TENOR_API_KEY` | `AIza...` | Enables the Tenor GIF picker in chat. Without it, the GIF button is hidden. |
 
-API and Socket.io URLs are hardcoded through `src/config/constants.js` and `src/utils/constant.js`.
+API and Socket.io URLs are hardcoded in `src/config/constants.js`.
 
 ---
 

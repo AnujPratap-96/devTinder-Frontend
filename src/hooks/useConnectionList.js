@@ -1,8 +1,8 @@
 import { useEffect, useCallback, useState, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { createSocketConnection } from "../utils/constant";
+import { createSocketConnection } from "../config/constants";
 import { getConnections } from "../api/connections";
-import { addConnections } from "../store/connectionSlice";
+import { addConnections } from "../store/slices/connectionSlice";
 import { useToast } from "../context/ToastProvider";
 
 const PAGE_SIZE = 20;

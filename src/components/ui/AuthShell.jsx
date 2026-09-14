@@ -7,7 +7,7 @@ const Logo = () => (
     <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 via-brand-400 to-accent-purple text-lg text-on-accent shadow-brand-glow">
       <HiCode />
     </span>
-    <span className="text-xl font-bold text-neutral-50">DevTinder</span>
+    <span className="text-xl font-bold text-neutral-50">DevConnect</span>
   </div>
 );
 

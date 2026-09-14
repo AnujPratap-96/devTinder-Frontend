@@ -1,7 +1,7 @@
 import axios from "axios";
 import { BASE_URL } from "../config/constants";
 import appStore from "../store/appStore";
-import { removeUser } from "../store/userSlice";
+import { removeUser } from "../store/slices/userSlice";
 
 const client = axios.create({
   baseURL: BASE_URL,

@@ -11,7 +11,7 @@
  *   3. delete the `offlineChat` entry from src/config/features.js.
  */
 
-const DB_NAME = "devtinder-offline";
+const DB_NAME = "devconnect-offline";
 const DB_VERSION = 1;
 const STORE_MESSAGES = "messages";
 const STORE_OUTBOX = "outbox";

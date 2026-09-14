@@ -5,7 +5,7 @@ const ThemeContext = createContext({ theme: "dark", toggleTheme: () => {}, setTh
 
 const getInitialTheme = () => {
   if (typeof window === "undefined") return "dark";
-  const stored = localStorage.getItem("devtinder-theme");
+  const stored = localStorage.getItem("devconnect-theme");
   if (stored === "light" || stored === "dark") return stored;
   return "dark";
 };
@@ -17,7 +17,7 @@ export const ThemeProvider = ({ children }) => {
     const root = document.documentElement;
     root.setAttribute("data-theme", theme);
     root.style.colorScheme = theme;
-    localStorage.setItem("devtinder-theme", theme);
+    localStorage.setItem("devconnect-theme", theme);
   }, [theme]);
 
   const setTheme = (next) => setThemeState(next === "light" ? "light" : "dark");

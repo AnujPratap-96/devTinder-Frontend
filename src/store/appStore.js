@@ -1,12 +1,12 @@
 import { configureStore } from "@reduxjs/toolkit";
-import userReducer from "./userSlice";
-import feedReducer from "./feedSlice";
-import connectionReducer from "./connectionSlice";
-import requestReducer from "./requestsSlice";
-import projectReducer from "./projectSlice";
-import callReducer from "./callSlice";
-import profileViewReducer from "./profileViewSlice";
-import plansReducer from "./plansSlice";
+import userReducer from "./slices/userSlice";
+import feedReducer from "./slices/feedSlice";
+import connectionReducer from "./slices/connectionSlice";
+import requestReducer from "./slices/requestsSlice";
+import projectReducer from "./slices/projectSlice";
+import callReducer from "./slices/callSlice";
+import profileViewReducer from "./slices/profileViewSlice";
+import plansReducer from "./slices/plansSlice";
 const appStore = configureStore({
   reducer: {
     user: userReducer,

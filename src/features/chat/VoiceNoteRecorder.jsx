@@ -5,7 +5,7 @@
  */
 import { useEffect, useRef, useState } from "react";
 import { HiMicrophone, HiStop, HiX } from "react-icons/hi";
-import { uploadVoiceNote } from "./enhancementApi";
+import { uploadVoiceNote } from "../../api/enhancementApi";
 
 const MAX_DURATION_SEC = 60;
 

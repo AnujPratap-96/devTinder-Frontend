@@ -16,10 +16,10 @@
 import axios from "axios";
 import { BASE_URL } from "../config/constants";
 
-const DB_NAME = "devtinder-e2ee";
+const DB_NAME = "devconnect-e2ee";
 const STORE = "keys";
 const KEY_VERSION = 1;
-const HKDF_INFO = new TextEncoder().encode("devtinder-e2ee-v1");
+const HKDF_INFO = new TextEncoder().encode("devconnect-e2ee-v1");
 
 // ── module state ────────────────────────────────────────────────────────────
 let selfPrivateKey = null; // CryptoKey

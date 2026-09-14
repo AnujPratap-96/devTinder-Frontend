@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSelector, useDispatch, useStore } from "react-redux";
-import { createSocketConnection } from "../utils/constant";
+import { createSocketConnection } from "../config/constants";
 import callClient from "../utils/callClient";
 import { startRingtone, stopRingtone } from "../features/call/callTone";
 import { useToast } from "../context/ToastProvider";
@@ -12,7 +12,7 @@ import {
   toggleMute as toggleMuteAction,
   toggleCamera as toggleCameraAction,
   resetCall,
-} from "../store/callSlice";
+} from "../store/slices/callSlice";
 
 export const useCall = () => {
   const user = useSelector((s) => s.user);
