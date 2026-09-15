@@ -31,7 +31,7 @@ const Navbar = () => {
           </span>
           <span className="flex flex-col">
             <span className="text-base font-semibold text-neutral-50">
-              Dev<span className="gradient-text">Tinder</span>
+              Dev<span className="gradient-text">Connect</span>
             </span>
             <span className="text-[0.65rem] font-medium uppercase tracking-[0.42em] text-neutral-500">
               Match · Collaborate · Ship
