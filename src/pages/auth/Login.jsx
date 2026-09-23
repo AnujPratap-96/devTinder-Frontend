@@ -1,14 +1,16 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useDispatch } from "react-redux";
 import { addUser } from "../../store/slices/userSlice";
 import { useNavigate } from "react-router-dom";
-import { login, verify2faLogin } from "../../api/auth";
+import { login, verify2faLogin, oauthLogin } from "../../api/auth";
 import { ensureCrypto } from "../../utils/e2ee";
 import { useToast } from "../../context/ToastProvider";
 import { HiEye, HiEyeOff, HiArrowRight, HiMail, HiShieldCheck } from "react-icons/hi";
 import AuthShell from "../../components/ui/AuthShell";
 import AuthInput from "../../components/ui/AuthInput";
 import AuthButton from "../../components/ui/AuthButton";
+import GoogleAuthButton from "../../components/ui/GoogleAuthButton";
+import GitHubAuthButton from "../../components/ui/GitHubAuthButton";
 
 const Login = () => {
   const { addToast } = useToast();
@@ -23,6 +25,7 @@ const Login = () => {
 
   const emailRef = useRef();
   const passwordRef = useRef();
+  const githubCodeExchanged = useRef(false);
 
   const finishLogin = (user) => {
     dispatch(addUser(user));
@@ -30,6 +33,29 @@ const Login = () => {
     ensureCrypto({ userId: user._id }).catch(() => {});
     navigate("/feed");
   };
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("code");
+    if (!code || githubCodeExchanged.current) return;
+    githubCodeExchanged.current = true;
+
+    window.history.replaceState({}, document.title, window.location.pathname);
+
+    const exchangeCode = async () => {
+      setLoading(true);
+      try {
+        const data = await oauthLogin({ provider: "github", code });
+        finishLogin(data.user);
+      } catch (err) {
+        addToast(err?.response?.data?.message || "GitHub sign-in failed", "error");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    exchangeCode();
+  }, []);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -195,6 +221,20 @@ const Login = () => {
           {loading ? "Signing in..." : <>Sign In <HiArrowRight className="text-base" /></>}
         </AuthButton>
       </form>
+
+      <div className="relative my-5 flex items-center justify-center">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-hairline" />
+        </div>
+        <span className="relative bg-surface-900 px-3 text-xs uppercase tracking-wider text-neutral-500">
+          Or continue with
+        </span>
+      </div>
+
+      <div className="flex flex-col gap-3">
+        <GoogleAuthButton onSuccess={finishLogin} text="Sign in with Google" />
+        <GitHubAuthButton text="Sign in with GitHub" />
+      </div>
 
       <p className="mt-6 text-center text-sm text-neutral-400">
         Don&apos;t have an account?{" "}

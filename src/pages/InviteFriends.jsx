@@ -246,7 +246,7 @@ const InviteFriends = () => {
                 className="rounded-2xl border border-brand-400/25 bg-gradient-to-br from-brand-500/15 via-brand-400/10 to-accent-cyan/10 p-5 text-center"
               >
                 <p className="text-body-sm text-neutral-300">
-                  You've used all invites included in your current plan.
+                  You&apos;ve used all invites included in your current plan.
                 </p>
                 <Button
                   variant="secondary"

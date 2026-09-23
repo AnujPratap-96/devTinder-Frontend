@@ -1,17 +1,31 @@
 import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useDispatch } from "react-redux";
 import { register } from "../../api/auth";
+import { addUser } from "../../store/slices/userSlice";
+import { ensureCrypto } from "../../utils/e2ee";
 import { useToast } from "../../context/ToastProvider";
 import { HiArrowRight, HiMail } from "react-icons/hi";
 import AuthShell from "../../components/ui/AuthShell";
 import AuthInput from "../../components/ui/AuthInput";
 import AuthButton from "../../components/ui/AuthButton";
+import GoogleAuthButton from "../../components/ui/GoogleAuthButton";
+import GitHubAuthButton from "../../components/ui/GitHubAuthButton";
 
 const Register = () => {
   const emailRef = useRef();
   const [loading, setLoading] = useState(false);
   const { addToast } = useToast();
   const navigate = useNavigate();
+
+  const dispatch = useDispatch();
+
+  const finishGoogleLogin = (user) => {
+    dispatch(addUser(user));
+    addToast("Google sign up successful!", "success");
+    ensureCrypto({ userId: user._id }).catch(() => {});
+    navigate("/feed");
+  };
 
   const handleSendOtp = async (e) => {
     e.preventDefault();
@@ -72,6 +86,20 @@ const Register = () => {
           {loading ? "Sending OTP..." : <>Send OTP <HiArrowRight className="text-base" /></>}
         </AuthButton>
       </form>
+
+      <div className="relative my-5 flex items-center justify-center">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-hairline" />
+        </div>
+        <span className="relative bg-surface-900 px-3 text-xs uppercase tracking-wider text-neutral-500">
+          Or continue with
+        </span>
+      </div>
+
+      <div className="flex flex-col gap-3">
+        <GoogleAuthButton onSuccess={finishGoogleLogin} text="Sign up with Google" />
+        <GitHubAuthButton text="Sign up with GitHub" />
+      </div>
 
       <p className="mt-6 text-center text-sm text-neutral-400">
         Already registered?{" "}

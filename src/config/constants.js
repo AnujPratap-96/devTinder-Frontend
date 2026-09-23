@@ -1,9 +1,7 @@
 import io from "socket.io-client";
 
-export const BASE_URL =
-  location.hostname === "localhost"
-    ? "http://localhost:3000"
-    : "https://devtinder-1zr8.onrender.com";
+export const BASE_URL = window.location.hostname === "localhost"
+  ? import.meta.env.VITE_API_BASE_URL_LOCAL : import.meta.env.VITE_API_BASE_URL_PROD;
 
 let socketInstance;
 let registeredUserId;

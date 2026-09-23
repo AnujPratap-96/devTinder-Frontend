@@ -264,7 +264,7 @@ const NotificationBell = () => {
 
           <div className="max-h-80 space-y-4 overflow-y-auto pr-1">
             {notifications.length === 0 ? (
-              <p className="text-xs text-neutral-500">No notifications yet. We'll keep you posted.</p>
+              <p className="text-xs text-neutral-500">No notifications yet. We&apos;ll keep you posted.</p>
             ) : (
               <>
                 {groupedNotifications.map((group) => (

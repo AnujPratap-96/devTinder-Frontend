@@ -3,6 +3,9 @@ import client from "./client";
 export const login = (credentials) =>
   client.post("/login", credentials).then((r) => r.data.data);
 
+export const oauthLogin = (payload) =>
+  client.post("/auth/oauth", payload).then((r) => r.data.data);
+
 export const register = (emailId) =>
   client.post("/register", { emailId }).then((r) => r.data.data);
 
